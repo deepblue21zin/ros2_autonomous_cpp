@@ -1,0 +1,4 @@
+Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/common': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/common -- -j16 -l16
+Invoked command in '/home/deepblue/ros2_autonomous_cpp/build/common' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/common -- -j16 -l16
+Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/common': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/deepblue/ros2_autonomous_cpp/build/common
+Invoked command in '/home/deepblue/ros2_autonomous_cpp/build/common' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/deepblue/ros2_autonomous_cpp/build/common

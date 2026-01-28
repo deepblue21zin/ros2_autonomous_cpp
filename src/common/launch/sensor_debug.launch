@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="common" type="lidar_monitor.py" name="lidar_monitor" output="screen" />
+  <node pkg="common" type="ultrasonic_monitor.py" name="ultrasonic_monitor" output="screen" />
+</launch>

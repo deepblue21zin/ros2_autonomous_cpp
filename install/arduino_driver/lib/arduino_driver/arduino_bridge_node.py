@@ -1,0 +1,1 @@
+/home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver/scripts/arduino_bridge_node.py

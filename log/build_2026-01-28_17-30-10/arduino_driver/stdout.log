@@ -1,0 +1,26 @@
+Consolidate compiler generated dependencies of target arduino_bridge_node
+[100%] Built target arduino_bridge_node
+-- Install configuration: ""
+-- Execute custom install script
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/lib/arduino_driver/arduino_bridge_node
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/lib/arduino_driver/arduino_bridge_node.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/include/arduino_driver/arduino_bridge_node.hpp
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/include/arduino_driver/serial_protocol.hpp
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver//config/arduino.yaml
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver//ino/motor_control/motor_control.ino
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver//ino/motor_control_with_feedback/motor_control_with_feedback.ino
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/ament_index/resource_index/package_run_dependencies/arduino_driver
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/ament_index/resource_index/parent_prefix_path/arduino_driver
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/environment/ament_prefix_path.sh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/environment/ament_prefix_path.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/environment/path.sh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/environment/path.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/local_setup.bash
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/local_setup.sh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/local_setup.zsh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/local_setup.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/package.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/ament_index/resource_index/packages/arduino_driver
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/cmake/arduino_driverConfig.cmake
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/cmake/arduino_driverConfig-version.cmake
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/package.xml

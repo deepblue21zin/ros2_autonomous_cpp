@@ -1,0 +1,22 @@
+<launch>
+  <arg name="video_device" default="/dev/video0" />
+  <arg name="image_width" default="640" />
+  <arg name="image_height" default="480" />
+  <arg name="pixel_format" default="yuyv" />
+  <arg name="framerate" default="30" />
+  <arg name="frame_id" default="camera_front" />
+  <arg name="camera_topic" default="/camera/front/image" />
+
+  <rosparam file="$(find usb_cam_driver)/config/usb_cam.yaml" command="load" />
+
+  <!-- TODO: Ensure usb_cam package is installed. -->
+  <node pkg="usb_cam" type="usb_cam_node" name="usb_cam" output="screen">
+    <param name="video_device" value="$(arg video_device)" />
+    <param name="image_width" value="$(arg image_width)" />
+    <param name="image_height" value="$(arg image_height)" />
+    <param name="pixel_format" value="$(arg pixel_format)" />
+    <param name="framerate" value="$(arg framerate)" />
+    <param name="frame_id" value="$(arg frame_id)" />
+    <param name="camera_topic" value="$(arg camera_topic)" />
+  </node>
+</launch>

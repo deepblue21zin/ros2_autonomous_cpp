@@ -1,0 +1,263 @@
+[0.061s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build', '--packages-select', 'common', 'bringup']
+[0.061s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=False, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=16, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=['common', 'bringup'], packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0x7d89efaefc40>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x7d89efaef6d0>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x7d89efaef6d0>>)
+[0.135s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.135s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.135s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.135s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.135s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.135s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.135s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/deepblue/ros2_autonomous_cpp'
+[0.135s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.135s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.135s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.135s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.135s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.135s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.135s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.135s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.135s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ignore', 'ignore_ament_install']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore_ament_install'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_pkg']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_pkg'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_meta']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_meta'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ros']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ros'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['cmake', 'python']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'cmake'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python'
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['python_setup_py']
+[0.142s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python_setup_py'
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(src/bringup) by extensions ['ignore', 'ignore_ament_install']
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(src/bringup) by extension 'ignore'
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(src/bringup) by extension 'ignore_ament_install'
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(src/bringup) by extensions ['colcon_pkg']
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(src/bringup) by extension 'colcon_pkg'
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(src/bringup) by extensions ['colcon_meta']
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(src/bringup) by extension 'colcon_meta'
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(src/bringup) by extensions ['ros']
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(src/bringup) by extension 'ros'
+[0.144s] DEBUG:colcon.colcon_core.package_identification:Package 'src/bringup' with type 'ros.ament_cmake' and name 'bringup'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src/common) by extensions ['ignore', 'ignore_ament_install']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src/common) by extension 'ignore'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src/common) by extension 'ignore_ament_install'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src/common) by extensions ['colcon_pkg']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src/common) by extension 'colcon_pkg'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src/common) by extensions ['colcon_meta']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src/common) by extension 'colcon_meta'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src/common) by extensions ['ros']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src/common) by extension 'ros'
+[0.145s] DEBUG:colcon.colcon_core.package_identification:Package 'src/common' with type 'ros.ament_cmake' and name 'common'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/decision) by extensions ['ignore', 'ignore_ament_install']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/decision) by extension 'ignore'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/decision) by extension 'ignore_ament_install'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/decision) by extensions ['colcon_pkg']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/decision) by extension 'colcon_pkg'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/decision) by extensions ['colcon_meta']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/decision) by extension 'colcon_meta'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/decision) by extensions ['ros']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/decision) by extension 'ros'
+[0.145s] DEBUG:colcon.colcon_core.package_identification:Package 'src/decision' with type 'ros.ament_cmake' and name 'decision'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extensions ['ignore', 'ignore_ament_install']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extension 'ignore'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extension 'ignore_ament_install'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extensions ['colcon_pkg']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extension 'colcon_pkg'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extensions ['colcon_meta']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extension 'colcon_meta'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extensions ['ros']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extension 'ros'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extensions ['cmake', 'python']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extension 'cmake'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extension 'python'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extensions ['python_setup_py']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers) by extension 'python_setup_py'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/arduino_driver) by extensions ['ignore', 'ignore_ament_install']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/arduino_driver) by extension 'ignore'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/arduino_driver) by extension 'ignore_ament_install'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/arduino_driver) by extensions ['colcon_pkg']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/arduino_driver) by extension 'colcon_pkg'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/arduino_driver) by extensions ['colcon_meta']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/arduino_driver) by extension 'colcon_meta'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/arduino_driver) by extensions ['ros']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/arduino_driver) by extension 'ros'
+[0.146s] DEBUG:colcon.colcon_core.package_identification:Package 'src/drivers/arduino_driver' with type 'ros.ament_cmake' and name 'arduino_driver'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/rplidar_driver) by extensions ['ignore', 'ignore_ament_install']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/rplidar_driver) by extension 'ignore'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/rplidar_driver) by extension 'ignore_ament_install'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/rplidar_driver) by extensions ['colcon_pkg']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/rplidar_driver) by extension 'colcon_pkg'
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/rplidar_driver) by extensions ['colcon_meta']
+[0.146s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/rplidar_driver) by extension 'colcon_meta'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/rplidar_driver) by extensions ['ros']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/rplidar_driver) by extension 'ros'
+[0.147s] DEBUG:colcon.colcon_core.package_identification:Package 'src/drivers/rplidar_driver' with type 'ros.ament_cmake' and name 'rplidar_driver'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/ultrasonic_driver) by extensions ['ignore', 'ignore_ament_install']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/ultrasonic_driver) by extension 'ignore'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/ultrasonic_driver) by extension 'ignore_ament_install'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/ultrasonic_driver) by extensions ['colcon_pkg']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/ultrasonic_driver) by extension 'colcon_pkg'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/ultrasonic_driver) by extensions ['colcon_meta']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/ultrasonic_driver) by extension 'colcon_meta'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/ultrasonic_driver) by extensions ['ros']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/ultrasonic_driver) by extension 'ros'
+[0.147s] DEBUG:colcon.colcon_core.package_identification:Package 'src/drivers/ultrasonic_driver' with type 'ros.ament_cmake' and name 'ultrasonic_driver'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/usb_cam_driver) by extensions ['ignore', 'ignore_ament_install']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/usb_cam_driver) by extension 'ignore'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/usb_cam_driver) by extension 'ignore_ament_install'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/usb_cam_driver) by extensions ['colcon_pkg']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/usb_cam_driver) by extension 'colcon_pkg'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/usb_cam_driver) by extensions ['colcon_meta']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/usb_cam_driver) by extension 'colcon_meta'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/usb_cam_driver) by extensions ['ros']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/drivers/usb_cam_driver) by extension 'ros'
+[0.148s] DEBUG:colcon.colcon_core.package_identification:Package 'src/drivers/usb_cam_driver' with type 'ros.ament_cmake' and name 'usb_cam_driver'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/perception_pkg) by extensions ['ignore', 'ignore_ament_install']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/perception_pkg) by extension 'ignore'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/perception_pkg) by extension 'ignore_ament_install'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/perception_pkg) by extensions ['colcon_pkg']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/perception_pkg) by extension 'colcon_pkg'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/perception_pkg) by extensions ['colcon_meta']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/perception_pkg) by extension 'colcon_meta'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/perception_pkg) by extensions ['ros']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/perception_pkg) by extension 'ros'
+[0.149s] DEBUG:colcon.colcon_core.package_identification:Package 'src/perception_pkg' with type 'ros.ament_cmake' and name 'perception_pkg'
+[0.149s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.149s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.149s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.149s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.149s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.160s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'arduino_driver' in 'src/drivers/arduino_driver'
+[0.161s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'decision' in 'src/decision'
+[0.161s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'perception_pkg' in 'src/perception_pkg'
+[0.161s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'rplidar_driver' in 'src/drivers/rplidar_driver'
+[0.161s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'ultrasonic_driver' in 'src/drivers/ultrasonic_driver'
+[0.161s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'usb_cam_driver' in 'src/drivers/usb_cam_driver'
+[0.161s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[0.161s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[0.162s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 272 installed packages in /opt/ros/humble
+[0.171s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'common' build argument 'cmake_args' from command line to 'None'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'common' build argument 'cmake_target' from command line to 'None'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'common' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'common' build argument 'cmake_clean_cache' from command line to 'False'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'common' build argument 'cmake_clean_first' from command line to 'False'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'common' build argument 'cmake_force_configure' from command line to 'False'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'common' build argument 'ament_cmake_args' from command line to 'None'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'common' build argument 'catkin_cmake_args' from command line to 'None'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'common' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.189s] DEBUG:colcon.colcon_core.verb:Building package 'common' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/deepblue/ros2_autonomous_cpp/build/common', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/deepblue/ros2_autonomous_cpp/install/common', 'merge_install': False, 'path': '/home/deepblue/ros2_autonomous_cpp/src/common', 'symlink_install': False, 'test_result_base': None}
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'bringup' build argument 'cmake_args' from command line to 'None'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'bringup' build argument 'cmake_target' from command line to 'None'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'bringup' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'bringup' build argument 'cmake_clean_cache' from command line to 'False'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'bringup' build argument 'cmake_clean_first' from command line to 'False'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'bringup' build argument 'cmake_force_configure' from command line to 'False'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'bringup' build argument 'ament_cmake_args' from command line to 'None'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'bringup' build argument 'catkin_cmake_args' from command line to 'None'
+[0.189s] Level 5:colcon.colcon_core.verb:set package 'bringup' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.189s] DEBUG:colcon.colcon_core.verb:Building package 'bringup' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/deepblue/ros2_autonomous_cpp/build/bringup', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/deepblue/ros2_autonomous_cpp/install/bringup', 'merge_install': False, 'path': '/home/deepblue/ros2_autonomous_cpp/src/bringup', 'symlink_install': False, 'test_result_base': None}
+[0.189s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.190s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.190s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/deepblue/ros2_autonomous_cpp/src/common' with build type 'ament_cmake'
+[0.190s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/deepblue/ros2_autonomous_cpp/src/common'
+[0.191s] ERROR:colcon.colcon_core.event_reactor:Exception in event handler extension 'console_start_end': [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/colcon_core/event_reactor.py", line 78, in _notify_observers
+    retval = observer(event)
+  File "/usr/lib/python3/dist-packages/colcon_core/event_handler/console_start_end.py", line 41, in __call__
+    print(Style.SectionStart(msg), flush=True)
+BrokenPipeError: [Errno 32] Broken pipe
+
+[0.192s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.192s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.192s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.194s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/deepblue/ros2_autonomous_cpp/src/bringup' with build type 'ament_cmake'
+[0.194s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/deepblue/ros2_autonomous_cpp/src/bringup'
+[0.194s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.194s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.194s] ERROR:colcon.colcon_core.event_reactor:Exception in event handler extension 'console_start_end': [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/colcon_core/event_reactor.py", line 78, in _notify_observers
+    retval = observer(event)
+  File "/usr/lib/python3/dist-packages/colcon_core/event_handler/console_start_end.py", line 41, in __call__
+    print(Style.SectionStart(msg), flush=True)
+BrokenPipeError: [Errno 32] Broken pipe
+
+[0.195s] ERROR:colcon.colcon_cmake.task.cmake.build:Failed to find the following files:
+- /home/deepblue/ros2_autonomous_cpp/install/arduino_driver/share/arduino_driver/package.sh
+- /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/package.sh
+- /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/package.sh
+- /home/deepblue/ros2_autonomous_cpp/install/rplidar_driver/share/rplidar_driver/package.sh
+- /home/deepblue/ros2_autonomous_cpp/install/ultrasonic_driver/share/ultrasonic_driver/package.sh
+- /home/deepblue/ros2_autonomous_cpp/install/usb_cam_driver/share/usb_cam_driver/package.sh
+Check that the following packages have been built:
+- arduino_driver
+- decision
+- perception_pkg
+- rplidar_driver
+- ultrasonic_driver
+- usb_cam_driver
+[0.195s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(bringup)
+[0.196s] Level 1:colcon.colcon_core.environment:checking '/home/deepblue/ros2_autonomous_cpp/install/bringup' for CMake module files
+[0.196s] Level 1:colcon.colcon_core.environment:checking '/home/deepblue/ros2_autonomous_cpp/install/bringup' for CMake config files
+[0.196s] Level 1:colcon.colcon_core.environment:checking '/home/deepblue/ros2_autonomous_cpp/install/bringup/bin'
+[0.196s] Level 1:colcon.colcon_core.environment:checking '/home/deepblue/ros2_autonomous_cpp/install/bringup/lib/pkgconfig/bringup.pc'
+[0.197s] Level 1:colcon.colcon_core.environment:checking '/home/deepblue/ros2_autonomous_cpp/install/bringup/lib/python3.10/site-packages'
+[0.197s] Level 1:colcon.colcon_core.environment:checking '/home/deepblue/ros2_autonomous_cpp/install/bringup/bin'
+[0.197s] INFO:colcon.colcon_core.shell:Creating package script '/home/deepblue/ros2_autonomous_cpp/install/bringup/share/bringup/package.ps1'
+[0.197s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/deepblue/ros2_autonomous_cpp/install/bringup/share/bringup/package.dsv'
+[0.197s] INFO:colcon.colcon_core.shell:Creating package script '/home/deepblue/ros2_autonomous_cpp/install/bringup/share/bringup/package.sh'
+[0.198s] INFO:colcon.colcon_core.shell:Creating package script '/home/deepblue/ros2_autonomous_cpp/install/bringup/share/bringup/package.bash'
+[0.198s] INFO:colcon.colcon_core.shell:Creating package script '/home/deepblue/ros2_autonomous_cpp/install/bringup/share/bringup/package.zsh'
+[0.198s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/deepblue/ros2_autonomous_cpp/install/bringup/share/colcon-core/packages/bringup)
+[0.199s] ERROR:colcon.colcon_core.event_reactor:Exception in event handler extension 'console_start_end': [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/colcon_core/event_reactor.py", line 78, in _notify_observers
+    retval = observer(event)
+  File "/usr/lib/python3/dist-packages/colcon_core/event_handler/console_start_end.py", line 72, in __call__
+    print(Style.SectionEnd(msg), file=writable, flush=True)
+BrokenPipeError: [Errno 32] Broken pipe
+
+[0.199s] ERROR:colcon.colcon_core.event_reactor:Exception in event handler extension 'console_start_end': [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/colcon_core/event_reactor.py", line 78, in _notify_observers
+    retval = observer(event)
+  File "/usr/lib/python3/dist-packages/colcon_core/event_handler/console_start_end.py", line 72, in __call__
+    print(Style.SectionEnd(msg), file=writable, flush=True)
+BrokenPipeError: [Errno 32] Broken pipe
+
+[0.209s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[0.209s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[0.209s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '1'
+[0.210s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[0.213s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[0.213s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[0.213s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[0.221s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[0.222s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/deepblue/ros2_autonomous_cpp/install/local_setup.ps1'
+[0.223s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/deepblue/ros2_autonomous_cpp/install/_local_setup_util_ps1.py'
+[0.224s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/deepblue/ros2_autonomous_cpp/install/setup.ps1'
+[0.225s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/deepblue/ros2_autonomous_cpp/install/local_setup.sh'
+[0.225s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/deepblue/ros2_autonomous_cpp/install/_local_setup_util_sh.py'
+[0.225s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/deepblue/ros2_autonomous_cpp/install/setup.sh'
+[0.226s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/deepblue/ros2_autonomous_cpp/install/local_setup.bash'
+[0.227s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/deepblue/ros2_autonomous_cpp/install/setup.bash'
+[0.227s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/deepblue/ros2_autonomous_cpp/install/local_setup.zsh'
+[0.228s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/deepblue/ros2_autonomous_cpp/install/setup.zsh'

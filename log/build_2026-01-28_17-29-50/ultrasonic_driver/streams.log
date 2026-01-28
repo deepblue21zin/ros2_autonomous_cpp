@@ -1,0 +1,4 @@
+[0.014s] Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver -- -j16 -l16
+[0.044s] [ 50%] Building CXX object CMakeFiles/ultrasonic_processor_node.dir/src/ultrasonic_processor_node.cpp.o
+[5.704s] [100%] Linking CXX executable ultrasonic_processor_node
+[5.933s] [100%] Built target ultrasonic_processor_node

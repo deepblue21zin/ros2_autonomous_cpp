@@ -1,0 +1,52 @@
+[ 33%] Built target perception_common
+Consolidate compiler generated dependencies of target lane_tracking_node
+Consolidate compiler generated dependencies of target lane_marking_node
+Consolidate compiler generated dependencies of target obstacle_detection_node
+[ 66%] Building CXX object CMakeFiles/lane_tracking_node.dir/src/lane_tracking_node.cpp.o
+[ 66%] Building CXX object CMakeFiles/lane_marking_node.dir/src/lane_marking_node.cpp.o
+[ 77%] Built target obstacle_detection_node
+[ 88%] Linking CXX executable lane_tracking_node
+[ 88%] Built target lane_tracking_node
+[100%] Linking CXX executable lane_marking_node
+[100%] Built target lane_marking_node
+-- Install configuration: ""
+-- Execute custom install script
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/libperception_common.so
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/lane_marking_node
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/lane_tracking_node
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/obstacle_detection_node
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/lane_tracking_node.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/lane_marking_node.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/speed_sign_node.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/traffic_light_node.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/traffic_light_color_node.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/obstacle_detection_node.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/common/detection_types.hpp
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/common/image_utils.hpp
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/common/lane_geometry.hpp
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/lane_marking_node.hpp
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/lane_tracking_node.hpp
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/obstacle_detection_node.hpp
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg//launch/lane_bringup.launch
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg//config/lane_params.yaml
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg//models/traffic_sign_detector.pt
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/library_path.sh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/library_path.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/ament_index/resource_index/package_run_dependencies/perception_pkg
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/ament_index/resource_index/parent_prefix_path/perception_pkg
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/ament_prefix_path.sh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/ament_prefix_path.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/path.sh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/path.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/local_setup.bash
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/local_setup.sh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/local_setup.zsh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/local_setup.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/package.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/ament_index/resource_index/packages/perception_pkg
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/cmake/ament_cmake_export_include_directories-extras.cmake
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/cmake/ament_cmake_export_libraries-extras.cmake
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/cmake/ament_cmake_export_dependencies-extras.cmake
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/cmake/perception_pkgConfig.cmake
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/cmake/perception_pkgConfig-version.cmake
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/package.xml

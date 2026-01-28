@@ -1,0 +1,4 @@
+# TODO: Confirm safe distance (meters) for ultrasonic stop logic.
+safe_distance_m: 0.2
+# TODO: Confirm the topic name published by arduino_bridge_node.
+ranges_topic: /ultrasonic/ranges

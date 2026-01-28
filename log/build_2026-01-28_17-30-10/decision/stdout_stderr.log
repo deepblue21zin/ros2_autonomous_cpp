@@ -1,0 +1,29 @@
+Consolidate compiler generated dependencies of target decision_node
+Consolidate compiler generated dependencies of target lidar_obstacle_node
+[100%] Built target decision_node
+[100%] Built target lidar_obstacle_node
+-- Install configuration: ""
+-- Execute custom install script
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/lib/decision/decision_node
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/lib/decision/lidar_obstacle_node
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/lib/decision/decision_node.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/lib/decision/decision_node_2026.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/lib/decision/decision_node_ai.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/lib/decision/lidar_obstacle_node.py
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/include/decision/decision_node.hpp
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/include/decision/lidar_obstacle_node.hpp
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/ament_index/resource_index/package_run_dependencies/decision
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/ament_index/resource_index/parent_prefix_path/decision
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/environment/ament_prefix_path.sh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/environment/ament_prefix_path.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/environment/path.sh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/environment/path.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/local_setup.bash
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/local_setup.sh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/local_setup.zsh
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/local_setup.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/package.dsv
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/ament_index/resource_index/packages/decision
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/cmake/decisionConfig.cmake
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/cmake/decisionConfig-version.cmake
+-- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/decision/share/decision/package.xml

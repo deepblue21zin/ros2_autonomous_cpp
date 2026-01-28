@@ -1,0 +1,106 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-df48dcd13d2c7237c094.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.12"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "perception_pkg",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "lane_marking_node::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-lane_marking_node-0dcd17c245123a579615.json",
+					"name" : "lane_marking_node",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "lane_tracking_node::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-lane_tracking_node-8fab57f04ba88bfef169.json",
+					"name" : "lane_tracking_node",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "obstacle_detection_node::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-obstacle_detection_node-0287646ed456c1926c91.json",
+					"name" : "obstacle_detection_node",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "perception_common::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-perception_common-82c31fe41ecd01bc1519.json",
+					"name" : "perception_common",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "perception_pkg_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-perception_pkg_uninstall-7d510b908007282cfecc.json",
+					"name" : "perception_pkg_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-bc297e8d18166861fc77.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/deepblue/ros2_autonomous_cpp/build/perception_pkg",
+		"source" : "/home/deepblue/ros2_autonomous_cpp/src/perception_pkg"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

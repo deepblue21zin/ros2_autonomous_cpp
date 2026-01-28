@@ -1,0 +1,128 @@
+<launch>
+  <arg name="camera_topic" default="/image_jpeg/compressed" />
+  <arg name="use_compressed" default="true" />
+  <arg name="kp" default="0.6" />
+  <arg name="lane_debug" default="false" />
+  <arg name="default_speed_limit" default="20.0" />
+  <arg name="speed_sign_enabled" default="false" />
+  <arg name="speed_sign_model" default="$(find perception_pkg)/models/traffic_sign_detector.pt" />
+  <arg name="traffic_light_enabled" default="false" />
+  <arg name="traffic_light_model" default="$(find perception_pkg)/models/traffic_sign_detector.pt" />
+  <arg name="obstacle_enabled" default="false" />
+  <arg name="obstacle_roi_y_ratio" default="0.55" />
+  <arg name="obstacle_band_ratio" default="0.6" />
+  <arg name="obstacle_center_ratio" default="0.4" />
+  <arg name="obstacle_square_ratio" default="0.0" />
+  <arg name="obstacle_min_area" default="600" />
+  <arg name="obstacle_min_height" default="20" />
+  <arg name="obstacle_saturation_thresh" default="60" />
+  <arg name="obstacle_value_thresh" default="40" />
+  <arg name="obstacle_canny_low" default="80" />
+  <arg name="obstacle_canny_high" default="160" />
+  <arg name="obstacle_bias_gain" default="1.5" />
+  <arg name="lane_marking_enabled" default="false" />
+  <arg name="allowed_stop_states" default="['red','yellow']" />
+  <arg name="speed_sign_publish_overlay" default="false" />
+  <arg name="traffic_light_publish_overlay" default="false" />
+  <arg name="obstacle_publish_overlay" default="false" />
+  <arg name="use_cpp" default="true" />
+
+  <rosparam command="load" file="$(find perception_pkg)/config/lane_params.yaml" />
+
+  <!-- Lane Tracking Node (C++ or Python) -->
+  <group if="$(arg use_cpp)">
+    <node pkg="perception_pkg" type="lane_tracking_node" name="lane_tracking_node" output="screen">
+      <param name="camera_topic" value="$(arg camera_topic)" />
+      <param name="kp" value="$(arg kp)" />
+      <param name="debug" value="$(arg lane_debug)" />
+      <param name="use_compressed" value="$(arg use_compressed)" />
+    </node>
+  </group>
+  <group unless="$(arg use_cpp)">
+    <node pkg="perception_pkg" type="lane_tracking_node.py" name="lane_tracking_node" output="screen">
+      <param name="camera_topic" value="$(arg camera_topic)" />
+      <param name="kp" value="$(arg kp)" />
+      <param name="debug" value="$(arg lane_debug)" />
+      <param name="use_compressed" value="$(arg use_compressed)" />
+    </node>
+  </group>
+
+  <!-- Lane Marking Node (C++ or Python) -->
+  <group if="$(arg lane_marking_enabled)">
+    <group if="$(arg use_cpp)">
+      <node pkg="perception_pkg" type="lane_marking_node" name="lane_marking_node" output="screen">
+        <param name="camera_topic" value="$(arg camera_topic)" />
+        <param name="use_compressed" value="$(arg use_compressed)" />
+        <param name="allowed_stop_states" value="$(arg allowed_stop_states)" />
+      </node>
+    </group>
+    <group unless="$(arg use_cpp)">
+      <node pkg="perception_pkg" type="lane_marking_node.py" name="lane_marking_node" output="screen">
+        <param name="camera_topic" value="$(arg camera_topic)" />
+        <param name="use_compressed" value="$(arg use_compressed)" />
+        <param name="allowed_stop_states" value="$(arg allowed_stop_states)" type="yaml" />
+      </node>
+    </group>
+  </group>
+
+  <!-- Speed Sign Node (Python only - YOLO based) -->
+  <group if="$(arg speed_sign_enabled)">
+    <node pkg="perception_pkg" type="speed_sign_node.py" name="speed_sign_node" output="screen">
+      <param name="camera_topic" value="$(arg camera_topic)" />
+      <param name="use_compressed" value="$(arg use_compressed)" />
+      <param name="default_speed_limit" value="$(arg default_speed_limit)" />
+      <param name="detector_model_path" value="$(arg speed_sign_model)" />
+      <param name="publish_overlay" value="$(arg speed_sign_publish_overlay)" />
+    </node>
+  </group>
+
+  <!-- Traffic Light Node (Python only - YOLO based) -->
+  <group if="$(arg traffic_light_enabled)">
+    <node pkg="perception_pkg" type="traffic_light_node.py" name="traffic_light_node" output="screen">
+      <param name="camera_topic" value="$(arg camera_topic)" />
+      <param name="use_compressed" value="$(arg use_compressed)" />
+      <param name="detector_model_path" value="$(arg traffic_light_model)" />
+      <param name="publish_overlay" value="$(arg traffic_light_publish_overlay)" />
+    </node>
+  </group>
+
+  <!-- Obstacle Detection Node (C++ or Python) -->
+  <group if="$(arg obstacle_enabled)">
+    <group if="$(arg use_cpp)">
+      <node pkg="perception_pkg" type="obstacle_detection_node" name="obstacle_detection_node" output="screen">
+        <param name="camera_topic" value="$(arg camera_topic)" />
+        <param name="use_compressed" value="$(arg use_compressed)" />
+        <param name="roi_y_ratio" value="$(arg obstacle_roi_y_ratio)" />
+        <param name="band_ratio" value="$(arg obstacle_band_ratio)" />
+        <param name="obstacle_center_ratio" value="$(arg obstacle_center_ratio)" />
+        <param name="square_ratio" value="$(arg obstacle_square_ratio)" />
+        <param name="min_area" value="$(arg obstacle_min_area)" />
+        <param name="min_height" value="$(arg obstacle_min_height)" />
+        <param name="saturation_thresh" value="$(arg obstacle_saturation_thresh)" />
+        <param name="value_thresh" value="$(arg obstacle_value_thresh)" />
+        <param name="canny_low" value="$(arg obstacle_canny_low)" />
+        <param name="canny_high" value="$(arg obstacle_canny_high)" />
+        <param name="bias_gain" value="$(arg obstacle_bias_gain)" />
+        <param name="publish_overlay" value="$(arg obstacle_publish_overlay)" />
+      </node>
+    </group>
+    <group unless="$(arg use_cpp)">
+      <node pkg="perception_pkg" type="obstacle_detection_node.py" name="obstacle_detection_node" output="screen">
+        <param name="camera_topic" value="$(arg camera_topic)" />
+        <param name="use_compressed" value="$(arg use_compressed)" />
+        <param name="roi_y_ratio" value="$(arg obstacle_roi_y_ratio)" />
+        <param name="band_ratio" value="$(arg obstacle_band_ratio)" />
+        <param name="obstacle_center_ratio" value="$(arg obstacle_center_ratio)" />
+        <param name="square_ratio" value="$(arg obstacle_square_ratio)" />
+        <param name="min_area" value="$(arg obstacle_min_area)" />
+        <param name="min_height" value="$(arg obstacle_min_height)" />
+        <param name="saturation_thresh" value="$(arg obstacle_saturation_thresh)" />
+        <param name="value_thresh" value="$(arg obstacle_value_thresh)" />
+        <param name="canny_low" value="$(arg obstacle_canny_low)" />
+        <param name="canny_high" value="$(arg obstacle_canny_high)" />
+        <param name="bias_gain" value="$(arg obstacle_bias_gain)" />
+        <param name="publish_overlay" value="$(arg obstacle_publish_overlay)" />
+      </node>
+    </group>
+  </group>
+</launch>

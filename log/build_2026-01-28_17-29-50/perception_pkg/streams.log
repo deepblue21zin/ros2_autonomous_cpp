@@ -1,0 +1,32 @@
+[0.014s] Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/perception_pkg -- -j16 -l16
+[0.047s] [ 22%] Building CXX object CMakeFiles/perception_common.dir/src/common/lane_geometry.cpp.o
+[0.047s] [ 22%] Building CXX object CMakeFiles/perception_common.dir/src/common/image_utils.cpp.o
+[4.257s] [ 33%] Linking CXX shared library libperception_common.so
+[4.452s] [ 33%] Built target perception_common
+[4.465s] [ 66%] Building CXX object CMakeFiles/lane_marking_node.dir/src/lane_marking_node.cpp.o
+[4.465s] [ 66%] Building CXX object CMakeFiles/lane_tracking_node.dir/src/lane_tracking_node.cpp.o
+[4.465s] [ 66%] Building CXX object CMakeFiles/obstacle_detection_node.dir/src/obstacle_detection_node.cpp.o
+[4.470s] In file included from /home/deepblue/ros2_autonomous_cpp/src/perception_pkg/src/lane_tracking_node.cpp:1:
+[4.470s] /home/deepblue/ros2_autonomous_cpp/src/perception_pkg/include/perception_pkg/lane_tracking_node.hpp:4:10: fatal error: ros/ros.h: No such file or directory
+[4.470s]     4 | #include <ros/ros.h>
+[4.470s]       |          ^~~~~~~~~~~
+[4.470s] compilation terminated.
+[4.470s] In file included from /home/deepblue/ros2_autonomous_cpp/src/perception_pkg/src/lane_marking_node.cpp:1:
+[4.470s] /home/deepblue/ros2_autonomous_cpp/src/perception_pkg/include/perception_pkg/lane_marking_node.hpp:4:10: fatal error: ros/ros.h: No such file or directory
+[4.470s]     4 | #include <ros/ros.h>
+[4.470s]       |          ^~~~~~~~~~~
+[4.470s] compilation terminated.
+[4.470s] In file included from /home/deepblue/ros2_autonomous_cpp/src/perception_pkg/src/obstacle_detection_node.cpp:1:
+[4.470s] /home/deepblue/ros2_autonomous_cpp/src/perception_pkg/include/perception_pkg/obstacle_detection_node.hpp:4:10: fatal error: ros/ros.h: No such file or directory
+[4.470s]     4 | #include <ros/ros.h>
+[4.470s]       |          ^~~~~~~~~~~
+[4.470s] compilation terminated.
+[4.470s] gmake[2]: *** [CMakeFiles/lane_tracking_node.dir/build.make:76: CMakeFiles/lane_tracking_node.dir/src/lane_tracking_node.cpp.o] Error 1
+[4.470s] gmake[1]: *** [CMakeFiles/Makefile2:195: CMakeFiles/lane_tracking_node.dir/all] Error 2
+[4.470s] gmake[1]: *** Waiting for unfinished jobs....
+[4.470s] gmake[2]: *** [CMakeFiles/lane_marking_node.dir/build.make:76: CMakeFiles/lane_marking_node.dir/src/lane_marking_node.cpp.o] Error 1
+[4.470s] gmake[2]: *** [CMakeFiles/obstacle_detection_node.dir/build.make:76: CMakeFiles/obstacle_detection_node.dir/src/obstacle_detection_node.cpp.o] Error 1
+[4.471s] gmake[1]: *** [CMakeFiles/Makefile2:169: CMakeFiles/lane_marking_node.dir/all] Error 2
+[4.471s] gmake[1]: *** [CMakeFiles/Makefile2:221: CMakeFiles/obstacle_detection_node.dir/all] Error 2
+[4.471s] gmake: *** [Makefile:146: all] Error 2
+[4.472s] Invoked command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg' returned '2': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/perception_pkg -- -j16 -l16

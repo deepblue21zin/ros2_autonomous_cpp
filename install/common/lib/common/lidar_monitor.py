@@ -1,0 +1,1 @@
+/home/deepblue/ros2_autonomous_cpp/src/common/scripts/lidar_monitor.py

@@ -1,0 +1,61 @@
+<launch>
+  <arg name="decision_mode" default="2026" />
+  <arg name="camera_topic" default="/camera/front/image" />
+  <arg name="use_compressed" default="false" />
+  <arg name="use_cpp" default="true" />
+
+  <rosparam file="$(find arduino_driver)/config/arduino.yaml" command="load" />
+  <rosparam file="$(find ultrasonic_driver)/config/ultrasonic.yaml" command="load" />
+  <!-- TODO: Ensure rplidar_ros (or equivalent) is running and publishing /scan. -->
+  <include file="$(find usb_cam_driver)/launch/usb_cam.launch">
+    <arg name="camera_topic" value="$(arg camera_topic)" />
+  </include>
+
+  <include file="$(find perception_pkg)/launch/lane_bringup.launch">
+    <arg name="camera_topic" value="$(arg camera_topic)" />
+    <arg name="use_compressed" value="$(arg use_compressed)" />
+    <arg name="lane_marking_enabled" value="true" />
+    <arg name="allowed_stop_states" value="['red']" />
+    <arg name="speed_sign_enabled" value="false" />
+    <arg name="traffic_light_enabled" value="false" />
+    <arg name="obstacle_enabled" value="false" />
+    <arg name="use_cpp" value="$(arg use_cpp)" />
+  </include>
+
+  <!-- C++ drivers -->
+  <group if="$(arg use_cpp)">
+    <node pkg="arduino_driver" type="arduino_bridge_node" name="arduino_bridge" output="screen" />
+    <node pkg="ultrasonic_driver" type="ultrasonic_processor_node" name="ultrasonic_processor" output="screen" />
+    <node pkg="decision" type="lidar_obstacle_node" name="lidar_obstacle" output="screen" />
+  </group>
+
+  <!-- Python drivers (fallback) -->
+  <group unless="$(arg use_cpp)">
+    <node pkg="arduino_driver" type="arduino_bridge_node.py" name="arduino_bridge" output="screen" />
+    <node pkg="ultrasonic_driver" type="ultrasonic_processor_node.py" name="ultrasonic_processor" output="screen" />
+    <node pkg="decision" type="lidar_obstacle_node.py" name="lidar_obstacle" output="screen" />
+  </group>
+
+  <!-- Decision node (C++ or Python based on mode and use_cpp) -->
+  <group if="$(eval decision_mode == '2026')">
+    <group if="$(arg use_cpp)">
+      <node pkg="decision" type="decision_node" name="decision_node" output="screen">
+        <param name="stop_on_yellow" value="false" />
+        <remap from="/decision/cmd" to="/arduino/cmd" />
+      </node>
+    </group>
+    <group unless="$(arg use_cpp)">
+      <node pkg="decision" type="decision_node_2026.py" name="decision_node" output="screen">
+        <param name="stop_on_yellow" value="false" />
+        <remap from="/decision/cmd" to="/arduino/cmd" />
+      </node>
+    </group>
+  </group>
+
+  <group if="$(eval decision_mode == 'ai')">
+    <node pkg="decision" type="decision_node_ai.py" name="decision_node" output="screen">
+      <param name="stop_on_yellow" value="false" />
+      <remap from="/decision/cmd" to="/arduino/cmd" />
+    </node>
+  </group>
+</launch>

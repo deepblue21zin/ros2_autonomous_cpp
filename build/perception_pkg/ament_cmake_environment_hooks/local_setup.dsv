@@ -1,0 +1,3 @@
+source;share/perception_pkg/environment/ament_prefix_path.sh
+source;share/perception_pkg/environment/library_path.sh
+source;share/perception_pkg/environment/path.sh

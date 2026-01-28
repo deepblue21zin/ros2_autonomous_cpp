@@ -1,0 +1,1 @@
+/home/deepblue/ros2_autonomous_cpp/src/perception_pkg/scripts/obstacle_detection_node.py

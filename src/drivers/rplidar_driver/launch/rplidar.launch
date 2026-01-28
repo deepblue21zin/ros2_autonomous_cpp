@@ -1,0 +1,6 @@
+<launch>
+  <!-- NOTE: Launch rplidarNode directly to honor local config params. -->
+  <node name="rplidarNode" pkg="rplidar_ros" type="rplidarNode" output="screen">
+    <rosparam file="$(find rplidar_driver)/config/rplidar.yaml" command="load" />
+  </node>
+</launch>

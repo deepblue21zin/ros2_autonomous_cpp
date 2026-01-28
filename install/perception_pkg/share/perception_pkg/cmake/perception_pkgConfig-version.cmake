@@ -1,0 +1,1 @@
+/home/deepblue/ros2_autonomous_cpp/build/perception_pkg/ament_cmake_core/perception_pkgConfig-version.cmake

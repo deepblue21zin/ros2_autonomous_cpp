@@ -1,0 +1,11 @@
+/home/deepblue/ros2_autonomous_cpp/src/perception_pkg/src/lane_marking_node.cpp: In member function ‘perception_pkg::LineStyle perception_pkg::LaneMarkingNode::estimateStyle(const cv::Mat&, const std::vector<int>&, const std::vector<int>&)’:
+/home/deepblue/ros2_autonomous_cpp/src/perception_pkg/src/lane_marking_node.cpp:251:66: warning: unused parameter ‘ys’ [-Wunused-parameter]
+  251 |                                          const std::vector<int>& ys) {
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~~~^~
+/home/deepblue/ros2_autonomous_cpp/src/perception_pkg/src/lane_marking_node.cpp: In member function ‘perception_pkg::StopLine perception_pkg::LaneMarkingNode::detectStopLine(const cv::Mat&, int)’:
+/home/deepblue/ros2_autonomous_cpp/src/perception_pkg/src/lane_marking_node.cpp:270:9: warning: unused variable ‘w’ [-Wunused-variable]
+  270 |     int w = frame.cols;
+      |         ^
+/home/deepblue/ros2_autonomous_cpp/src/perception_pkg/src/lane_marking_node.cpp:268:68: warning: unused parameter ‘roi_y’ [-Wunused-parameter]
+  268 | StopLine LaneMarkingNode::detectStopLine(const cv::Mat& frame, int roi_y) {
+      |                                                                ~~~~^~~~~

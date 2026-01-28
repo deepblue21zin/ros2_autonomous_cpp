@@ -1,0 +1,37 @@
+[0.017s] Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/arduino_driver': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/deepblue/ros2_autonomous_cpp/install/arduino_driver
+[0.026s] -- Found ament_cmake: 1.3.12 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.101s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.105s] -- Found rclcpp: 16.0.17 (/opt/ros/humble/share/rclcpp/cmake)
+[0.122s] -- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[0.123s] -- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.127s] -- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[0.133s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.140s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.162s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[0.163s] -- Found rmw_fastrtps_cpp: 6.2.9 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[0.236s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[0.269s] -- Found rclpy: 3.3.19 (/opt/ros/humble/share/rclpy/cmake)
+[0.270s] -- Found ackermann_msgs: 2.0.2 (/opt/ros/humble/share/ackermann_msgs/cmake)
+[0.285s] -- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.74.0/BoostConfig.cmake (found version "1.74.0") found components: system thread 
+[0.287s] -- Found ament_lint_auto: 0.12.14 (/opt/ros/humble/share/ament_lint_auto/cmake)
+[0.347s] -- Added test 'copyright' to check source files copyright and LICENSE
+[0.348s] -- Added test 'cppcheck' to perform static code analysis on C / C++ code
+[0.348s] -- Configured cppcheck include dirs: $<BUILD_INTERFACE:/home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver/include>
+[0.348s] -- Configured cppcheck exclude dirs and/or files: 
+[0.348s] -- Added test 'cpplint' to check C / C++ code against the Google style
+[0.348s] -- Configured cpplint exclude dirs and/or files: 
+[0.349s] -- Added test 'flake8' to check Python code syntax and style conventions
+[0.349s] -- Added test 'lint_cmake' to check CMake code style
+[0.349s] -- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+[0.349s] -- Added test 'uncrustify' to check C / C++ code style
+[0.349s] -- Configured uncrustify additional arguments: 
+[0.350s] -- Added test 'xmllint' to check XML markup files
+[0.350s] -- Configuring done
+[0.356s] -- Generating done
+[0.357s] -- Build files have been written to: /home/deepblue/ros2_autonomous_cpp/build/arduino_driver
+[0.364s] Invoked command in '/home/deepblue/ros2_autonomous_cpp/build/arduino_driver' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/deepblue/ros2_autonomous_cpp/install/arduino_driver
+[0.366s] Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/arduino_driver': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/arduino_driver -- -j16 -l16
+[0.397s] [ 66%] Building CXX object CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o
+[0.397s] [ 66%] Building CXX object CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o
+[7.271s] [100%] Linking CXX executable arduino_bridge_node
+[7.518s] [100%] Built target arduino_bridge_node

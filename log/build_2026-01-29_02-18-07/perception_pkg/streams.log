@@ -1,0 +1,50 @@
+[0.014s] Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/perception_pkg -- -j16 -l16
+[0.054s] [ 33%] Built target perception_common
+[0.085s] [ 88%] Built target obstacle_detection_node
+[0.085s] [ 88%] Built target lane_tracking_node
+[0.085s] [100%] Built target lane_marking_node
+[0.110s] Invoked command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/perception_pkg -- -j16 -l16
+[0.111s] Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/deepblue/ros2_autonomous_cpp/build/perception_pkg
+[0.118s] -- Install configuration: ""
+[0.118s] -- Execute custom install script
+[0.118s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/libperception_common.so
+[0.119s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/lane_marking_node
+[0.119s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/lane_tracking_node
+[0.119s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/obstacle_detection_node
+[0.119s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/lane_tracking_node.py
+[0.119s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/lane_marking_node.py
+[0.119s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/speed_sign_node.py
+[0.119s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/traffic_light_node.py
+[0.120s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/traffic_light_color_node.py
+[0.120s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/lib/perception_pkg/obstacle_detection_node.py
+[0.120s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/common/detection_types.hpp
+[0.120s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/common/image_utils.hpp
+[0.120s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/common/lane_geometry.hpp
+[0.120s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/lane_marking_node.hpp
+[0.120s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/lane_tracking_node.hpp
+[0.120s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/include/perception_pkg/obstacle_detection_node.hpp
+[0.121s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg//launch/lane_bringup.launch
+[0.121s] -- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg//launch/lane_bringup_launch.py
+[0.127s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg//config/lane_params.yaml
+[0.127s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg//models/traffic_sign_detector.pt
+[0.128s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/library_path.sh
+[0.128s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/library_path.dsv
+[0.128s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/ament_index/resource_index/package_run_dependencies/perception_pkg
+[0.128s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/ament_index/resource_index/parent_prefix_path/perception_pkg
+[0.128s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/ament_prefix_path.sh
+[0.129s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/ament_prefix_path.dsv
+[0.129s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/path.sh
+[0.129s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/environment/path.dsv
+[0.129s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/local_setup.bash
+[0.129s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/local_setup.sh
+[0.129s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/local_setup.zsh
+[0.129s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/local_setup.dsv
+[0.129s] -- Symlinking: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/package.dsv
+[0.134s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/ament_index/resource_index/packages/perception_pkg
+[0.134s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/cmake/ament_cmake_export_include_directories-extras.cmake
+[0.134s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/cmake/ament_cmake_export_libraries-extras.cmake
+[0.134s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/cmake/ament_cmake_export_dependencies-extras.cmake
+[0.134s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/cmake/perception_pkgConfig.cmake
+[0.134s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/cmake/perception_pkgConfig-version.cmake
+[0.134s] -- Up-to-date symlink: /home/deepblue/ros2_autonomous_cpp/install/perception_pkg/share/perception_pkg/package.xml
+[0.135s] Invoked command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/deepblue/ros2_autonomous_cpp/build/perception_pkg

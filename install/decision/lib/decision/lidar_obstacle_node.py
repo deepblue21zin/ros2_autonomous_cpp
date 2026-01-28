@@ -1,0 +1,1 @@
+/home/deepblue/ros2_autonomous_cpp/src/decision/scripts/lidar_obstacle_node.py
