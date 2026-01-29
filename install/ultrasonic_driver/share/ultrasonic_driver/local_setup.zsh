@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.zsh
+/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.zsh

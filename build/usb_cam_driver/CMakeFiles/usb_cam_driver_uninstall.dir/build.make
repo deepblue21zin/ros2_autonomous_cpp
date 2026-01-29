@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/deepblue/ros2_autonomous_cpp/src/drivers/usb_cam_driver
+CMAKE_SOURCE_DIR = /root/ros2_ws/src/drivers/usb_cam_driver
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/deepblue/ros2_autonomous_cpp/build/usb_cam_driver
+CMAKE_BINARY_DIR = /root/ros2_ws/build/usb_cam_driver
 
 # Utility rule file for usb_cam_driver_uninstall.
 
@@ -67,7 +67,7 @@ include CMakeFiles/usb_cam_driver_uninstall.dir/compiler_depend.make
 include CMakeFiles/usb_cam_driver_uninstall.dir/progress.make
 
 CMakeFiles/usb_cam_driver_uninstall:
-	/usr/bin/cmake -P /home/deepblue/ros2_autonomous_cpp/build/usb_cam_driver/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
+	/usr/bin/cmake -P /root/ros2_ws/build/usb_cam_driver/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
 
 usb_cam_driver_uninstall: CMakeFiles/usb_cam_driver_uninstall
 usb_cam_driver_uninstall: CMakeFiles/usb_cam_driver_uninstall.dir/build.make
@@ -82,6 +82,6 @@ CMakeFiles/usb_cam_driver_uninstall.dir/clean:
 .PHONY : CMakeFiles/usb_cam_driver_uninstall.dir/clean
 
 CMakeFiles/usb_cam_driver_uninstall.dir/depend:
-	cd /home/deepblue/ros2_autonomous_cpp/build/usb_cam_driver && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepblue/ros2_autonomous_cpp/src/drivers/usb_cam_driver /home/deepblue/ros2_autonomous_cpp/src/drivers/usb_cam_driver /home/deepblue/ros2_autonomous_cpp/build/usb_cam_driver /home/deepblue/ros2_autonomous_cpp/build/usb_cam_driver /home/deepblue/ros2_autonomous_cpp/build/usb_cam_driver/CMakeFiles/usb_cam_driver_uninstall.dir/DependInfo.cmake --color=$(COLOR)
+	cd /root/ros2_ws/build/usb_cam_driver && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /root/ros2_ws/src/drivers/usb_cam_driver /root/ros2_ws/src/drivers/usb_cam_driver /root/ros2_ws/build/usb_cam_driver /root/ros2_ws/build/usb_cam_driver /root/ros2_ws/build/usb_cam_driver/CMakeFiles/usb_cam_driver_uninstall.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/usb_cam_driver_uninstall.dir/depend
 

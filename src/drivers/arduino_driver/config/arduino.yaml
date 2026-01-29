@@ -1,11 +1,13 @@
-# Arduino 시리얼 포트 설정
-port: /dev/ttyACM0
-baudrate: 115200
+/**:
+  ros__parameters:
+    # Arduino 시리얼 포트 설정
+    port: /dev/ttyACM0
+    baudrate: 115200
 
-# 명령 모드: true = 레거시 (F/B/L/R/l/r/S), false = 연속 (V:pwm,S:servo)
-use_legacy_cmd: true
+    # 명령 모드: true = 레거시 (F/B/L/R/l/r/S), false = 연속 (V:pwm,S:servo)
+    use_legacy_cmd: false
 
-# 차량 파라미터
-max_speed_mps: 2.0
-max_steer_deg: 30.0
-center_servo_deg: 90.0
+    # 차량 파라미터
+    max_speed_mps: 2.0
+    max_steer_deg: 30.0
+    center_servo_deg: 90.0

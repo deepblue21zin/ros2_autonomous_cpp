@@ -23,7 +23,7 @@ function(ament_cmake_symlink_install_directory cmake_current_source_dir)
 
   # make destination absolute path and ensure that it exists
   if(NOT IS_ABSOLUTE "${ARG_DESTINATION}")
-    set(ARG_DESTINATION "/home/deepblue/ros2_autonomous_cpp/install/ultrasonic_driver/${ARG_DESTINATION}")
+    set(ARG_DESTINATION "/root/ros2_ws/install/ultrasonic_driver/${ARG_DESTINATION}")
   endif()
   if(NOT EXISTS "${ARG_DESTINATION}")
     file(MAKE_DIRECTORY "${ARG_DESTINATION}")
@@ -123,7 +123,7 @@ function(ament_cmake_symlink_install_files cmake_current_source_dir)
 
   # make destination an absolute path and ensure that it exists
   if(NOT IS_ABSOLUTE "${ARG_DESTINATION}")
-    set(ARG_DESTINATION "/home/deepblue/ros2_autonomous_cpp/install/ultrasonic_driver/${ARG_DESTINATION}")
+    set(ARG_DESTINATION "/root/ros2_ws/install/ultrasonic_driver/${ARG_DESTINATION}")
   endif()
   if(NOT EXISTS "${ARG_DESTINATION}")
     file(MAKE_DIRECTORY "${ARG_DESTINATION}")
@@ -181,7 +181,7 @@ function(ament_cmake_symlink_install_programs cmake_current_source_dir)
 
   # make destination an absolute path and ensure that it exists
   if(NOT IS_ABSOLUTE "${ARG_DESTINATION}")
-    set(ARG_DESTINATION "/home/deepblue/ros2_autonomous_cpp/install/ultrasonic_driver/${ARG_DESTINATION}")
+    set(ARG_DESTINATION "/root/ros2_ws/install/ultrasonic_driver/${ARG_DESTINATION}")
   endif()
   if(NOT EXISTS "${ARG_DESTINATION}")
     file(MAKE_DIRECTORY "${ARG_DESTINATION}")
@@ -251,7 +251,7 @@ function(ament_cmake_symlink_install_targets)
 
     # make destination an absolute path and ensure that it exists
     if(NOT IS_ABSOLUTE "${destination}")
-      set(destination "/home/deepblue/ros2_autonomous_cpp/install/ultrasonic_driver/${destination}")
+      set(destination "/root/ros2_ws/install/ultrasonic_driver/${destination}")
     endif()
     if(NOT EXISTS "${destination}")
       file(MAKE_DIRECTORY "${destination}")
@@ -311,55 +311,55 @@ message(STATUS "Execute custom install script")
 # begin of custom install code
 
 # install("TARGETS" "ultrasonic_processor_node" "DESTINATION" "lib/ultrasonic_driver")
-include("/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_symlink_install_targets_0_${CMAKE_INSTALL_CONFIG_NAME}.cmake")
+include("/root/ros2_ws/build/ultrasonic_driver/ament_cmake_symlink_install_targets_0_${CMAKE_INSTALL_CONFIG_NAME}.cmake")
 
 # install(PROGRAMS "scripts/ultrasonic_processor_node.py" "DESTINATION" "lib/ultrasonic_driver")
-ament_cmake_symlink_install_programs("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" PROGRAMS "scripts/ultrasonic_processor_node.py" "DESTINATION" "lib/ultrasonic_driver")
+ament_cmake_symlink_install_programs("/root/ros2_ws/src/drivers/ultrasonic_driver" PROGRAMS "scripts/ultrasonic_processor_node.py" "DESTINATION" "lib/ultrasonic_driver")
 
 # install(DIRECTORY "include/" "DESTINATION" "include")
-ament_cmake_symlink_install_directory("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" DIRECTORY "include/" "DESTINATION" "include")
+ament_cmake_symlink_install_directory("/root/ros2_ws/src/drivers/ultrasonic_driver" DIRECTORY "include/" "DESTINATION" "include")
 
 # install(DIRECTORY "config" "DESTINATION" "share/ultrasonic_driver/")
-ament_cmake_symlink_install_directory("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" DIRECTORY "config" "DESTINATION" "share/ultrasonic_driver/")
+ament_cmake_symlink_install_directory("/root/ros2_ws/src/drivers/ultrasonic_driver" DIRECTORY "config" "DESTINATION" "share/ultrasonic_driver/")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
 
 # install(FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/ament_prefix_path.sh" "DESTINATION" "share/ultrasonic_driver/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/ament_prefix_path.sh" "DESTINATION" "share/ultrasonic_driver/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/ament_prefix_path.sh" "DESTINATION" "share/ultrasonic_driver/environment")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/ultrasonic_driver/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/ultrasonic_driver/environment")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/ultrasonic_driver/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/ultrasonic_driver/environment")
 
 # install(FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/path.sh" "DESTINATION" "share/ultrasonic_driver/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/path.sh" "DESTINATION" "share/ultrasonic_driver/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/path.sh" "DESTINATION" "share/ultrasonic_driver/environment")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/ultrasonic_driver/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/ultrasonic_driver/environment")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/ultrasonic_driver/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/ultrasonic_driver/environment")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/ultrasonic_driver")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/ultrasonic_driver")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/ultrasonic_driver")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/ultrasonic_driver")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/ultrasonic_driver")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/ultrasonic_driver")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/ultrasonic_driver")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/ultrasonic_driver")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/ultrasonic_driver")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/ultrasonic_driver")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/ultrasonic_driver")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/ultrasonic_driver")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/ultrasonic_driver")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/ultrasonic_driver")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/ultrasonic_driver")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/ultrasonic_driver")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/ultrasonic_driver")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/ultrasonic_driver")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/ultrasonic_driver")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/ultrasonic_driver")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/packages/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/packages")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/packages/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/packages")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/packages/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/packages")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_index/share/ament_index/resource_index/packages/ultrasonic_driver" "DESTINATION" "share/ament_index/resource_index/packages")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_core/ultrasonic_driverConfig.cmake" "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_core/ultrasonic_driverConfig-version.cmake" "DESTINATION" "share/ultrasonic_driver/cmake")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_core/ultrasonic_driverConfig.cmake" "/home/deepblue/ros2_autonomous_cpp/build/ultrasonic_driver/ament_cmake_core/ultrasonic_driverConfig-version.cmake" "DESTINATION" "share/ultrasonic_driver/cmake")
+# install(FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_core/ultrasonic_driverConfig.cmake" "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_core/ultrasonic_driverConfig-version.cmake" "DESTINATION" "share/ultrasonic_driver/cmake")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_core/ultrasonic_driverConfig.cmake" "/root/ros2_ws/build/ultrasonic_driver/ament_cmake_core/ultrasonic_driverConfig-version.cmake" "DESTINATION" "share/ultrasonic_driver/cmake")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver/package.xml" "DESTINATION" "share/ultrasonic_driver")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver" FILES "/home/deepblue/ros2_autonomous_cpp/src/drivers/ultrasonic_driver/package.xml" "DESTINATION" "share/ultrasonic_driver")
+# install(FILES "/root/ros2_ws/src/drivers/ultrasonic_driver/package.xml" "DESTINATION" "share/ultrasonic_driver")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/drivers/ultrasonic_driver" FILES "/root/ros2_ws/src/drivers/ultrasonic_driver/package.xml" "DESTINATION" "share/ultrasonic_driver")

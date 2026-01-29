@@ -1,1 +1,0 @@
-Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/deepblue/ros2_autonomous_cpp/src/perception_pkg -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/deepblue/ros2_autonomous_cpp/install/perception_pkg

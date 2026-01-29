@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/src/bringup/launch/mission_launch.py
+/root/ros2_ws/src/bringup/launch/mission_launch.py

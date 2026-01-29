@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/build/usb_cam_driver/ament_cmake_core/usb_cam_driverConfig-version.cmake
+/root/ros2_ws/build/usb_cam_driver/ament_cmake_core/usb_cam_driverConfig-version.cmake

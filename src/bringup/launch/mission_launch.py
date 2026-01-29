@@ -236,7 +236,7 @@ def generate_launch_description():
             'camera_topic': LaunchConfiguration('camera_topic'),
             'use_compressed': LaunchConfiguration('use_compressed'),
             'lane_marking_enabled': 'true',
-            'allowed_stop_states': "['red']",
+            'allowed_stop_states': "red",
             'speed_sign_enabled': 'false',
             'traffic_light_enabled': 'true',
             'obstacle_enabled': 'true',

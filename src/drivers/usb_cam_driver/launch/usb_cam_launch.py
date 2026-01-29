@@ -16,7 +16,7 @@ def generate_launch_description():
     # Declare launch arguments
     video_device_arg = DeclareLaunchArgument(
         'video_device',
-        default_value='/dev/video0',
+        default_value='/dev/video4',
         description='Video device path'
     )
 
@@ -40,7 +40,7 @@ def generate_launch_description():
 
     framerate_arg = DeclareLaunchArgument(
         'framerate',
-        default_value='30',
+        default_value='30.0',
         description='Camera framerate in Hz'
     )
 

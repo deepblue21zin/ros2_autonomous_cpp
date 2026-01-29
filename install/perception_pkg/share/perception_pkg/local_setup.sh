@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/build/perception_pkg/ament_cmake_environment_hooks/local_setup.sh
+/root/ros2_ws/build/perception_pkg/ament_cmake_environment_hooks/local_setup.sh

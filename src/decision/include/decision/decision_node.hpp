@@ -34,6 +34,7 @@ private:
     double lane_timeout_;
     bool use_obstacle_avoidance_;
     double obstacle_bias_weight_;
+    bool test_mode_;  // 테스트 모드: 센서 없이 모터 구동 가능
 
     // State
     double lane_steer_norm_;

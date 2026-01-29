@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/build/common/ament_cmake_environment_hooks/local_setup.bash
+/root/ros2_ws/build/common/ament_cmake_environment_hooks/local_setup.bash

@@ -1,1 +1,1 @@
-ament_cmake_symlink_install_targets("TARGET_FILES" "/home/deepblue/ros2_autonomous_cpp/build/decision/decision_node" "/home/deepblue/ros2_autonomous_cpp/build/decision/lidar_obstacle_node" "TARGETS" "decision_node" "lidar_obstacle_node" "DESTINATION" "lib/decision")
+ament_cmake_symlink_install_targets("TARGET_FILES" "/root/ros2_ws/build/decision/decision_node" "/root/ros2_ws/build/decision/lidar_obstacle_node" "TARGETS" "decision_node" "lidar_obstacle_node" "DESTINATION" "lib/decision")

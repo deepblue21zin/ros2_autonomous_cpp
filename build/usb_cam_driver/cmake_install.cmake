@@ -1,8 +1,8 @@
-# Install script for directory: /home/deepblue/ros2_autonomous_cpp/src/drivers/usb_cam_driver
+# Install script for directory: /root/ros2_ws/src/drivers/usb_cam_driver
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/home/deepblue/ros2_autonomous_cpp/install/usb_cam_driver")
+  set(CMAKE_INSTALL_PREFIX "/root/ros2_ws/install/usb_cam_driver")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -43,7 +43,7 @@ if(NOT DEFINED CMAKE_OBJDUMP)
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  include("/home/deepblue/ros2_autonomous_cpp/build/usb_cam_driver/ament_cmake_symlink_install/ament_cmake_symlink_install.cmake")
+  include("/root/ros2_ws/build/usb_cam_driver/ament_cmake_symlink_install/ament_cmake_symlink_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -54,5 +54,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/deepblue/ros2_autonomous_cpp/build/usb_cam_driver/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/root/ros2_ws/build/usb_cam_driver/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

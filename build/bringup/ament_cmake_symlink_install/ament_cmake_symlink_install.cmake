@@ -23,7 +23,7 @@ function(ament_cmake_symlink_install_directory cmake_current_source_dir)
 
   # make destination absolute path and ensure that it exists
   if(NOT IS_ABSOLUTE "${ARG_DESTINATION}")
-    set(ARG_DESTINATION "/home/deepblue/ros2_autonomous_cpp/install/bringup/${ARG_DESTINATION}")
+    set(ARG_DESTINATION "/root/ros2_ws/install/bringup/${ARG_DESTINATION}")
   endif()
   if(NOT EXISTS "${ARG_DESTINATION}")
     file(MAKE_DIRECTORY "${ARG_DESTINATION}")
@@ -123,7 +123,7 @@ function(ament_cmake_symlink_install_files cmake_current_source_dir)
 
   # make destination an absolute path and ensure that it exists
   if(NOT IS_ABSOLUTE "${ARG_DESTINATION}")
-    set(ARG_DESTINATION "/home/deepblue/ros2_autonomous_cpp/install/bringup/${ARG_DESTINATION}")
+    set(ARG_DESTINATION "/root/ros2_ws/install/bringup/${ARG_DESTINATION}")
   endif()
   if(NOT EXISTS "${ARG_DESTINATION}")
     file(MAKE_DIRECTORY "${ARG_DESTINATION}")
@@ -181,7 +181,7 @@ function(ament_cmake_symlink_install_programs cmake_current_source_dir)
 
   # make destination an absolute path and ensure that it exists
   if(NOT IS_ABSOLUTE "${ARG_DESTINATION}")
-    set(ARG_DESTINATION "/home/deepblue/ros2_autonomous_cpp/install/bringup/${ARG_DESTINATION}")
+    set(ARG_DESTINATION "/root/ros2_ws/install/bringup/${ARG_DESTINATION}")
   endif()
   if(NOT EXISTS "${ARG_DESTINATION}")
     file(MAKE_DIRECTORY "${ARG_DESTINATION}")
@@ -251,7 +251,7 @@ function(ament_cmake_symlink_install_targets)
 
     # make destination an absolute path and ensure that it exists
     if(NOT IS_ABSOLUTE "${destination}")
-      set(destination "/home/deepblue/ros2_autonomous_cpp/install/bringup/${destination}")
+      set(destination "/root/ros2_ws/install/bringup/${destination}")
     endif()
     if(NOT EXISTS "${destination}")
       file(MAKE_DIRECTORY "${destination}")
@@ -311,46 +311,46 @@ message(STATUS "Execute custom install script")
 # begin of custom install code
 
 # install(DIRECTORY "launch" "DESTINATION" "share/bringup/")
-ament_cmake_symlink_install_directory("/home/deepblue/ros2_autonomous_cpp/src/bringup" DIRECTORY "launch" "DESTINATION" "share/bringup/")
+ament_cmake_symlink_install_directory("/root/ros2_ws/src/bringup" DIRECTORY "launch" "DESTINATION" "share/bringup/")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/bringup" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/bringup" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/bringup" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/bringup" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/bringup" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/bringup" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/bringup" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/bringup" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
 
 # install(FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/ament_prefix_path.sh" "DESTINATION" "share/bringup/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/ament_prefix_path.sh" "DESTINATION" "share/bringup/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/ament_prefix_path.sh" "DESTINATION" "share/bringup/environment")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/bringup/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/bringup/environment")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/bringup/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/bringup/environment")
 
 # install(FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/path.sh" "DESTINATION" "share/bringup/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/path.sh" "DESTINATION" "share/bringup/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/path.sh" "DESTINATION" "share/bringup/environment")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/bringup/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/bringup/environment")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/bringup/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/bringup/environment")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/bringup")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/bringup")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/bringup")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/bringup")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/bringup")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/bringup")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/bringup")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/bringup")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/bringup")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/bringup")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/bringup")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/bringup")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/bringup")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/bringup")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/bringup")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/bringup")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/bringup")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/bringup")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/bringup")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/bringup")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_index/share/ament_index/resource_index/packages/bringup" "DESTINATION" "share/ament_index/resource_index/packages")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_index/share/ament_index/resource_index/packages/bringup" "DESTINATION" "share/ament_index/resource_index/packages")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_index/share/ament_index/resource_index/packages/bringup" "DESTINATION" "share/ament_index/resource_index/packages")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_index/share/ament_index/resource_index/packages/bringup" "DESTINATION" "share/ament_index/resource_index/packages")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_core/bringupConfig.cmake" "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_core/bringupConfig-version.cmake" "DESTINATION" "share/bringup/cmake")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_core/bringupConfig.cmake" "/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_core/bringupConfig-version.cmake" "DESTINATION" "share/bringup/cmake")
+# install(FILES "/root/ros2_ws/build/bringup/ament_cmake_core/bringupConfig.cmake" "/root/ros2_ws/build/bringup/ament_cmake_core/bringupConfig-version.cmake" "DESTINATION" "share/bringup/cmake")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_core/bringupConfig.cmake" "/root/ros2_ws/build/bringup/ament_cmake_core/bringupConfig-version.cmake" "DESTINATION" "share/bringup/cmake")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/src/bringup/package.xml" "DESTINATION" "share/bringup")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/bringup" FILES "/home/deepblue/ros2_autonomous_cpp/src/bringup/package.xml" "DESTINATION" "share/bringup")
+# install(FILES "/root/ros2_ws/src/bringup/package.xml" "DESTINATION" "share/bringup")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/src/bringup/package.xml" "DESTINATION" "share/bringup")

@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver
+CMAKE_SOURCE_DIR = /root/ros2_ws/src/drivers/arduino_driver
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/deepblue/ros2_autonomous_cpp/build/arduino_driver
+CMAKE_BINARY_DIR = /root/ros2_ws/build/arduino_driver
 
 # Include any dependencies generated for this target.
 include CMakeFiles/arduino_bridge_node.dir/depend.make
@@ -70,32 +70,32 @@ include CMakeFiles/arduino_bridge_node.dir/progress.make
 include CMakeFiles/arduino_bridge_node.dir/flags.make
 
 CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o: CMakeFiles/arduino_bridge_node.dir/flags.make
-CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o: /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver/src/arduino_bridge_node.cpp
+CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o: /root/ros2_ws/src/drivers/arduino_driver/src/arduino_bridge_node.cpp
 CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o: CMakeFiles/arduino_bridge_node.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/deepblue/ros2_autonomous_cpp/build/arduino_driver/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o -MF CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o.d -o CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o -c /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver/src/arduino_bridge_node.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/ros2_ws/build/arduino_driver/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o -MF CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o.d -o CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.o -c /root/ros2_ws/src/drivers/arduino_driver/src/arduino_bridge_node.cpp
 
 CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver/src/arduino_bridge_node.cpp > CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /root/ros2_ws/src/drivers/arduino_driver/src/arduino_bridge_node.cpp > CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.i
 
 CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver/src/arduino_bridge_node.cpp -o CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /root/ros2_ws/src/drivers/arduino_driver/src/arduino_bridge_node.cpp -o CMakeFiles/arduino_bridge_node.dir/src/arduino_bridge_node.cpp.s
 
 CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o: CMakeFiles/arduino_bridge_node.dir/flags.make
-CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o: /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver/src/serial_protocol.cpp
+CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o: /root/ros2_ws/src/drivers/arduino_driver/src/serial_protocol.cpp
 CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o: CMakeFiles/arduino_bridge_node.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/deepblue/ros2_autonomous_cpp/build/arduino_driver/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o -MF CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o.d -o CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o -c /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver/src/serial_protocol.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/ros2_ws/build/arduino_driver/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o -MF CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o.d -o CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.o -c /root/ros2_ws/src/drivers/arduino_driver/src/serial_protocol.cpp
 
 CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver/src/serial_protocol.cpp > CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /root/ros2_ws/src/drivers/arduino_driver/src/serial_protocol.cpp > CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.i
 
 CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver/src/serial_protocol.cpp -o CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /root/ros2_ws/src/drivers/arduino_driver/src/serial_protocol.cpp -o CMakeFiles/arduino_bridge_node.dir/src/serial_protocol.cpp.s
 
 # Object files for target arduino_bridge_node
 arduino_bridge_node_OBJECTS = \
@@ -182,7 +182,7 @@ arduino_bridge_node: /opt/ros/humble/lib/librcutils.so
 arduino_bridge_node: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 arduino_bridge_node: /usr/lib/x86_64-linux-gnu/libboost_atomic.so.1.74.0
 arduino_bridge_node: CMakeFiles/arduino_bridge_node.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/deepblue/ros2_autonomous_cpp/build/arduino_driver/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable arduino_bridge_node"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/root/ros2_ws/build/arduino_driver/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable arduino_bridge_node"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/arduino_bridge_node.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -194,6 +194,6 @@ CMakeFiles/arduino_bridge_node.dir/clean:
 .PHONY : CMakeFiles/arduino_bridge_node.dir/clean
 
 CMakeFiles/arduino_bridge_node.dir/depend:
-	cd /home/deepblue/ros2_autonomous_cpp/build/arduino_driver && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver /home/deepblue/ros2_autonomous_cpp/build/arduino_driver /home/deepblue/ros2_autonomous_cpp/build/arduino_driver /home/deepblue/ros2_autonomous_cpp/build/arduino_driver/CMakeFiles/arduino_bridge_node.dir/DependInfo.cmake --color=$(COLOR)
+	cd /root/ros2_ws/build/arduino_driver && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /root/ros2_ws/src/drivers/arduino_driver /root/ros2_ws/src/drivers/arduino_driver /root/ros2_ws/build/arduino_driver /root/ros2_ws/build/arduino_driver /root/ros2_ws/build/arduino_driver/CMakeFiles/arduino_bridge_node.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/arduino_bridge_node.dir/depend
 

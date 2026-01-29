@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/deepblue/ros2_autonomous_cpp/src/perception_pkg
+CMAKE_SOURCE_DIR = /root/ros2_ws/src/perception_pkg
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/deepblue/ros2_autonomous_cpp/build/perception_pkg
+CMAKE_BINARY_DIR = /root/ros2_ws/build/perception_pkg
 
 # Utility rule file for perception_pkg_uninstall.
 
@@ -67,7 +67,7 @@ include CMakeFiles/perception_pkg_uninstall.dir/compiler_depend.make
 include CMakeFiles/perception_pkg_uninstall.dir/progress.make
 
 CMakeFiles/perception_pkg_uninstall:
-	/usr/bin/cmake -P /home/deepblue/ros2_autonomous_cpp/build/perception_pkg/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
+	/usr/bin/cmake -P /root/ros2_ws/build/perception_pkg/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
 
 perception_pkg_uninstall: CMakeFiles/perception_pkg_uninstall
 perception_pkg_uninstall: CMakeFiles/perception_pkg_uninstall.dir/build.make
@@ -82,6 +82,6 @@ CMakeFiles/perception_pkg_uninstall.dir/clean:
 .PHONY : CMakeFiles/perception_pkg_uninstall.dir/clean
 
 CMakeFiles/perception_pkg_uninstall.dir/depend:
-	cd /home/deepblue/ros2_autonomous_cpp/build/perception_pkg && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepblue/ros2_autonomous_cpp/src/perception_pkg /home/deepblue/ros2_autonomous_cpp/src/perception_pkg /home/deepblue/ros2_autonomous_cpp/build/perception_pkg /home/deepblue/ros2_autonomous_cpp/build/perception_pkg /home/deepblue/ros2_autonomous_cpp/build/perception_pkg/CMakeFiles/perception_pkg_uninstall.dir/DependInfo.cmake --color=$(COLOR)
+	cd /root/ros2_ws/build/perception_pkg && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /root/ros2_ws/src/perception_pkg /root/ros2_ws/src/perception_pkg /root/ros2_ws/build/perception_pkg /root/ros2_ws/build/perception_pkg /root/ros2_ws/build/perception_pkg/CMakeFiles/perception_pkg_uninstall.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/perception_pkg_uninstall.dir/depend
 

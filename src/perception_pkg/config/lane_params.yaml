@@ -1,7 +1,16 @@
-kp: 0.6
-roi_y_ratio: 0.55
-canny_low: 50
-canny_high: 150
-gaussian_kernel: 5
-avg_window: 5
-debug: true
+/**:
+  ros__parameters:
+    # Lane Tracking Parameters
+    kp: 0.6
+    roi_y_ratio: 0.55
+    # Canny 파라미터: 30/100으로 낮춰 더 민감하게 엣지 검출
+    canny_low: 30       # 50→30 (더 민감한 엣지 검출)
+    canny_high: 100     # 150→100
+    gaussian_kernel: 5
+    # 딜레이 감소: 5→3 (166ms→100ms @30fps)
+    avg_window: 3       # 5→3 (이동평균 윈도우 축소)
+    # 실제 주행 시 false 권장 (오버레이 생성 오버헤드 제거)
+    debug: true
+
+
+

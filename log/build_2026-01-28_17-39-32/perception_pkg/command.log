@@ -1,4 +1,0 @@
-Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/perception_pkg -- -j16 -l16
-Invoked command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/perception_pkg -- -j16 -l16
-Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/deepblue/ros2_autonomous_cpp/build/perception_pkg
-Invoked command in '/home/deepblue/ros2_autonomous_cpp/build/perception_pkg' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/deepblue/ros2_autonomous_cpp/build/perception_pkg

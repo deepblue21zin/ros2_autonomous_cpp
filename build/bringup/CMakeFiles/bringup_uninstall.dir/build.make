@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/deepblue/ros2_autonomous_cpp/src/bringup
+CMAKE_SOURCE_DIR = /root/ros2_ws/src/bringup
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/deepblue/ros2_autonomous_cpp/build/bringup
+CMAKE_BINARY_DIR = /root/ros2_ws/build/bringup
 
 # Utility rule file for bringup_uninstall.
 
@@ -67,7 +67,7 @@ include CMakeFiles/bringup_uninstall.dir/compiler_depend.make
 include CMakeFiles/bringup_uninstall.dir/progress.make
 
 CMakeFiles/bringup_uninstall:
-	/usr/bin/cmake -P /home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
+	/usr/bin/cmake -P /root/ros2_ws/build/bringup/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
 
 bringup_uninstall: CMakeFiles/bringup_uninstall
 bringup_uninstall: CMakeFiles/bringup_uninstall.dir/build.make
@@ -82,6 +82,6 @@ CMakeFiles/bringup_uninstall.dir/clean:
 .PHONY : CMakeFiles/bringup_uninstall.dir/clean
 
 CMakeFiles/bringup_uninstall.dir/depend:
-	cd /home/deepblue/ros2_autonomous_cpp/build/bringup && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepblue/ros2_autonomous_cpp/src/bringup /home/deepblue/ros2_autonomous_cpp/src/bringup /home/deepblue/ros2_autonomous_cpp/build/bringup /home/deepblue/ros2_autonomous_cpp/build/bringup /home/deepblue/ros2_autonomous_cpp/build/bringup/CMakeFiles/bringup_uninstall.dir/DependInfo.cmake --color=$(COLOR)
+	cd /root/ros2_ws/build/bringup && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /root/ros2_ws/src/bringup /root/ros2_ws/src/bringup /root/ros2_ws/build/bringup /root/ros2_ws/build/bringup /root/ros2_ws/build/bringup/CMakeFiles/bringup_uninstall.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/bringup_uninstall.dir/depend
 

@@ -20,6 +20,7 @@ DecisionNode::DecisionNode()
     this->declare_parameter("lane_timeout_sec", 0.5);
     this->declare_parameter("use_obstacle_avoidance", true);
     this->declare_parameter("obstacle_bias_weight", 0.5);
+    this->declare_parameter("test_mode", false);  // 테스트 모드: 센서 없이 모터 구동
 
     cruise_speed_ = this->get_parameter("cruise_speed_mps").as_double();
     max_steer_rad_ = this->get_parameter("max_steer_rad").as_double();
@@ -31,6 +32,7 @@ DecisionNode::DecisionNode()
     lane_timeout_ = this->get_parameter("lane_timeout_sec").as_double();
     use_obstacle_avoidance_ = this->get_parameter("use_obstacle_avoidance").as_bool();
     obstacle_bias_weight_ = this->get_parameter("obstacle_bias_weight").as_double();
+    test_mode_ = this->get_parameter("test_mode").as_bool();
 
     // Setup subscribers
     lane_sub_ = this->create_subscription<std_msgs::msg::Float32>(
@@ -72,6 +74,11 @@ DecisionNode::DecisionNode()
     RCLCPP_INFO(this->get_logger(), "  lane_timeout: %.2f sec", lane_timeout_);
     RCLCPP_INFO(this->get_logger(), "  use_obstacle_avoidance: %s", use_obstacle_avoidance_ ? "true" : "false");
     RCLCPP_INFO(this->get_logger(), "  obstacle_bias_weight: %.2f", obstacle_bias_weight_);
+    RCLCPP_INFO(this->get_logger(), "  test_mode: %s", test_mode_ ? "true" : "false");
+
+    if (test_mode_) {
+        RCLCPP_WARN(this->get_logger(), "⚠️ TEST MODE ENABLED - Sensors bypassed!");
+    }
 }
 
 void DecisionNode::laneCallback(const std_msgs::msg::Float32::SharedPtr msg) {
@@ -117,6 +124,15 @@ double DecisionNode::mapSteer(double steer_norm) const {
 void DecisionNode::timerCallback() {
     ackermann_msgs::msg::AckermannDrive cmd;
     bool should_stop = false;
+
+    // 테스트 모드: 모든 센서 체크 우회
+    if (test_mode_) {
+        // 테스트 모드에서는 기본 속도로 직진
+        cmd.speed = cruise_speed_;
+        cmd.steering_angle = mapSteer(lane_steer_norm_);
+        cmd_pub_->publish(cmd);
+        return;
+    }
 
     // Check 1: LiDAR obstacle
     if (obstacle_) {

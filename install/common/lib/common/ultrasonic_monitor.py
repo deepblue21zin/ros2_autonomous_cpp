@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/src/common/scripts/ultrasonic_monitor.py
+/root/ros2_ws/src/common/scripts/ultrasonic_monitor.py

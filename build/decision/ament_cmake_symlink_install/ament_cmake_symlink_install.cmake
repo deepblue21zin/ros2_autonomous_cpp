@@ -23,7 +23,7 @@ function(ament_cmake_symlink_install_directory cmake_current_source_dir)
 
   # make destination absolute path and ensure that it exists
   if(NOT IS_ABSOLUTE "${ARG_DESTINATION}")
-    set(ARG_DESTINATION "/home/deepblue/ros2_autonomous_cpp/install/decision/${ARG_DESTINATION}")
+    set(ARG_DESTINATION "/root/ros2_ws/install/decision/${ARG_DESTINATION}")
   endif()
   if(NOT EXISTS "${ARG_DESTINATION}")
     file(MAKE_DIRECTORY "${ARG_DESTINATION}")
@@ -123,7 +123,7 @@ function(ament_cmake_symlink_install_files cmake_current_source_dir)
 
   # make destination an absolute path and ensure that it exists
   if(NOT IS_ABSOLUTE "${ARG_DESTINATION}")
-    set(ARG_DESTINATION "/home/deepblue/ros2_autonomous_cpp/install/decision/${ARG_DESTINATION}")
+    set(ARG_DESTINATION "/root/ros2_ws/install/decision/${ARG_DESTINATION}")
   endif()
   if(NOT EXISTS "${ARG_DESTINATION}")
     file(MAKE_DIRECTORY "${ARG_DESTINATION}")
@@ -181,7 +181,7 @@ function(ament_cmake_symlink_install_programs cmake_current_source_dir)
 
   # make destination an absolute path and ensure that it exists
   if(NOT IS_ABSOLUTE "${ARG_DESTINATION}")
-    set(ARG_DESTINATION "/home/deepblue/ros2_autonomous_cpp/install/decision/${ARG_DESTINATION}")
+    set(ARG_DESTINATION "/root/ros2_ws/install/decision/${ARG_DESTINATION}")
   endif()
   if(NOT EXISTS "${ARG_DESTINATION}")
     file(MAKE_DIRECTORY "${ARG_DESTINATION}")
@@ -251,7 +251,7 @@ function(ament_cmake_symlink_install_targets)
 
     # make destination an absolute path and ensure that it exists
     if(NOT IS_ABSOLUTE "${destination}")
-      set(destination "/home/deepblue/ros2_autonomous_cpp/install/decision/${destination}")
+      set(destination "/root/ros2_ws/install/decision/${destination}")
     endif()
     if(NOT EXISTS "${destination}")
       file(MAKE_DIRECTORY "${destination}")
@@ -311,52 +311,52 @@ message(STATUS "Execute custom install script")
 # begin of custom install code
 
 # install("TARGETS" "decision_node" "lidar_obstacle_node" "DESTINATION" "lib/decision")
-include("/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_symlink_install_targets_0_${CMAKE_INSTALL_CONFIG_NAME}.cmake")
+include("/root/ros2_ws/build/decision/ament_cmake_symlink_install_targets_0_${CMAKE_INSTALL_CONFIG_NAME}.cmake")
 
 # install(PROGRAMS "scripts/decision_node.py" "scripts/decision_node_2026.py" "scripts/decision_node_ai.py" "scripts/lidar_obstacle_node.py" "DESTINATION" "lib/decision")
-ament_cmake_symlink_install_programs("/home/deepblue/ros2_autonomous_cpp/src/decision" PROGRAMS "scripts/decision_node.py" "scripts/decision_node_2026.py" "scripts/decision_node_ai.py" "scripts/lidar_obstacle_node.py" "DESTINATION" "lib/decision")
+ament_cmake_symlink_install_programs("/root/ros2_ws/src/decision" PROGRAMS "scripts/decision_node.py" "scripts/decision_node_2026.py" "scripts/decision_node_ai.py" "scripts/lidar_obstacle_node.py" "DESTINATION" "lib/decision")
 
 # install(DIRECTORY "include/" "DESTINATION" "include")
-ament_cmake_symlink_install_directory("/home/deepblue/ros2_autonomous_cpp/src/decision" DIRECTORY "include/" "DESTINATION" "include")
+ament_cmake_symlink_install_directory("/root/ros2_ws/src/decision" DIRECTORY "include/" "DESTINATION" "include")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/decision" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/decision" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/decision" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/decision" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/decision" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/decision" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/decision" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_index/share/ament_index/resource_index/parent_prefix_path/decision" "DESTINATION" "share/ament_index/resource_index/parent_prefix_path")
 
 # install(FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/ament_prefix_path.sh" "DESTINATION" "share/decision/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/ament_prefix_path.sh" "DESTINATION" "share/decision/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/ament_prefix_path.sh" "DESTINATION" "share/decision/environment")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/decision/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/decision/environment")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/decision/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/ament_prefix_path.dsv" "DESTINATION" "share/decision/environment")
 
 # install(FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/path.sh" "DESTINATION" "share/decision/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/path.sh" "DESTINATION" "share/decision/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/opt/ros/humble/share/ament_cmake_core/cmake/environment_hooks/environment/path.sh" "DESTINATION" "share/decision/environment")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/decision/environment")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/decision/environment")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/decision/environment")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/path.dsv" "DESTINATION" "share/decision/environment")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/decision")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/decision")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/decision")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/local_setup.bash" "DESTINATION" "share/decision")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/decision")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/decision")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/decision")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/local_setup.sh" "DESTINATION" "share/decision")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/decision")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/decision")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/decision")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/local_setup.zsh" "DESTINATION" "share/decision")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/decision")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/decision")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/decision")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/local_setup.dsv" "DESTINATION" "share/decision")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/decision")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/decision")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/decision")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_environment_hooks/package.dsv" "DESTINATION" "share/decision")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_index/share/ament_index/resource_index/packages/decision" "DESTINATION" "share/ament_index/resource_index/packages")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_index/share/ament_index/resource_index/packages/decision" "DESTINATION" "share/ament_index/resource_index/packages")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_index/share/ament_index/resource_index/packages/decision" "DESTINATION" "share/ament_index/resource_index/packages")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_index/share/ament_index/resource_index/packages/decision" "DESTINATION" "share/ament_index/resource_index/packages")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_core/decisionConfig.cmake" "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_core/decisionConfig-version.cmake" "DESTINATION" "share/decision/cmake")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_core/decisionConfig.cmake" "/home/deepblue/ros2_autonomous_cpp/build/decision/ament_cmake_core/decisionConfig-version.cmake" "DESTINATION" "share/decision/cmake")
+# install(FILES "/root/ros2_ws/build/decision/ament_cmake_core/decisionConfig.cmake" "/root/ros2_ws/build/decision/ament_cmake_core/decisionConfig-version.cmake" "DESTINATION" "share/decision/cmake")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/build/decision/ament_cmake_core/decisionConfig.cmake" "/root/ros2_ws/build/decision/ament_cmake_core/decisionConfig-version.cmake" "DESTINATION" "share/decision/cmake")
 
-# install(FILES "/home/deepblue/ros2_autonomous_cpp/src/decision/package.xml" "DESTINATION" "share/decision")
-ament_cmake_symlink_install_files("/home/deepblue/ros2_autonomous_cpp/src/decision" FILES "/home/deepblue/ros2_autonomous_cpp/src/decision/package.xml" "DESTINATION" "share/decision")
+# install(FILES "/root/ros2_ws/src/decision/package.xml" "DESTINATION" "share/decision")
+ament_cmake_symlink_install_files("/root/ros2_ws/src/decision" FILES "/root/ros2_ws/src/decision/package.xml" "DESTINATION" "share/decision")

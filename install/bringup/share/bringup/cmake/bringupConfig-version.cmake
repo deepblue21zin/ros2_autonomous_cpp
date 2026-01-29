@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/build/bringup/ament_cmake_core/bringupConfig-version.cmake
+/root/ros2_ws/build/bringup/ament_cmake_core/bringupConfig-version.cmake

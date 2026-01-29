@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/src/perception_pkg/scripts/lane_tracking_node.py
+/root/ros2_ws/src/perception_pkg/scripts/lane_tracking_node.py

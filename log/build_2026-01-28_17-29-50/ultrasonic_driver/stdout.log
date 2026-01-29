@@ -1,3 +1,0 @@
-[ 50%] Building CXX object CMakeFiles/ultrasonic_processor_node.dir/src/ultrasonic_processor_node.cpp.o
-[100%] Linking CXX executable ultrasonic_processor_node
-[100%] Built target ultrasonic_processor_node

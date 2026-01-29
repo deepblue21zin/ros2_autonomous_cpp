@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/src/decision/scripts/decision_node.py
+/root/ros2_ws/src/decision/scripts/decision_node.py

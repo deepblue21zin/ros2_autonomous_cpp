@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/src/perception_pkg/launch/lane_bringup_launch.py
+/root/ros2_ws/src/perception_pkg/launch/lane_bringup_launch.py

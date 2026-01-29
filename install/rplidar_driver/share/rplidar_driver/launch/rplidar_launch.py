@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/src/drivers/rplidar_driver/launch/rplidar_launch.py
+/root/ros2_ws/src/drivers/rplidar_driver/launch/rplidar_launch.py

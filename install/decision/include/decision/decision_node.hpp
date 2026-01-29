@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/src/decision/include/decision/decision_node.hpp
+/root/ros2_ws/src/decision/include/decision/decision_node.hpp

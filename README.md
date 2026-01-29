@@ -138,7 +138,9 @@ src/
 |------|------|------|
 | Arduino | `/dev/ttyACM0` | 115200 baud |
 | RPLiDAR | `/dev/ttyUSB0` | 115200 baud |
-| USB Camera | `/dev/video0` | 640x480, 30fps |
+| USB Camera | `/dev/video4` | 640x480, 30fps (Logitech C920) |
+
+> **참고:** 노트북 내장 카메라가 `/dev/video0`~`/dev/video3`을 사용하므로 USB 웹캠은 `/dev/video4` 사용
 
 ## 설정 파일
 
@@ -146,7 +148,7 @@ src/
 ```yaml
 port: /dev/ttyACM0
 baudrate: 115200
-use_legacy_cmd: true          # 레거시 명령 모드 (F/B/L/R/l/r/S)
+use_legacy_cmd: false         # 연속 모드 (V:pwm,S:servo) - 더 정밀한 제어
 max_speed_mps: 2.0            # 최대 속도 (m/s)
 max_steer_deg: 30.0           # 최대 조향각 (도)
 center_servo_deg: 90.0        # 서보 중앙값 (도)
@@ -164,7 +166,7 @@ max_range: 8.0
 
 ### Camera (`src/drivers/usb_cam_driver/config/usb_cam.yaml`)
 ```yaml
-video_device: /dev/video0
+video_device: /dev/video4     # USB 웹캠 (노트북 내장은 video0~3)
 image_width: 640
 image_height: 480
 pixel_format: yuyv
@@ -180,7 +182,35 @@ canny_low: 50
 canny_high: 150
 ```
 
-## 의존성 설치
+## Docker 환경 (권장)
+
+Docker 환경을 사용하면 의존성 설치가 자동으로 처리됩니다.
+
+```bash
+# 1. X11 권한 설정 (호스트에서)
+xhost +local:docker
+
+# 2. 이미지 빌드 (처음 한 번만)
+cd /home/deepblue/target_projects/adas_env
+docker compose build
+
+# 3. 컨테이너 시작
+docker compose up -d
+
+# 4. 컨테이너 접속
+docker exec -it adas_container bash
+
+# 5. ROS2 빌드
+cd /root/ros2_ws
+colcon build --symlink-install
+source install/setup.bash
+```
+
+자세한 내용은 [docs/how_to_run.md](docs/how_to_run.md)를 참조하세요.
+
+---
+
+## 의존성 설치 (Docker 미사용 시)
 
 ### ROS2 패키지
 ```bash
@@ -238,7 +268,21 @@ ros2 launch bringup track_launch.py decision_mode:=ai
 
 # 압축 이미지 사용
 ros2 launch bringup track_launch.py use_compressed:=true
+
+# 테스트 모드 (센서 없이 모터 구동)
+ros2 launch bringup track_launch.py test_mode:=true
 ```
+
+### 테스트 모드
+`test_mode:=true` 옵션을 사용하면 센서 데이터 없이도 모터가 구동됩니다.
+
+**우회되는 체크:**
+- LiDAR 장애물 감지
+- 초음파 안전 거리
+- 신호등 상태
+- 차선 데이터 타임아웃
+
+> ⚠️ **주의:** 테스트 모드에서는 안전 기능이 비활성화됩니다. 실제 주행 전 반드시 비활성화하세요.
 
 ### 미션 모드 (전체 기능)
 ```bash

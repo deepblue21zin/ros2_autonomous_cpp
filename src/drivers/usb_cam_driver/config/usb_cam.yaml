@@ -1,11 +1,10 @@
-# TODO: Set the correct device path (/dev/video0, /dev/video1, etc.).
-video_device: /dev/video0
-# TODO: Adjust resolution/fps based on camera capability.
-image_width: 640
-image_height: 480
-pixel_format: yuyv
-framerate: 30
-# TODO: Set camera frame_id if needed.
-frame_id: camera_front
-# TODO: Set output topic name used by perception nodes.
-camera_topic: /camera/front/image
+/**:
+  ros__parameters:
+    # USB Camera Configuration
+    video_device: "/dev/video4"
+    image_width: 640
+    image_height: 480
+    pixel_format: "yuyv"
+    framerate: 30.0
+    frame_id: "camera_front"
+    camera_topic: "/camera/front/image"

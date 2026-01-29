@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/src/perception_pkg/scripts/speed_sign_node.py
+/root/ros2_ws/src/perception_pkg/scripts/speed_sign_node.py

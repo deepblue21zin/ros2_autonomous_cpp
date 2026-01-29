@@ -21,6 +21,7 @@ def launch_setup(context, *args, **kwargs):
 
     use_cpp = LaunchConfiguration('use_cpp').perform(context) == 'true'
     decision_mode = LaunchConfiguration('decision_mode').perform(context)
+    test_mode = LaunchConfiguration('test_mode').perform(context) == 'true'
 
     nodes_to_launch = []
 
@@ -114,6 +115,7 @@ def launch_setup(context, *args, **kwargs):
                 parameters=[
                     {
                         'stop_on_yellow': False,
+                        'test_mode': test_mode,
                     }
                 ],
                 remappings=[
@@ -129,6 +131,7 @@ def launch_setup(context, *args, **kwargs):
                 parameters=[
                     {
                         'stop_on_yellow': False,
+                        'test_mode': test_mode,
                     }
                 ],
                 remappings=[
@@ -144,6 +147,7 @@ def launch_setup(context, *args, **kwargs):
             parameters=[
                 {
                     'stop_on_yellow': False,
+                    'test_mode': test_mode,
                 }
             ],
             remappings=[
@@ -160,6 +164,7 @@ def launch_setup(context, *args, **kwargs):
             parameters=[
                 {
                     'stop_on_yellow': False,
+                    'test_mode': test_mode,
                 }
             ],
             remappings=[
@@ -200,6 +205,12 @@ def generate_launch_description():
         description='Use C++ nodes instead of Python'
     )
 
+    test_mode_arg = DeclareLaunchArgument(
+        'test_mode',
+        default_value='false',
+        description='Test mode: bypass sensor checks for motor testing'
+    )
+
     # Include USB camera launch
     usb_cam_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
@@ -227,7 +238,7 @@ def generate_launch_description():
             'camera_topic': LaunchConfiguration('camera_topic'),
             'use_compressed': LaunchConfiguration('use_compressed'),
             'lane_marking_enabled': 'true',
-            'allowed_stop_states': "['red']",
+            'allowed_stop_states': "red",
             'speed_sign_enabled': 'false',
             'traffic_light_enabled': 'false',
             'obstacle_enabled': 'false',
@@ -240,6 +251,7 @@ def generate_launch_description():
         camera_topic_arg,
         use_compressed_arg,
         use_cpp_arg,
+        test_mode_arg,
         usb_cam_launch,
         lane_perception_launch,
         OpaqueFunction(function=launch_setup),

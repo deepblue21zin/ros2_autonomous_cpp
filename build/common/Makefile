@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/deepblue/ros2_autonomous_cpp/src/common
+CMAKE_SOURCE_DIR = /root/ros2_ws/src/common
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/deepblue/ros2_autonomous_cpp/build/common
+CMAKE_BINARY_DIR = /root/ros2_ws/build/common
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -142,9 +142,9 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/deepblue/ros2_autonomous_cpp/build/common/CMakeFiles /home/deepblue/ros2_autonomous_cpp/build/common//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /root/ros2_ws/build/common/CMakeFiles /root/ros2_ws/build/common//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/deepblue/ros2_autonomous_cpp/build/common/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /root/ros2_ws/build/common/CMakeFiles 0
 .PHONY : all
 
 # The main clean target

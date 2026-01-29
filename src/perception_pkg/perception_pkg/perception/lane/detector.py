@@ -33,8 +33,12 @@ def detect_lane_center(edges: np.ndarray, roi_color: np.ndarray,
         overlay: 디버그용 BGR 이미지.
     """
     h, w = edges.shape[:2]
-    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=50,
-                            minLineLength=40, maxLineGap=50)
+    # 파라미터 튜닝: 곡선/점선 차선 인식 개선
+    # - threshold: 50→30 (곡선에서 직선 투표수 부족 문제 해결)
+    # - minLineLength: 40→20 (짧은 점선 세그먼트 감지)
+    # - maxLineGap: 50→100 (점선 간격 연결 개선)
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=30,
+                            minLineLength=20, maxLineGap=100)
     overlay = roi_color.copy()
 
     left_points: List[np.ndarray] = []
@@ -45,7 +49,8 @@ def detect_lane_center(edges: np.ndarray, roi_color: np.ndarray,
             if x2 == x1:
                 continue
             slope = float(y2 - y1) / float(x2 - x1)
-            if abs(slope) < 0.3:
+            # 0.3→0.15로 완화: 급커브에서 더 많은 선 감지
+            if abs(slope) < 0.15:
                 continue
 
             pts = np.array([[x1, y1], [x2, y2]], dtype=np.float32)

@@ -125,8 +125,12 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     int w = edges.cols;
 
     // Probabilistic Hough Line Transform
+    // 파라미터 튜닝: 곡선/점선 차선 인식 개선
+    // - threshold: 50→30 (곡선에서 직선 투표수 부족 문제 해결)
+    // - minLineLength: 40→20 (짧은 점선 세그먼트 감지)
+    // - maxLineGap: 50→100 (점선 간격 연결 개선)
     std::vector<cv::Vec4i> lines;
-    cv::HoughLinesP(edges, lines, 1, CV_PI / 180, 50, 40, 50);
+    cv::HoughLinesP(edges, lines, 1, CV_PI / 180, 30, 20, 100);
 
     std::vector<std::array<float, 4>> left_points;
     std::vector<std::array<float, 4>> right_points;
@@ -139,7 +143,8 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         double slope = static_cast<double>(y2 - y1) / static_cast<double>(x2 - x1);
 
         // Reject nearly horizontal lines
-        if (std::abs(slope) < 0.3) continue;
+        // 0.3→0.15로 완화: 급커브에서 더 많은 선 감지
+        if (std::abs(slope) < 0.15) continue;
 
         if (slope < 0) {
             left_points.push_back({static_cast<float>(x1), static_cast<float>(y1),

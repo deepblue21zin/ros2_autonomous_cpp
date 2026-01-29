@@ -1,3 +1,0 @@
-Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/decision': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/deepblue/ros2_autonomous_cpp/src/decision -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/deepblue/ros2_autonomous_cpp/install/decision
-Invoked command in '/home/deepblue/ros2_autonomous_cpp/build/decision' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/deepblue/ros2_autonomous_cpp/src/decision -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/deepblue/ros2_autonomous_cpp/install/decision
-Invoking command in '/home/deepblue/ros2_autonomous_cpp/build/decision': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/deepblue/ros2_autonomous_cpp/build/decision -- -j16 -l16

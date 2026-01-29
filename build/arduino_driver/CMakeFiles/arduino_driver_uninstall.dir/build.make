@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver
+CMAKE_SOURCE_DIR = /root/ros2_ws/src/drivers/arduino_driver
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/deepblue/ros2_autonomous_cpp/build/arduino_driver
+CMAKE_BINARY_DIR = /root/ros2_ws/build/arduino_driver
 
 # Utility rule file for arduino_driver_uninstall.
 
@@ -67,7 +67,7 @@ include CMakeFiles/arduino_driver_uninstall.dir/compiler_depend.make
 include CMakeFiles/arduino_driver_uninstall.dir/progress.make
 
 CMakeFiles/arduino_driver_uninstall:
-	/usr/bin/cmake -P /home/deepblue/ros2_autonomous_cpp/build/arduino_driver/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
+	/usr/bin/cmake -P /root/ros2_ws/build/arduino_driver/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
 
 arduino_driver_uninstall: CMakeFiles/arduino_driver_uninstall
 arduino_driver_uninstall: CMakeFiles/arduino_driver_uninstall.dir/build.make
@@ -82,6 +82,6 @@ CMakeFiles/arduino_driver_uninstall.dir/clean:
 .PHONY : CMakeFiles/arduino_driver_uninstall.dir/clean
 
 CMakeFiles/arduino_driver_uninstall.dir/depend:
-	cd /home/deepblue/ros2_autonomous_cpp/build/arduino_driver && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver /home/deepblue/ros2_autonomous_cpp/src/drivers/arduino_driver /home/deepblue/ros2_autonomous_cpp/build/arduino_driver /home/deepblue/ros2_autonomous_cpp/build/arduino_driver /home/deepblue/ros2_autonomous_cpp/build/arduino_driver/CMakeFiles/arduino_driver_uninstall.dir/DependInfo.cmake --color=$(COLOR)
+	cd /root/ros2_ws/build/arduino_driver && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /root/ros2_ws/src/drivers/arduino_driver /root/ros2_ws/src/drivers/arduino_driver /root/ros2_ws/build/arduino_driver /root/ros2_ws/build/arduino_driver /root/ros2_ws/build/arduino_driver/CMakeFiles/arduino_driver_uninstall.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/arduino_driver_uninstall.dir/depend
 

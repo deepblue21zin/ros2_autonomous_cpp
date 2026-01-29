@@ -1,1 +1,1 @@
-/home/deepblue/ros2_autonomous_cpp/build/usb_cam_driver/ament_cmake_environment_hooks/local_setup.bash
+/root/ros2_ws/build/usb_cam_driver/ament_cmake_environment_hooks/local_setup.bash

@@ -1,13 +1,10 @@
-# TODO: Confirm LiDAR model and port (e.g., /dev/ttyUSB1).
-serial_port: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
-# TODO: Confirm baudrate for your LiDAR model (A1 is typically 115200).
-serial_baudrate: 115200
-# TODO: Confirm frame_id used across the stack.
-frame_id: laser
-# TODO: Set to true if mounting requires inversion.
-inverted: false
-# TODO: Enable/disable angle compensation as needed.
-angle_compensate: true
-# TODO: Adjust min/max range based on the LiDAR specs.
-min_range: 0.15
-max_range: 8.0
+/**:
+  ros__parameters:
+    # RPLiDAR Configuration
+    serial_port: /dev/ttyUSB0
+    serial_baudrate: 115200
+    frame_id: laser
+    inverted: false
+    angle_compensate: true
+    min_range: 0.15
+    max_range: 8.0
