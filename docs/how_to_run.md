@@ -293,7 +293,7 @@ ros2 launch bringup track_launch.py
 - `lidar_obstacle_node` - 라이다 장애물
 - `decision_node` - 주행 결정
 
-### 옵션
+### 옵션라이
 
 ```bash
 # Python 노드 사용 (C++ 대신)

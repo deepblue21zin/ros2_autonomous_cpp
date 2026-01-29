@@ -125,12 +125,12 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     int w = edges.cols;
 
     // Probabilistic Hough Line Transform
-    // 파라미터 튜닝: 곡선/점선 차선 인식 개선
-    // - threshold: 50→30 (곡선에서 직선 투표수 부족 문제 해결)
-    // - minLineLength: 40→20 (짧은 점선 세그먼트 감지)
-    // - maxLineGap: 50→100 (점선 간격 연결 개선)
+    // 2026 경기도 대회 트랙 최적화 (도로폭 850mm, 차선폭 50mm)
+    // - threshold: 30→25 (점선 차선 투표수 낮음 대응)
+    // - minLineLength: 20→10 (점선 세그먼트 ~10px 감지)
+    // - maxLineGap: 100→150 (점선 간격 더 넓게 연결)
     std::vector<cv::Vec4i> lines;
-    cv::HoughLinesP(edges, lines, 1, CV_PI / 180, 30, 20, 100);
+    cv::HoughLinesP(edges, lines, 1, CV_PI / 180, 25, 10, 150);
 
     std::vector<std::array<float, 4>> left_points;
     std::vector<std::array<float, 4>> right_points;
@@ -143,8 +143,8 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         double slope = static_cast<double>(y2 - y1) / static_cast<double>(x2 - x1);
 
         // Reject nearly horizontal lines
-        // 0.3→0.15로 완화: 급커브에서 더 많은 선 감지
-        if (std::abs(slope) < 0.15) continue;
+        // 0.15→0.12로 완화: 대회 트랙 급커브 대응 (약 7도까지 허용)
+        if (std::abs(slope) < 0.12) continue;
 
         if (slope < 0) {
             left_points.push_back({static_cast<float>(x1), static_cast<float>(y1),
@@ -198,12 +198,31 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
                  cv::Scalar(0, 0, 255), 3);
     }
 
-    // Calculate center
+    // Calculate center with single-lane fallback
+    // 대회 트랙: 우측 차선 반시계 주행 → 오른쪽=외측 실선, 왼쪽=중앙 점선
+    // 점선이 안 보일 때 실선 기준으로 중앙 추정
     double center_x;
-    if (!lane_positions.empty()) {
+    bool left_detected = !left_points.empty();
+    bool right_detected = !right_points.empty();
+
+    if (left_detected && right_detected) {
+        // 양쪽 차선 감지 → 평균으로 중앙 계산
         double sum = std::accumulate(lane_positions.begin(), lane_positions.end(), 0.0);
         center_x = sum / lane_positions.size();
+    } else if (right_detected && !left_detected) {
+        // 오른쪽(외측 실선)만 감지 → 왼쪽으로 차선폭의 절반만큼 이동
+        // 대회 트랙 차선폭: 850mm/2 = 425mm ≈ 이미지 폭의 약 35%
+        int estimated_lane_width = static_cast<int>(w * 0.35);
+        center_x = lane_positions[0] - estimated_lane_width / 2;
+        // 경계 체크
+        center_x = std::max(0.0, std::min(center_x, static_cast<double>(w - 1)));
+    } else if (left_detected && !right_detected) {
+        // 왼쪽(중앙 점선)만 감지 → 오른쪽으로 차선폭의 절반만큼 이동
+        int estimated_lane_width = static_cast<int>(w * 0.35);
+        center_x = lane_positions[0] + estimated_lane_width / 2;
+        center_x = std::max(0.0, std::min(center_x, static_cast<double>(w - 1)));
     } else {
+        // 차선 미감지 → 이미지 중앙 (직진 유지)
         center_x = static_cast<double>(w) / 2.0;
     }
 

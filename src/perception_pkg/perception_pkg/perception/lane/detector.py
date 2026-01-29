@@ -33,12 +33,12 @@ def detect_lane_center(edges: np.ndarray, roi_color: np.ndarray,
         overlay: 디버그용 BGR 이미지.
     """
     h, w = edges.shape[:2]
-    # 파라미터 튜닝: 곡선/점선 차선 인식 개선
-    # - threshold: 50→30 (곡선에서 직선 투표수 부족 문제 해결)
-    # - minLineLength: 40→20 (짧은 점선 세그먼트 감지)
-    # - maxLineGap: 50→100 (점선 간격 연결 개선)
-    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=30,
-                            minLineLength=20, maxLineGap=100)
+    # 2026 경기도 대회 트랙 최적화 (도로폭 850mm, 차선폭 50mm)
+    # - threshold: 30→25 (점선 차선 투표수 낮음 대응)
+    # - minLineLength: 20→10 (점선 세그먼트 ~10px 감지)
+    # - maxLineGap: 100→150 (점선 간격 더 넓게 연결)
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=25,
+                            minLineLength=10, maxLineGap=150)
     overlay = roi_color.copy()
 
     left_points: List[np.ndarray] = []
@@ -49,8 +49,8 @@ def detect_lane_center(edges: np.ndarray, roi_color: np.ndarray,
             if x2 == x1:
                 continue
             slope = float(y2 - y1) / float(x2 - x1)
-            # 0.3→0.15로 완화: 급커브에서 더 많은 선 감지
-            if abs(slope) < 0.15:
+            # 0.15→0.12로 완화: 대회 트랙 급커브 대응 (약 7도까지 허용)
+            if abs(slope) < 0.12:
                 continue
 
             pts = np.array([[x1, y1], [x2, y2]], dtype=np.float32)
@@ -80,9 +80,28 @@ def detect_lane_center(edges: np.ndarray, roi_color: np.ndarray,
         lane_positions.append(rx_bottom)
         cv2.line(overlay, (rx_bottom, y_bottom), (rx_top, y_top), (0, 0, 255), 3)
 
-    if lane_positions:
+    # Calculate center with single-lane fallback
+    # 대회 트랙: 우측 차선 반시계 주행 → 오른쪽=외측 실선, 왼쪽=중앙 점선
+    # 점선이 안 보일 때 실선 기준으로 중앙 추정
+    left_detected = left_line is not None
+    right_detected = right_line is not None
+
+    if left_detected and right_detected:
+        # 양쪽 차선 감지 → 평균으로 중앙 계산
         center_x = float(np.mean(lane_positions))
+    elif right_detected and not left_detected:
+        # 오른쪽(외측 실선)만 감지 → 왼쪽으로 차선폭의 절반만큼 이동
+        # 대회 트랙 차선폭: 850mm/2 = 425mm ≈ 이미지 폭의 약 35%
+        estimated_lane_width = int(w * 0.35)
+        center_x = float(lane_positions[0] - estimated_lane_width // 2)
+        center_x = max(0.0, min(center_x, float(w - 1)))
+    elif left_detected and not right_detected:
+        # 왼쪽(중앙 점선)만 감지 → 오른쪽으로 차선폭의 절반만큼 이동
+        estimated_lane_width = int(w * 0.35)
+        center_x = float(lane_positions[0] + estimated_lane_width // 2)
+        center_x = max(0.0, min(center_x, float(w - 1)))
     else:
+        # 차선 미감지 → 이미지 중앙 (직진 유지)
         center_x = float(w) / 2.0
 
     cv2.circle(overlay, (int(center_x), y_bottom), 6, (0, 255, 255), -1)

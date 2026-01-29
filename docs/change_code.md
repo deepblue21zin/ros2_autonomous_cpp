@@ -391,11 +391,123 @@ avg_window: 3
 
 ---
 
+### 14. 2026 경기도 대회 트랙 최적화
+
+**날짜:** 2026-01-30
+
+**배경:**
+- 대회 트랙 사양: 도로폭 850mm, 차선폭 50mm, 우측 차선 반시계 주행
+- 문제: 외측 실선은 잘 인식되나 중앙 점선 인식 어려움
+
+**수정 파일:**
+- `src/perception_pkg/src/lane_tracking_node.cpp`
+- `src/perception_pkg/perception_pkg/perception/lane/detector.py`
+- `src/perception_pkg/config/lane_params.yaml`
+
+---
+
+#### 변경 1: HoughLinesP 파라미터 (점선 감지 개선)
+
+| 파라미터 | 변경 전 | 변경 후 | 이유 |
+|----------|---------|---------|------|
+| `threshold` | 30 | 25 | 점선 차선 투표수 낮음 대응 |
+| `minLineLength` | 20 | 10 | 점선 세그먼트 (10~15px) 감지 |
+| `maxLineGap` | 100 | 150 | 점선 간격 더 넓게 연결 |
+
+```cpp
+// 변경 전
+cv::HoughLinesP(edges, lines, 1, CV_PI / 180, 30, 20, 100);
+
+// 변경 후
+cv::HoughLinesP(edges, lines, 1, CV_PI / 180, 25, 10, 150);
+```
+
+---
+
+#### 변경 2: slope 임계값 완화 (급커브 대응)
+
+| 파라미터 | 변경 전 | 변경 후 | 이유 |
+|----------|---------|---------|------|
+| `slope 임계값` | 0.15 | 0.12 | 대회 트랙 급커브 대응 (약 7도까지 허용) |
+
+```cpp
+// 변경 전: 약 8.5도 미만 제거
+if (std::abs(slope) < 0.15) continue;
+
+// 변경 후: 약 7도 미만 제거
+if (std::abs(slope) < 0.12) continue;
+```
+
+---
+
+#### 변경 3: lane_params.yaml 튜닝
+
+| 파라미터 | 변경 전 | 변경 후 | 이유 |
+|----------|---------|---------|------|
+| `kp` | 0.6 | 0.7 | 850mm 트랙 폭에 맞춰 응답성 향상 |
+| `canny_low` | 30 | 25 | 점선 엣지 민감도 향상 |
+| `canny_high` | 100 | 80 | 점선 대비 낮음 대응 |
+| `avg_window` | 3 | 2 | 곡선 응답 개선 (66ms @30fps) |
+
+```yaml
+# 변경 전
+kp: 0.6
+canny_low: 30
+canny_high: 100
+avg_window: 3
+
+# 변경 후
+kp: 0.7
+canny_low: 25
+canny_high: 80
+avg_window: 2
+```
+
+---
+
+#### 변경 4: 단일 차선 폴백 로직 추가 (신규)
+
+**문제:** 점선(중앙선)이 감지되지 않으면 차선 중앙 계산 오류
+
+**해결:** 한쪽 차선만 감지 시 차선 폭을 기준으로 중앙 추정
+
+```cpp
+// 양쪽 감지: 평균
+// 오른쪽(실선)만 감지: 왼쪽으로 차선폭 35% 이동
+// 왼쪽(점선)만 감지: 오른쪽으로 차선폭 35% 이동
+
+if (left_detected && right_detected) {
+    center_x = mean(lane_positions);
+} else if (right_detected && !left_detected) {
+    int estimated_lane_width = w * 0.35;  // 850mm/2 ≈ 35%
+    center_x = lane_positions[0] - estimated_lane_width / 2;
+} else if (left_detected && !right_detected) {
+    int estimated_lane_width = w * 0.35;
+    center_x = lane_positions[0] + estimated_lane_width / 2;
+} else {
+    center_x = w / 2.0;  // 직진 유지
+}
+```
+
+---
+
+#### 예상 효과
+
+| 문제 | 개선 전 | 개선 후 |
+|------|---------|---------|
+| 점선 감지 | 자주 놓침 | minLineLength/maxLineGap 조정으로 감지율 향상 |
+| 급커브 | 일부 구간 놓침 | slope 0.12로 완화 |
+| 단일 차선 | 이미지 중앙 기본값 | 차선 폭 기준 추정 |
+| 딜레이 | 100ms | 66ms (34% 개선) |
+
+---
+
 ## 예정된 변경
 
 - [ ] 차선 추적 YOLO 모델 적용 (GPU 환경 필요)
 - [ ] Docker GPU 지원 추가
 - [x] 실차 테스트 후 파라미터 튜닝 - 완료 (HoughLinesP, slope, Canny)
 - [x] Dockerfile 작성 (필수 패키지 자동 설치) - 완료
+- [x] 2026 경기도 대회 트랙 최적화 - 완료 (점선 감지, 단일 차선 폴백)
 - [ ] 카메라 캘리브레이션 파일 생성
 - [ ] 2차 다항식 피팅으로 곡선 근사 개선 (추가 개선 필요시)
