@@ -459,3 +459,25 @@ source /root/ros2_ws/install/setup.bash
 | 터미널 닫고 다시 접속 | `docker exec -it adas_container bash` | 유지됨 | 자동 설정 |
 | 컨테이너 재시작 | `docker compose down && docker compose up -d` | **Dockerfile에 포함되어 유지** | 자동 설정 |
 | 이미지 재빌드 | `docker compose build` | 새로 설치 | 자동 설정 |
+
+
+스크립트 생성 완료. 사용법:
+
+
+cd /home/deepblue/target_projects/adas_env
+
+./start.sh              # 시작 + 접속 (가장 많이 사용)
+./start.sh restart      # 재시작 (장치 새로 꽂은 후)
+./start.sh build        # 이미지 빌드 후 시작 (처음 또는 Dockerfile 변경 시)
+./start.sh stop         # 컨테이너 정지
+실행하면 자동으로:
+
+xhost +local:docker (X11 권한)
+연결 장치 확인 (Arduino, LiDAR, Camera)
+컨테이너 시작
+컨테이너 내부 장치 마운트 확인
+컨테이너 접속
+지금 USB 웹캠 마운트 문제를 해결하려면:
+
+
+./start.sh restart
