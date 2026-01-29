@@ -39,3 +39,11 @@
 
 # debug information files
 *.dwo
+
+#Ros2
+.vscode/
+*.db
+*.ipch
+build/
+install/
+log/
