@@ -1,0 +1,12 @@
+# Python dependencies for ROS2 Autonomous Vehicle
+# Install with: pip install -r requirements.txt
+
+# Core
+numpy>=1.21.0
+opencv-python>=4.5.0
+
+# YOLO object detection (for traffic light, speed sign detection)
+ultralytics>=8.0.0
+
+# Serial communication (for Arduino)
+pyserial>=3.5

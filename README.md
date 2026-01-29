@@ -180,6 +180,32 @@ canny_low: 50
 canny_high: 150
 ```
 
+## 의존성 설치
+
+### ROS2 패키지
+```bash
+sudo apt update
+sudo apt install -y \
+    ros-humble-ackermann-msgs \
+    ros-humble-cv-bridge \
+    ros-humble-image-transport \
+    ros-humble-usb-cam \
+    ros-humble-rplidar-ros \
+    libboost-all-dev \
+    libopencv-dev \
+    libeigen3-dev
+```
+
+### Python 패키지
+```bash
+pip install -r requirements.txt
+```
+
+또는 개별 설치:
+```bash
+pip install numpy opencv-python ultralytics pyserial
+```
+
 ## 빌드
 
 ```bash
