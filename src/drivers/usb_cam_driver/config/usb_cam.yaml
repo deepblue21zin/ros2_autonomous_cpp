@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
-    # USB Camera Configuration
-    video_device: "/dev/video4"
+    # USB Front Camera Configuration (차선 인식용)
+    video_device: "/dev/video6"
     image_width: 640
     image_height: 480
     pixel_format: "yuyv"

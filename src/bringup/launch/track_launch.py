@@ -174,6 +174,28 @@ def launch_setup(context, *args, **kwargs):
 
     nodes_to_launch.append(decision_node)
 
+    # Static TF Publishers for sensor frames
+    # base_link -> laser (LiDAR)
+    static_tf_laser = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_tf_laser',
+        arguments=['0', '0', '0.1', '0', '0', '0', 'base_link', 'laser']
+        # x y z yaw pitch roll parent_frame child_frame
+        # LiDAR is 10cm above base_link
+    )
+    nodes_to_launch.append(static_tf_laser)
+
+    # base_link -> camera_front (front camera)
+    static_tf_camera_front = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_tf_camera_front',
+        arguments=['0.15', '0', '0.12', '0', '0', '0', 'base_link', 'camera_front']
+        # Front camera: 15cm forward, 12cm up from base_link
+    )
+    nodes_to_launch.append(static_tf_camera_front)
+
     return nodes_to_launch
 
 
@@ -246,6 +268,17 @@ def generate_launch_description():
         }.items()
     )
 
+    # Include RPLiDAR launch
+    rplidar_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('rplidar_driver'),
+                'launch',
+                'rplidar_launch.py'
+            ])
+        ])
+    )
+
     return LaunchDescription([
         decision_mode_arg,
         camera_topic_arg,
@@ -254,5 +287,6 @@ def generate_launch_description():
         test_mode_arg,
         usb_cam_launch,
         lane_perception_launch,
+        rplidar_launch,
         OpaqueFunction(function=launch_setup),
     ])

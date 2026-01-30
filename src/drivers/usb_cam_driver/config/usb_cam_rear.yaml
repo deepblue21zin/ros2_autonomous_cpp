@@ -1,0 +1,10 @@
+/**:
+  ros__parameters:
+    # USB Rear Camera Configuration (주차 라인 감지용)
+    video_device: "/dev/video4"
+    image_width: 640
+    image_height: 480
+    pixel_format: "yuyv"
+    framerate: 30.0
+    frame_id: "camera_rear"
+    camera_topic: "/camera/rear/image"

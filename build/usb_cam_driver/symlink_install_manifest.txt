@@ -1,6 +1,8 @@
+/root/ros2_ws/install/usb_cam_driver/share/usb_cam_driver//launch/dual_usb_cam_launch.py
 /root/ros2_ws/install/usb_cam_driver/share/usb_cam_driver//launch/usb_cam.launch
 /root/ros2_ws/install/usb_cam_driver/share/usb_cam_driver//launch/usb_cam_launch.py
 /root/ros2_ws/install/usb_cam_driver/share/usb_cam_driver//config/usb_cam.yaml
+/root/ros2_ws/install/usb_cam_driver/share/usb_cam_driver//config/usb_cam_rear.yaml
 /root/ros2_ws/install/usb_cam_driver/share/ament_index/resource_index/package_run_dependencies/usb_cam_driver
 /root/ros2_ws/install/usb_cam_driver/share/ament_index/resource_index/parent_prefix_path/usb_cam_driver
 /root/ros2_ws/install/usb_cam_driver/share/usb_cam_driver/environment/ament_prefix_path.sh

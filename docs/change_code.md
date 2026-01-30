@@ -502,6 +502,311 @@ if (left_detected && right_detected) {
 
 ---
 
+### 15. 전방/후방 듀얼 카메라 시스템 구축
+
+**날짜:** 2026-01-30
+
+**배경:**
+- 대회 규정: 수직 주차 미션에서 주차 후 OUT 라인까지 주행 필요
+- 후방 카메라로 주차 종료 라인(흰색 수평선) 감지 후 재출발
+
+**카메라 장치 할당:**
+| 카메라 | 장치 | 용도 | Launch 파일 |
+|--------|------|------|-------------|
+| 전방 | `/dev/video6` | 차선 인식, 신호등, 표지판 | track_launch.py, mission_launch.py |
+| 후방 | `/dev/video4` | 주차 라인 감지 | mission_launch.py만 |
+
+**생성 파일:**
+
+1. **후방 카메라 설정**
+   - `src/drivers/usb_cam_driver/config/usb_cam_rear.yaml`
+
+2. **듀얼 카메라 launch**
+   - `src/drivers/usb_cam_driver/launch/dual_usb_cam_launch.py`
+
+3. **후방 카메라 주차 라인 감지 모듈**
+   - `src/perception_pkg/perception_pkg/perception/parking/parking_line_detector.py`
+   - `src/perception_pkg/perception_pkg/parking_line_node.py`
+
+**수정 파일:**
+
+1. **usb_cam.yaml**
+   ```yaml
+   # 변경 전
+   video_device: "/dev/video4"  # 후방 카메라였음
+
+   # 변경 후
+   video_device: "/dev/video6"  # 전방 카메라로 변경
+   ```
+
+2. **usb_cam_launch.py**
+   ```python
+   # 변경 전
+   default_value='/dev/video4'
+
+   # 변경 후
+   default_value='/dev/video6'  # 기본값 = 전방
+   ```
+
+3. **mission_launch.py**
+   ```python
+   # 변경 전 (단일 카메라)
+   usb_cam_launch = IncludeLaunchDescription(...)
+
+   # 변경 후 (듀얼 카메라 + 주차 라인 노드)
+   dual_usb_cam_launch = IncludeLaunchDescription(...)
+   parking_line_node = Node(...)
+   ```
+
+4. **CMakeLists.txt**
+   ```cmake
+   # parking_line_node.py 추가
+   install(PROGRAMS
+     ...
+     perception_pkg/parking_line_node.py
+     DESTINATION lib/${PROJECT_NAME}
+   )
+   ```
+
+---
+
+#### 주차 라인 감지 알고리즘
+
+```python
+def detect_parking_end_line(image):
+    # 1. ROI: 하단 40% 영역만 사용
+    roi = image[roi_y_start:h, 0:w]
+
+    # 2. Canny 엣지 검출
+    edges = cv2.Canny(blur, 50, 150)
+
+    # 3. HoughLinesP로 직선 검출
+    lines = cv2.HoughLinesP(edges, threshold=50, minLineLength=100)
+
+    # 4. 거의 수평인 선 필터링 (기울기 < 0.3)
+    if slope < 0.3:
+        horizontal_lines.append(line)
+
+    # 5. 수평선 2개 이상 감지 시 주차 라인으로 판정
+    if len(horizontal_lines) >= 2:
+        return True
+```
+
+**발행 토픽:**
+- `/parking/line_detected` (Bool): 주차 라인 감지 여부
+- `/parking/overlay` (Image): 디버그 오버레이
+
+---
+
+#### Launch 파일별 카메라 구성
+
+**track_launch.py** (트랙 주행 모드)
+- 전방 카메라만 (/dev/video6)
+- LiDAR, 초음파, 후방 카메라 미사용
+
+**mission_launch.py** (미션 수행 모드)
+- 전방 카메라 (/dev/video6): 차선, 신호등
+- 후방 카메라 (/dev/video4): 주차 라인
+- LiDAR, 초음파 전부 사용
+
+---
+
+#### Docker 컨테이너 장치 마운트
+
+```yaml
+# compose.yaml
+devices:
+  - /dev/ttyACM0:/dev/ttyACM0  # Arduino
+  - /dev/ttyUSB0:/dev/ttyUSB0  # LiDAR
+  - /dev/video4:/dev/video4     # 후방 카메라
+  - /dev/video5:/dev/video5
+  - /dev/video6:/dev/video6     # 전방 카메라
+  - /dev/video7:/dev/video7
+```
+
+---
+
+### 16. RPLiDAR 드라이버 런치 파일 추가
+
+**날짜:** 2026-01-30
+
+**배경:**
+- RViz2에서 LiDAR 포인트 클라우드가 보이지 않는 문제 발생
+- Static TF Publisher (base_link → laser)는 추가했으나 실제 RPLiDAR 드라이버가 실행되지 않음
+- TF는 센서의 **위치**만 정의하고, 드라이버는 실제 **센서 데이터**를 발행
+
+**문제 분석:**
+- `/scan` 토픽이 발행되지 않음 (드라이버 미실행)
+- TF 트리는 정상이나 LaserScan 데이터 없음
+- `rplidar_launch.py` 파일은 존재하나 런치 파일에서 호출하지 않음
+
+**수정 파일:**
+1. `src/bringup/launch/track_launch.py`
+2. `src/bringup/launch/mission_launch.py`
+
+---
+
+#### 변경 내용
+
+**track_launch.py** (라인 271-280)
+
+```python
+# 추가됨: RPLiDAR 드라이버 실행
+# Include RPLiDAR launch
+rplidar_launch = IncludeLaunchDescription(
+    PythonLaunchDescriptionSource([
+        PathJoinSubstitution([
+            FindPackageShare('rplidar_driver'),
+            'launch',
+            'rplidar_launch.py'
+        ])
+    ])
+)
+
+return LaunchDescription([
+    decision_mode_arg,
+    camera_topic_arg,
+    use_compressed_arg,
+    use_cpp_arg,
+    test_mode_arg,
+    usb_cam_launch,
+    lane_perception_launch,
+    rplidar_launch,  # 추가
+    OpaqueFunction(function=launch_setup),
+])
+```
+
+**mission_launch.py** (라인 295-304, 314)
+
+```python
+# 변경 전 (주석 처리됨)
+# NOTE: Ensure rplidar_ros is running separately if needed
+# rplidar_launch = IncludeLaunchDescription(...)
+
+# 변경 후 (주석 해제 및 활성화)
+# Include RPLiDAR launch
+rplidar_launch = IncludeLaunchDescription(
+    PythonLaunchDescriptionSource([
+        PathJoinSubstitution([
+            FindPackageShare('rplidar_driver'),
+            'launch',
+            'rplidar_launch.py'
+        ])
+    ])
+)
+
+return LaunchDescription([
+    decision_mode_arg,
+    camera_topic_arg,
+    use_compressed_arg,
+    use_cpp_arg,
+    dual_usb_cam_launch,
+    parking_line_node,
+    lane_perception_launch,
+    rplidar_launch,  # 주석 해제
+    OpaqueFunction(function=launch_setup),
+])
+```
+
+---
+
+#### RPLiDAR 드라이버 역할
+
+**rplidar_launch.py가 실행하는 노드:**
+- Package: `rplidar_ros`
+- Executable: `rplidar_node`
+- 기능:
+  - `/dev/ttyUSB0`에서 RPLiDAR A1 센서 데이터 읽기
+  - `/scan` 토픽으로 LaserScan 메시지 발행
+  - 프레임: `laser`
+
+**Static TF Publisher와의 관계:**
+```
+Static TF Publisher: base_link → laser (위치 정보)
+RPLiDAR Driver:      /scan 토픽 발행 (센서 데이터)
+                     ↓
+RViz2:               LaserScan 표시 (위치 + 데이터 결합)
+```
+
+---
+
+#### 패키지 설치
+
+**문제:** 런치 파일 실행 시 에러 발생
+```
+[ERROR] [launch]: Caught exception in launch (see debug for traceback):
+"package 'rplidar_ros' not found, searching: [...]"
+```
+
+**원인:**
+- `rplidar_driver`는 wrapper 패키지 (launch, config만 포함)
+- `rplidar_ros`는 SLAMTEC 공식 ROS2 드라이버 (실제 실행 파일 포함)
+- rplidar_launch.py가 rplidar_ros의 rplidar_node를 실행하므로 설치 필요
+
+**해결:**
+
+**방법 1: 현재 컨테이너에 수동 설치 (임시)**
+```bash
+# Docker 컨테이너에 rplidar_ros 설치
+apt-get update
+apt-get install -y ros-humble-rplidar-ros
+
+# 설치 확인
+source /opt/ros/humble/setup.bash
+ros2 pkg list | grep rplidar
+# 출력: rplidar_ros
+```
+
+**방법 2: Dockerfile 수정 (영구적)**
+```dockerfile
+# /home/deepblue/target_projects/adas_env/Dockerfile
+# 필수 ROS2 패키지 및 pip 설치
+RUN apt update && apt install -y \
+    ros-humble-usb-cam \
+    ros-humble-ackermann-msgs \
+    ros-humble-cv-bridge \
+    ros-humble-image-transport \
+    ros-humble-rplidar-ros \  # 추가
+    v4l-utils \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+**이미지 재빌드:**
+```bash
+cd /home/deepblue/target_projects/adas_env
+docker compose build
+docker compose down
+docker compose up -d
+```
+
+**이점:**
+- 컨테이너 재시작 시 자동으로 rplidar_ros 포함
+- 수동 설치 불필요
+
+---
+
+#### 검증 방법
+
+```bash
+# 1. /scan 토픽 확인
+ros2 topic hz /scan
+# 출력: average rate: 10.000 (RPLiDAR A1은 10Hz)
+
+# 2. TF 트리 확인
+ros2 run tf2_tools view_frames
+# frames.pdf 생성 → base_link → laser 확인
+
+# 3. RViz2에서 시각화
+rviz2
+# Fixed Frame: base_link
+# Add → LaserScan
+# Topic: /scan
+# → 빨간색 포인트 클라우드 표시됨
+```
+
+---
+
 ## 예정된 변경
 
 - [ ] 차선 추적 YOLO 모델 적용 (GPU 환경 필요)
@@ -509,5 +814,8 @@ if (left_detected && right_detected) {
 - [x] 실차 테스트 후 파라미터 튜닝 - 완료 (HoughLinesP, slope, Canny)
 - [x] Dockerfile 작성 (필수 패키지 자동 설치) - 완료
 - [x] 2026 경기도 대회 트랙 최적화 - 완료 (점선 감지, 단일 차선 폴백)
+- [x] 전방/후방 듀얼 카메라 시스템 - 완료 (주차 라인 감지)
+- [x] RPLiDAR 드라이버 런치 파일 추가 - 완료
+- [ ] 실제 센서 위치 측정 및 TF 업데이트 (sensor_calibration.md 참고)
 - [ ] 카메라 캘리브레이션 파일 생성
 - [ ] 2차 다항식 피팅으로 곡선 근사 개선 (추가 개선 필요시)

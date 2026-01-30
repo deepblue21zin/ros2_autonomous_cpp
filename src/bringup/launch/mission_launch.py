@@ -178,6 +178,38 @@ def launch_setup(context, *args, **kwargs):
 
     nodes_to_launch.append(decision_node)
 
+    # Static TF Publishers for sensor frames
+    # base_link -> laser (LiDAR)
+    static_tf_laser = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_tf_laser',
+        arguments=['0', '0', '0.1', '0', '0', '0', 'base_link', 'laser']
+        # x y z yaw pitch roll parent_frame child_frame
+        # LiDAR is 10cm above base_link
+    )
+    nodes_to_launch.append(static_tf_laser)
+
+    # base_link -> camera_front (front camera)
+    static_tf_camera_front = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_tf_camera_front',
+        arguments=['0.15', '0', '0.12', '0', '0', '0', 'base_link', 'camera_front']
+        # Front camera: 15cm forward, 12cm up from base_link
+    )
+    nodes_to_launch.append(static_tf_camera_front)
+
+    # base_link -> camera_rear (rear camera for parking)
+    static_tf_camera_rear = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_tf_camera_rear',
+        arguments=['-0.15', '0', '0.08', '0', '0', '3.14159', 'base_link', 'camera_rear']
+        # Rear camera: 15cm backward, 8cm up, rotated 180 degrees (pi radians)
+    )
+    nodes_to_launch.append(static_tf_camera_rear)
+
     return nodes_to_launch
 
 
@@ -209,18 +241,34 @@ def generate_launch_description():
         description='Use C++ nodes instead of Python'
     )
 
-    # Include USB camera launch
-    usb_cam_launch = IncludeLaunchDescription(
+    # Include dual USB camera launch (front + rear)
+    dual_usb_cam_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
                 FindPackageShare('usb_cam_driver'),
                 'launch',
-                'usb_cam_launch.py'
+                'dual_usb_cam_launch.py'
             ])
         ]),
         launch_arguments={
-            'camera_topic': LaunchConfiguration('camera_topic'),
+            'front_video_device': '/dev/video6',
+            'rear_video_device': '/dev/video4',
         }.items()
+    )
+
+    # Parking line detection node (rear camera)
+    parking_line_node = Node(
+        package='perception_pkg',
+        executable='parking_line_node.py',
+        name='parking_line_node',
+        output='screen',
+        parameters=[
+            {
+                'camera_topic': '/camera/rear/image',
+                'use_compressed': False,
+                'debug': True,
+            }
+        ]
     )
 
     # Include lane perception launch (full perception with all modules)
@@ -244,26 +292,25 @@ def generate_launch_description():
         }.items()
     )
 
-    # NOTE: Ensure rplidar_ros is running separately if needed
-    # You can uncomment the following to include RPLiDAR launch:
-    #
-    # rplidar_launch = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource([
-    #         PathJoinSubstitution([
-    #             FindPackageShare('rplidar_driver'),
-    #             'launch',
-    #             'rplidar_launch.py'
-    #         ])
-    #     ])
-    # )
+    # Include RPLiDAR launch
+    rplidar_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('rplidar_driver'),
+                'launch',
+                'rplidar_launch.py'
+            ])
+        ])
+    )
 
     return LaunchDescription([
         decision_mode_arg,
         camera_topic_arg,
         use_compressed_arg,
         use_cpp_arg,
-        usb_cam_launch,
+        dual_usb_cam_launch,  # 전방+후방 카메라
+        parking_line_node,     # 후방 카메라 주차 라인 감지
         lane_perception_launch,
-        # rplidar_launch,  # Uncomment if needed
+        rplidar_launch,  # RPLiDAR 드라이버
         OpaqueFunction(function=launch_setup),
     ])

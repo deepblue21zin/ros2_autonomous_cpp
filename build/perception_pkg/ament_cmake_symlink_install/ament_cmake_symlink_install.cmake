@@ -316,8 +316,8 @@ include("/root/ros2_ws/build/perception_pkg/ament_cmake_symlink_install_targets_
 # install("TARGETS" "lane_marking_node" "lane_tracking_node" "obstacle_detection_node" "DESTINATION" "lib/perception_pkg")
 include("/root/ros2_ws/build/perception_pkg/ament_cmake_symlink_install_targets_1_${CMAKE_INSTALL_CONFIG_NAME}.cmake")
 
-# install(PROGRAMS "scripts/lane_tracking_node.py" "scripts/lane_marking_node.py" "scripts/speed_sign_node.py" "scripts/traffic_light_node.py" "scripts/traffic_light_color_node.py" "scripts/obstacle_detection_node.py" "DESTINATION" "lib/perception_pkg")
-ament_cmake_symlink_install_programs("/root/ros2_ws/src/perception_pkg" PROGRAMS "scripts/lane_tracking_node.py" "scripts/lane_marking_node.py" "scripts/speed_sign_node.py" "scripts/traffic_light_node.py" "scripts/traffic_light_color_node.py" "scripts/obstacle_detection_node.py" "DESTINATION" "lib/perception_pkg")
+# install(PROGRAMS "scripts/lane_tracking_node.py" "scripts/lane_marking_node.py" "scripts/speed_sign_node.py" "scripts/traffic_light_node.py" "scripts/traffic_light_color_node.py" "scripts/obstacle_detection_node.py" "perception_pkg/parking_line_node.py" "DESTINATION" "lib/perception_pkg")
+ament_cmake_symlink_install_programs("/root/ros2_ws/src/perception_pkg" PROGRAMS "scripts/lane_tracking_node.py" "scripts/lane_marking_node.py" "scripts/speed_sign_node.py" "scripts/traffic_light_node.py" "scripts/traffic_light_color_node.py" "scripts/obstacle_detection_node.py" "perception_pkg/parking_line_node.py" "DESTINATION" "lib/perception_pkg")
 
 # install(DIRECTORY "include/" "DESTINATION" "include")
 ament_cmake_symlink_install_directory("/root/ros2_ws/src/perception_pkg" DIRECTORY "include/" "DESTINATION" "include")

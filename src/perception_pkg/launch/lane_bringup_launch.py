@@ -216,13 +216,13 @@ def generate_launch_description():
 
     kp_arg = DeclareLaunchArgument(
         'kp',
-        default_value='0.6',
+        default_value='0.7',  # 0.6→0.7 (대회 트랙 최적화)
         description='Proportional gain for steering control'
     )
 
     lane_debug_arg = DeclareLaunchArgument(
         'lane_debug',
-        default_value='false',
+        default_value='true',  # false→true (lane_overlay 발행)
         description='Enable debug output for lane tracking'
     )
 

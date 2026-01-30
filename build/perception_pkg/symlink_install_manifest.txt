@@ -8,6 +8,7 @@
 /root/ros2_ws/install/perception_pkg/lib/perception_pkg/traffic_light_node.py
 /root/ros2_ws/install/perception_pkg/lib/perception_pkg/traffic_light_color_node.py
 /root/ros2_ws/install/perception_pkg/lib/perception_pkg/obstacle_detection_node.py
+/root/ros2_ws/install/perception_pkg/lib/perception_pkg/parking_line_node.py
 /root/ros2_ws/install/perception_pkg/include/perception_pkg/common/detection_types.hpp
 /root/ros2_ws/install/perception_pkg/include/perception_pkg/common/image_utils.hpp
 /root/ros2_ws/install/perception_pkg/include/perception_pkg/common/lane_geometry.hpp
