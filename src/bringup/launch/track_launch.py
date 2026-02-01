@@ -25,35 +25,20 @@ def launch_setup(context, *args, **kwargs):
 
     nodes_to_launch = []
 
-    # Arduino bridge node
-    if use_cpp:
-        arduino_node = Node(
-            package='arduino_driver',
-            executable='arduino_bridge_node',
-            name='arduino_bridge',
-            output='screen',
-            parameters=[
-                PathJoinSubstitution([
-                    FindPackageShare('arduino_driver'),
-                    'config',
-                    'arduino.yaml'
-                ]).perform(context)
-            ]
-        )
-    else:
-        arduino_node = Node(
-            package='arduino_driver',
-            executable='arduino_bridge_node.py',
-            name='arduino_bridge',
-            output='screen',
-            parameters=[
-                PathJoinSubstitution([
-                    FindPackageShare('arduino_driver'),
-                    'config',
-                    'arduino.yaml'
-                ]).perform(context)
-            ]
-        )
+    # Arduino bridge node (항상 Python 사용 - C++ boost::asio 시리얼 문제)
+    arduino_node = Node(
+        package='arduino_driver',
+        executable='arduino_bridge_node.py',
+        name='arduino_bridge',
+        output='screen',
+        parameters=[
+            PathJoinSubstitution([
+                FindPackageShare('arduino_driver'),
+                'config',
+                'arduino.yaml'
+            ]).perform(context)
+        ]
+    )
     nodes_to_launch.append(arduino_node)
 
     # Ultrasonic processor node

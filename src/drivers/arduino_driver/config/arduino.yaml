@@ -4,9 +4,6 @@
     port: /dev/ttyACM0
     baudrate: 115200
 
-    # 명령 모드: true = 레거시 (F/B/L/R/l/r/S), false = 연속 (V:pwm,S:servo)
-    use_legacy_cmd: false
-
     # 차량 파라미터
     max_speed_mps: 2.0
     max_steer_deg: 30.0

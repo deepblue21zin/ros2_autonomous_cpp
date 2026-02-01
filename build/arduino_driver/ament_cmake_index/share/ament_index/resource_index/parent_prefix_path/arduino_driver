@@ -1,1 +1,1 @@
-/opt/ros/humble
+/root/ros2_ws/install/bringup:/root/ros2_ws/install/usb_cam_driver:/root/ros2_ws/install/ultrasonic_driver:/root/ros2_ws/install/rplidar_driver:/root/ros2_ws/install/perception_pkg:/root/ros2_ws/install/decision:/root/ros2_ws/install/common:/root/ros2_ws/install/arduino_driver:/opt/ros/humble

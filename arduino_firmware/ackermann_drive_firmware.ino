@@ -1,81 +1,87 @@
 /*
- * Ackermann Drive Arduino Firmware
- * ROS2 Humble - Continuous Mode (V:pwm,S:servo)
+ * Ackermann Drive Arduino Firmware for ROS2
+ * 차동 구동 방식 (Differential Drive) + 서보 조향
  *
  * 시리얼 통신: 115200 baud
- * 명령 형식: V:100,S:90 (속도:100, 조향각:90도)
+ * 명령 형식: V:pwm,S:angle (ROS2 연속 모드)
  *
- * 하드웨어 연결:
- * - 조향 서보: PIN 9
- * - ESC/모터: PIN 10
- * - 초음파 센서 (선택): TRIG 7, ECHO 8
+ * 하드웨어:
+ * - 좌측 모터 드라이버: PIN 2, 3
+ * - 우측 모터 드라이버: PIN 4, 5
+ * - 서보(조향) 드라이버: PIN 6, 7
+ * - 초음파 센서 6개: TRIG(22,24,26,28,30,32), ECHO(23,25,27,29,31,33)
  */
 
-#include <Servo.h>
+#include <Arduino.h>
 
-// ========== 핀 설정 ==========
-#define STEERING_SERVO_PIN 9
-#define ESC_PIN 10
-#define ULTRASONIC_TRIG_PIN 7
-#define ULTRASONIC_ECHO_PIN 8
+// ========== 핀 설정 (motor_control.ino와 동일) ==========
+// 모터 드라이버 1: 좌측 바퀴
+#define MOTOR_LEFT_IN1  2
+#define MOTOR_LEFT_IN2  3
 
-// ========== 서보 객체 ==========
-Servo steeringServo;
-Servo esc;
+// 모터 드라이버 2: 우측 바퀴
+#define MOTOR_RIGHT_IN1 4
+#define MOTOR_RIGHT_IN2 5
+
+// 모터 드라이버 3: 서보 조향
+#define SERVO_IN1 6
+#define SERVO_IN2 7
+
+// 초음파 센서 6개
+int trigPins[6] = {22, 24, 26, 28, 30, 32};
+int echoPins[6] = {23, 25, 27, 29, 31, 33};
+
+// 센서 인덱스
+#define FRONT       0
+#define FRONT_LEFT  1
+#define FRONT_RIGHT 2
+#define REAR        3
+#define REAR_LEFT   4
+#define REAR_RIGHT  5
 
 // ========== 파라미터 설정 ==========
-// 조향 서보 설정 (ROS2 파라미터와 일치시켜야 함)
-const int CENTER_SERVO_DEG = 90;      // 중앙 각도
-const int MAX_STEER_DEG = 30;         // 최대 조향 각도 (좌우)
-// ROS2 설정: center_servo_deg=90, max_steer_deg=30
-// 결과 범위: 60도(좌) ~ 90도(중앙) ~ 120도(우)
-
-// ESC 설정 (일반적인 RC ESC)
-const int ESC_NEUTRAL = 90;           // 정지
-const int ESC_FORWARD_MIN = 91;       // 전진 시작
-const int ESC_FORWARD_MAX = 180;      // 전진 최대
-
-// 주의: 현재 ROS2 코드는 항상 양수 PWM(0~255)만 전송
-// 후진은 별도 처리 필요 (또는 ROS2 코드 수정 필요)
-
-// 또는 일반 DC 모터 드라이버 사용 시 (L298N 등)
-const bool USE_RC_ESC = true;         // true: RC ESC, false: DC 모터 드라이버
+// ROS2 파라미터와 일치
+const int CENTER_SERVO_DEG = 90;      // 직진
+const int MAX_STEER_DEG = 30;         // 최대 조향각
 
 // ========== 변수 ==========
 String inputString = "";
 bool stringComplete = false;
 
-int currentSpeed = 0;                 // -255 ~ 255
-int currentSteering = CENTER_SERVO_DEG; // 조향각 (도)
+int currentSpeed = 0;                 // 0~255 PWM
+int currentSteering = CENTER_SERVO_DEG; // 60~120도
+long distances[6];                    // 초음파 거리 (cm)
 
 unsigned long lastCommandTime = 0;
-const unsigned long COMMAND_TIMEOUT = 500; // 500ms
+const unsigned long COMMAND_TIMEOUT = 1000; // 1000ms (타임아웃 여유 증가)
+bool commandReceived = false;         // 최초 명령 수신 플래그
 
 void setup() {
-  // 시리얼 통신 시작
+  // 시리얼 통신
   Serial.begin(115200);
 
-  // 서보 초기화
-  steeringServo.attach(STEERING_SERVO_PIN);
-  steeringServo.write(CENTER_SERVO_DEG);
+  // 모터 핀 설정
+  pinMode(MOTOR_LEFT_IN1, OUTPUT);
+  pinMode(MOTOR_LEFT_IN2, OUTPUT);
+  pinMode(MOTOR_RIGHT_IN1, OUTPUT);
+  pinMode(MOTOR_RIGHT_IN2, OUTPUT);
 
-  // ESC/모터 초기화
-  if (USE_RC_ESC) {
-    esc.attach(ESC_PIN);
-    esc.write(ESC_NEUTRAL); // 정지 상태
-    delay(1000); // ESC 초기화 대기
-  } else {
-    pinMode(ESC_PIN, OUTPUT);
-    analogWrite(ESC_PIN, 0); // 정지
+  // 서보 핀 설정
+  pinMode(SERVO_IN1, OUTPUT);
+  pinMode(SERVO_IN2, OUTPUT);
+
+  // 초음파 센서 핀 설정
+  for (int i = 0; i < 6; i++) {
+    pinMode(trigPins[i], OUTPUT);
+    pinMode(echoPins[i], INPUT);
   }
 
-  // 초음파 센서 초기화
-  pinMode(ULTRASONIC_TRIG_PIN, OUTPUT);
-  pinMode(ULTRASONIC_ECHO_PIN, INPUT);
+  // 초기 상태: 정지, 직진
+  motorStop();
+  setSteeringAngle(CENTER_SERVO_DEG);
 
-  // 준비 완료 메시지
-  Serial.println("Arduino Ready: Ackermann Drive Firmware");
-  Serial.println("Format: V:speed,S:angle");
+  Serial.println("Arduino Ready: ROS2 Ackermann Drive");
+  Serial.println("Format: V:pwm,S:angle");
 
   inputString.reserve(50);
 }
@@ -91,17 +97,21 @@ void loop() {
     stringComplete = false;
   }
 
-  // 타임아웃 체크 (명령 없으면 정지)
-  if (millis() - lastCommandTime > COMMAND_TIMEOUT) {
+  // 타임아웃 체크 (최초 명령 수신 후에만)
+  if (commandReceived && (millis() - lastCommandTime > COMMAND_TIMEOUT)) {
     emergencyStop();
+    commandReceived = false;  // 재시작 대기
   }
 
   // 초음파 센서 읽기 (100ms마다)
   static unsigned long lastUltrasonicRead = 0;
   if (millis() - lastUltrasonicRead > 100) {
-    readUltrasonic();
+    measureAllUltrasonic();
+    sendSensorData();
     lastUltrasonicRead = millis();
   }
+
+  delay(10);
 }
 
 // ========== 시리얼 이벤트 ==========
@@ -121,9 +131,9 @@ void serialEvent() {
 
 // ========== 명령 파싱 ==========
 void parseCommand(String cmd) {
-  // ROS2 형식: V:100,S:90
-  // V: 속도 (0 ~ 255, 항상 양수 - ROS2 speedToPwm이 abs 사용)
-  // S: 조향각 (60 ~ 120도, 중앙 90도)
+  // ROS2 형식: V:255,S:86
+  // V: 속도 PWM (0~255)
+  // S: 조향각 (60~120도)
 
   cmd.trim();
 
@@ -132,16 +142,16 @@ void parseCommand(String cmd) {
   int commaIndex = cmd.indexOf(',');
 
   if (vIndex != -1 && sIndex != -1 && commaIndex != -1) {
-    // 속도 파싱 (0~255)
+    // 속도 파싱
     String speedStr = cmd.substring(vIndex + 2, commaIndex);
     currentSpeed = speedStr.toInt();
 
-    // 조향각 파싱 (60~120)
+    // 조향각 파싱
     String steerStr = cmd.substring(sIndex + 2);
     currentSteering = steerStr.toInt();
 
     // 제한
-    currentSpeed = constrain(currentSpeed, 0, 255);  // 0~255 (양수만)
+    currentSpeed = constrain(currentSpeed, 0, 255);
     currentSteering = constrain(currentSteering,
                                  CENTER_SERVO_DEG - MAX_STEER_DEG,  // 60
                                  CENTER_SERVO_DEG + MAX_STEER_DEG); // 120
@@ -150,82 +160,141 @@ void parseCommand(String cmd) {
     setMotorSpeed(currentSpeed);
     setSteeringAngle(currentSteering);
 
+    // 타임아웃 및 수신 플래그 업데이트
     lastCommandTime = millis();
+    commandReceived = true;
 
-    // 디버그 출력 (필요시 활성화)
-    // Serial.print("PWM: ");
-    // Serial.print(currentSpeed);
-    // Serial.print(", Servo: ");
-    // Serial.println(currentSteering);
-  }
-}
-
-// ========== 모터 속도 제어 ==========
-void setMotorSpeed(int speed) {
-  // ROS2는 항상 0~255 양수만 전송
-  // speed: 0~255 (0=정지, 255=최대속도)
-
-  if (USE_RC_ESC) {
-    // RC ESC 모드
-    int escValue;
-
-    if (speed > 5) {  // 약간의 데드존
-      // 전진 (0~255 → 91~180)
-      escValue = map(speed, 0, 255, ESC_FORWARD_MIN, ESC_FORWARD_MAX);
-      escValue = constrain(escValue, ESC_FORWARD_MIN, ESC_FORWARD_MAX);
-    } else {
-      // 정지
-      escValue = ESC_NEUTRAL;
-    }
-
-    esc.write(escValue);
+    // 디버그 출력 (CMD: 접두사로 센서 데이터와 구분)
+    Serial.print("CMD:");
+    Serial.print(currentSpeed);
+    Serial.print(",");
+    Serial.println(currentSteering);
   } else {
-    // DC 모터 드라이버 모드 (PWM 0~255)
-    analogWrite(ESC_PIN, speed);
-
-    // L298N 등 방향 핀이 있다면:
-    // digitalWrite(DIR_PIN, HIGH);  // 항상 전진
+    // 파싱 실패 디버그
+    Serial.print("PARSE_FAIL:");
+    Serial.println(cmd);
   }
 }
 
-// ========== 조향각 제어 ==========
+// ========== 모터 속도 제어 (차동 구동) ==========
+void setMotorSpeed(int speed) {
+  // 0~255 PWM
+  // 좌우 바퀴를 같은 속도로 제어 (Ackermann처럼)
+
+  if (speed > 5) {
+    // 전진
+    motorForward(speed);
+  } else {
+    // 정지
+    motorStop();
+  }
+}
+
+// 전진 (양쪽 바퀴 같은 속도)
+void motorForward(int speed) {
+  // 좌측 바퀴 전진 (반대 방향으로 설정됨)
+  analogWrite(MOTOR_LEFT_IN1, 0);
+  analogWrite(MOTOR_LEFT_IN2, speed);
+
+  // 우측 바퀴 전진
+  analogWrite(MOTOR_RIGHT_IN1, speed);
+  analogWrite(MOTOR_RIGHT_IN2, 0);
+}
+
+// 후진 (양쪽 바퀴 같은 속도)
+void motorBackward(int speed) {
+  // 좌측 바퀴 후진
+  analogWrite(MOTOR_LEFT_IN1, speed);
+  analogWrite(MOTOR_LEFT_IN2, 0);
+
+  // 우측 바퀴 후진
+  analogWrite(MOTOR_RIGHT_IN1, 0);
+  analogWrite(MOTOR_RIGHT_IN2, speed);
+}
+
+// 정지
+void motorStop() {
+  analogWrite(MOTOR_LEFT_IN1, 0);
+  analogWrite(MOTOR_LEFT_IN2, 0);
+  analogWrite(MOTOR_RIGHT_IN1, 0);
+  analogWrite(MOTOR_RIGHT_IN2, 0);
+}
+
+// ========== 조향각 제어 (모터 드라이버 방식) ==========
 void setSteeringAngle(int angle) {
-  steeringServo.write(angle);
+  // 60~120도 → 모터 드라이버 PWM으로 변환
+  // 90도 = 중앙(정지)
+  // <90도 = 왼쪽 회전
+  // >90도 = 오른쪽 회전
+
+  if (angle < 90) {
+    // 왼쪽 회전
+    int power = map(90 - angle, 0, 90, 0, 255);
+    power = constrain(power, 0, 255);
+    analogWrite(SERVO_IN1, 0);
+    analogWrite(SERVO_IN2, power);
+  }
+  else if (angle > 90) {
+    // 오른쪽 회전
+    int power = map(angle - 90, 0, 90, 0, 255);
+    power = constrain(power, 0, 255);
+    analogWrite(SERVO_IN1, power);
+    analogWrite(SERVO_IN2, 0);
+  }
+  else {
+    // 중앙 (정지)
+    analogWrite(SERVO_IN1, 0);
+    analogWrite(SERVO_IN2, 0);
+  }
 }
 
 // ========== 긴급 정지 ==========
 void emergencyStop() {
   currentSpeed = 0;
   currentSteering = CENTER_SERVO_DEG;
-
-  if (USE_RC_ESC) {
-    esc.write(ESC_NEUTRAL);
-  } else {
-    analogWrite(ESC_PIN, 0);
-  }
-
-  steeringServo.write(CENTER_SERVO_DEG);
+  motorStop();
+  setSteeringAngle(CENTER_SERVO_DEG);
 }
 
 // ========== 초음파 센서 읽기 ==========
-void readUltrasonic() {
-  // 트리거 펄스 생성
-  digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
+long measureUltrasonic(int index) {
+  // Trig 펄스
+  digitalWrite(trigPins[index], LOW);
   delayMicroseconds(2);
-  digitalWrite(ULTRASONIC_TRIG_PIN, HIGH);
+  digitalWrite(trigPins[index], HIGH);
   delayMicroseconds(10);
-  digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
+  digitalWrite(trigPins[index], LOW);
 
-  // 에코 시간 측정
-  long duration = pulseIn(ULTRASONIC_ECHO_PIN, HIGH, 30000); // 30ms 타임아웃
+  // Echo 수신 (타임아웃 10ms)
+  long duration = pulseIn(echoPins[index], HIGH, 10000);
 
   // 거리 계산 (cm)
-  float distance = duration * 0.034 / 2.0;
+  long distance = duration * 0.034 / 2;
 
-  // 유효 범위 체크 (2cm ~ 400cm)
-  if (distance > 2 && distance < 400) {
-    // ROS2로 전송 (선택)
-    // Serial.print("ULTRASONIC:");
-    // Serial.println(distance);
+  // 유효 범위 체크 (2~170cm)
+  if (distance < 2 || distance > 170) {
+    distance = 0;
   }
+
+  return distance;
+}
+
+// 6개 센서 모두 측정
+void measureAllUltrasonic() {
+  for (int i = 0; i < 6; i++) {
+    distances[i] = measureUltrasonic(i);
+    delayMicroseconds(200);  // 센서 간 간섭 방지
+  }
+}
+
+// ROS2로 센서 데이터 전송
+void sendSensorData() {
+  // 형식: "F:25,FL:30,FR:28,R:50,RL:45,RR:48"
+  Serial.print("F:");    Serial.print(distances[FRONT]);
+  Serial.print(",FL:");  Serial.print(distances[FRONT_LEFT]);
+  Serial.print(",FR:");  Serial.print(distances[FRONT_RIGHT]);
+  Serial.print(",R:");   Serial.print(distances[REAR]);
+  Serial.print(",RL:");  Serial.print(distances[REAR_LEFT]);
+  Serial.print(",RR:");  Serial.print(distances[REAR_RIGHT]);
+  Serial.println();
 }

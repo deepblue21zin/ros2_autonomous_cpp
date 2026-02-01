@@ -14,9 +14,11 @@ Arduino 명령어:
 from __future__ import annotations
 
 import math
-from typing import Dict, List
+import threading
+from typing import Dict
 
-import rospy
+import rclpy
+from rclpy.node import Node
 from ackermann_msgs.msg import AckermannDrive
 from std_msgs.msg import Float32MultiArray
 
@@ -27,11 +29,6 @@ except ImportError as exc:  # pragma: no cover
 
 
 SENSOR_ORDER = ("F", "FL", "FR", "R", "RL", "RR")
-
-# 조향 각도 임계값 (도)
-STEER_THRESHOLD_HARD = 15.0  # 최대 좌/우회전 (L, R)
-STEER_THRESHOLD_SOFT = 5.0   # 약한 좌/우회전 (l, r)
-
 
 def clamp(value: float, lo: float, hi: float) -> float:
     return lo if value < lo else hi if value > hi else value
@@ -53,132 +50,119 @@ def parse_ultrasonic_line(line: str) -> Dict[str, float]:
     return data
 
 
-class ArduinoBridgeNode:
+class ArduinoBridgeNode(Node):
     def __init__(self) -> None:
-        self.port = rospy.get_param("~port", "/dev/ttyACM0")
-        self.baudrate = int(rospy.get_param("~baudrate", 9600))
-        self.command_topic = rospy.get_param("~command_topic", "/arduino/cmd")
-        self.ultrasonic_topic = rospy.get_param("~ultrasonic_topic", "/ultrasonic/ranges")
-        self.use_legacy_cmd = bool(rospy.get_param("~use_legacy_cmd", True))
-        self.max_speed_mps = float(rospy.get_param("~max_speed_mps", 2.0))
-        self.max_steer_deg = float(rospy.get_param("~max_steer_deg", 30.0))
-        self.center_servo_deg = float(rospy.get_param("~center_servo_deg", 90.0))
+        super().__init__("arduino_bridge_node")
 
-        # 시리얼 타임아웃 최적화 (Arduino 10ms 루프에 맞춤)
+        self.declare_parameter("port", "/dev/ttyACM0")
+        self.declare_parameter("baudrate", 115200)
+        self.declare_parameter("command_topic", "/arduino/cmd")
+        self.declare_parameter("ultrasonic_topic", "/ultrasonic/ranges")
+        self.declare_parameter("max_speed_mps", 2.0)
+        self.declare_parameter("max_steer_deg", 30.0)
+        self.declare_parameter("center_servo_deg", 90.0)
+
+        self.port = self.get_parameter("port").value
+        self.baudrate = int(self.get_parameter("baudrate").value)
+        self.command_topic = self.get_parameter("command_topic").value
+        self.ultrasonic_topic = self.get_parameter("ultrasonic_topic").value
+        self.max_speed_mps = float(self.get_parameter("max_speed_mps").value)
+        self.max_steer_deg = float(self.get_parameter("max_steer_deg").value)
+        self.center_servo_deg = float(self.get_parameter("center_servo_deg").value)
+
+        # 시리얼 포트 열기 (DTR 토글로 Arduino 리셋 발생)
         self.serial = serial.Serial(self.port, self.baudrate, timeout=0.01)
-        self.ultra_pub = rospy.Publisher(self.ultrasonic_topic, Float32MultiArray, queue_size=1)
-        rospy.Subscriber(self.command_topic, AckermannDrive, self.cmd_cb, queue_size=1)
+        self.serial_lock = threading.Lock()
+
+        # Arduino 리셋 후 부팅 대기 (2초)
+        self.get_logger().info("[arduino_bridge] Arduino 리셋 대기 중 (2초)...")
+        import time
+        time.sleep(2)
+        # 부팅 메시지 비우기
+        if self.serial.in_waiting:
+            self.serial.read(self.serial.in_waiting)
+        self.get_logger().info("[arduino_bridge] Arduino 준비 완료")
+
+        self.ultra_pub = self.create_publisher(Float32MultiArray, self.ultrasonic_topic, 1)
+        self.create_subscription(AckermannDrive, self.command_topic, self.cmd_cb, 1)
 
         # 마지막 전송 명령 (중복 전송 방지)
         self.last_cmd = ""
+        self.buffer = ""
 
-        rospy.loginfo("[arduino_bridge] port=%s baud=%d legacy=%s",
-                      self.port, self.baudrate, self.use_legacy_cmd)
+        self.read_timer = self.create_timer(0.01, self.read_serial)
+
+        self.get_logger().info(
+            f"[arduino_bridge] port={self.port} baud={self.baudrate} mode=continuous"
+        )
 
     def cmd_cb(self, msg: AckermannDrive) -> None:
-        if self.use_legacy_cmd:
-            cmd = self._to_legacy_command(msg)
-            # 중복 명령 전송 방지 (시리얼 버퍼 과부하 방지)
-            if cmd != self.last_cmd:
-                self.serial.write((cmd + "\n").encode("utf-8"))
-                self.last_cmd = cmd
-            return
-
         pwm = self._speed_to_pwm(msg.speed)
         servo = self._steer_to_servo(msg.steering_angle)
         payload = f"V:{pwm},S:{servo}\n"
-        self.serial.write(payload.encode("utf-8"))
-
-    def _to_legacy_command(self, msg: AckermannDrive) -> str:
-        """AckermannDrive 메시지를 Arduino 명령어로 변환.
-
-        명령어:
-          - F: 전진 + 직진
-          - B: 후진 + 직진
-          - L: 전진 + 최대 좌회전 (steer < -15도)
-          - R: 전진 + 최대 우회전 (steer > 15도)
-          - l: 전진 + 약한 좌회전 (-15도 < steer < -5도)
-          - r: 전진 + 약한 우회전 (5도 < steer < 15도)
-          - S: 정지
-        """
-        speed = msg.speed
-        steer = msg.steering_angle
-
-        # 정지
-        if abs(speed) < 1e-3:
-            return "S"
-
-        steer_deg = math.degrees(steer)
-
-        # 후진 (조향 없이 직진 후진만 지원)
-        if speed < 0:
-            return "B"
-
-        # 전진 + 조향
-        if steer_deg > STEER_THRESHOLD_HARD:
-            return "R"  # 최대 우회전
-        if steer_deg < -STEER_THRESHOLD_HARD:
-            return "L"  # 최대 좌회전
-        if steer_deg > STEER_THRESHOLD_SOFT:
-            return "r"  # 약한 우회전
-        if steer_deg < -STEER_THRESHOLD_SOFT:
-            return "l"  # 약한 좌회전
-
-        return "F"  # 직진
+        with self.serial_lock:
+            self.serial.write(payload.encode("utf-8"))
 
     def _speed_to_pwm(self, speed: float) -> int:
-        speed = clamp(speed, -self.max_speed_mps, self.max_speed_mps)
-        ratio = abs(speed) / max(self.max_speed_mps, 1e-3)
+        # Firmware expects 0~255 PWM (forward only)
+        speed = clamp(speed, 0.0, self.max_speed_mps)
+        ratio = speed / max(self.max_speed_mps, 1e-3)
         return int(round(clamp(ratio * 255.0, 0.0, 255.0)))
 
     def _steer_to_servo(self, steering_angle: float) -> int:
         steer_deg = math.degrees(steering_angle)
         steer_deg = clamp(steer_deg, -self.max_steer_deg, self.max_steer_deg)
-        return int(round(self.center_servo_deg + steer_deg))
+        servo = self.center_servo_deg + steer_deg
+        return int(round(clamp(servo, self.center_servo_deg - self.max_steer_deg,
+                               self.center_servo_deg + self.max_steer_deg)))
 
-    def spin(self) -> None:
-        # Arduino 10ms 루프에 맞춰 100Hz로 증가
-        rate = rospy.Rate(100)
-        buffer = ""
-        while not rospy.is_shutdown():
-            try:
-                # 버퍼에 있는 데이터만 빠르게 읽기
-                waiting = self.serial.in_waiting
-                if waiting > 0:
-                    data = self.serial.read(waiting)
-                else:
-                    rate.sleep()
-                    continue
-            except serial.SerialException as exc:
-                rospy.logerr_throttle(1.0, "[arduino_bridge] serial error: %s", exc)
-                rate.sleep()
-                continue
+    def read_serial(self) -> None:
+        try:
+            waiting = self.serial.in_waiting
+            if waiting <= 0:
+                return
+            with self.serial_lock:
+                data = self.serial.read(waiting)
+        except serial.SerialException as exc:
+            self.get_logger().error(f"[arduino_bridge] serial error: {exc}")
+            return
 
-            if data:
-                try:
-                    buffer += data.decode("utf-8", errors="ignore")
-                except Exception:
-                    buffer = ""
+        if not data:
+            return
 
-                # 버퍼 오버플로우 방지
-                if len(buffer) > 1024:
-                    buffer = buffer[-512:]
+        try:
+            self.buffer += data.decode("utf-8", errors="ignore")
+        except Exception:
+            self.buffer = ""
 
-                while "\n" in buffer:
-                    line, buffer = buffer.split("\n", 1)
-                    parsed = parse_ultrasonic_line(line)
-                    if parsed:
-                        msg = Float32MultiArray()
-                        msg.data = [parsed.get(key, 0.0) for key in SENSOR_ORDER]
-                        self.ultra_pub.publish(msg)
+        # 버퍼 오버플로우 방지
+        if len(self.buffer) > 1024:
+            self.buffer = self.buffer[-512:]
 
-            rate.sleep()
+        while "\n" in self.buffer:
+            line, self.buffer = self.buffer.split("\n", 1)
+            parsed = parse_ultrasonic_line(line)
+            if parsed:
+                msg = Float32MultiArray()
+                msg.data = [parsed.get(key, 0.0) for key in SENSOR_ORDER]
+                self.ultra_pub.publish(msg)
 
 
-def main() -> None:
-    rospy.init_node("arduino_bridge_node")
+def main(args=None) -> None:
+    rclpy.init(args=args)
     node = ArduinoBridgeNode()
-    node.spin()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        try:
+            if node.serial and node.serial.is_open:
+                node.serial.close()
+        except Exception:
+            pass
+        node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":
