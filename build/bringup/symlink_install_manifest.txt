@@ -4,6 +4,7 @@
 /root/ros2_ws/install/bringup/share/bringup//launch/parking.launch
 /root/ros2_ws/install/bringup/share/bringup//launch/track.launch
 /root/ros2_ws/install/bringup/share/bringup//launch/track_launch.py
+/root/ros2_ws/install/bringup/share/bringup//config/adas_default.rviz
 /root/ros2_ws/install/bringup/share/ament_index/resource_index/package_run_dependencies/bringup
 /root/ros2_ws/install/bringup/share/ament_index/resource_index/parent_prefix_path/bringup
 /root/ros2_ws/install/bringup/share/bringup/environment/ament_prefix_path.sh

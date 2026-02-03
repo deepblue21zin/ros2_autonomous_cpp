@@ -53,6 +53,7 @@ install(PROGRAMS
   scripts/decision_node.py
   scripts/decision_node_2026.py
   scripts/decision_node_ai.py
+  scripts/decision_node_unified.py
   scripts/lidar_obstacle_node.py
   DESTINATION lib/${PROJECT_NAME}
 )

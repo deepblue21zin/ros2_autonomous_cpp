@@ -645,3 +645,205 @@ rviz2
 - 센서 시각화 = TF + 센서 드라이버 (둘 다 필요!)
 
 ---
+
+## 2026-02-01
+
+### Error 16: C++ Arduino Bridge Silent Write Failure (boost::asio)
+
+**증상:**
+- `ros2 topic echo /arduino/cmd`에서 명령은 정상 발행됨
+- Arduino에서 모터가 동작하지 않음
+- 에러 메시지 없음 (silent failure)
+- `sudo cat /dev/ttyACM0`에서 아무 데이터도 나오지 않음
+
+**원인:**
+- C++ arduino_bridge_node에서 boost::asio::write()가 시리얼 포트에 데이터를 쓰지 못함
+- 에러가 발생하지 않아 디버깅 어려움
+- 근본 원인 미확인 (boost::asio 설정 또는 Docker 환경 관련 추정)
+
+**확인 방법:**
+```bash
+# 1. 토픽 명령 확인 (정상 발행됨)
+ros2 topic echo /arduino/cmd
+# drive: speed: 0.5, steering_angle: 0.0  <- 명령 있음
+
+# 2. 시리얼 출력 확인 (데이터 없음)
+sudo cat /dev/ttyACM0
+# (아무것도 출력 안됨)  <- 문제!
+
+# 3. Python으로 직접 시리얼 테스트 (정상 동작)
+python3 -c "
+import serial, time
+s = serial.Serial('/dev/ttyACM0', 115200, timeout=0.1)
+time.sleep(2)
+s.write(b'V:128,S:90\n')
+# Arduino에서 CMD:128,90 출력됨  <- pyserial은 정상
+"
+```
+
+**해결:**
+- C++ bridge 대신 Python bridge (pyserial) 사용
+- `track_launch.py`에서 Arduino bridge를 항상 Python으로 실행하도록 변경
+
+```python
+# track_launch.py
+# Arduino bridge node (항상 Python 사용 - C++ boost::asio 시리얼 문제)
+arduino_node = Node(
+    package='arduino_driver',
+    executable='arduino_bridge_node.py',
+    name='arduino_bridge',
+    ...
+)
+```
+
+**참고:** 다른 노드(decision, lane_tracking 등)는 C++ 정상 동작
+
+---
+
+### Error 17: Arduino DTR Reset - 초기 명령 손실
+
+**증상:**
+- Python arduino_bridge 실행 직후 첫 몇 초간 명령이 Arduino에 전달되지 않음
+- 그 이후에는 정상 동작
+
+**원인:**
+- pyserial이 시리얼 포트를 열 때 DTR(Data Terminal Ready) 핀이 토글됨
+- Arduino는 DTR 핀 변화 시 자동으로 리셋됨
+- 리셋 후 부트로더 실행 -> 약 2초 소요
+- 부팅 중 수신한 시리얼 데이터는 무시됨
+
+**해결:**
+```python
+# arduino_bridge_node.py
+self.serial = serial.Serial(self.port, self.baudrate, timeout=0.01)
+
+# Arduino 리셋 후 부팅 대기 (2초)
+self.get_logger().info("[arduino_bridge] Arduino 리셋 대기 중 (2초)...")
+import time
+time.sleep(2)
+
+# 부팅 중 Arduino가 보낸 쓰레기 데이터 플러시
+if self.serial.in_waiting:
+    self.serial.read(self.serial.in_waiting)
+
+self.get_logger().info("[arduino_bridge] Arduino 준비 완료")
+```
+
+---
+
+### Error 18: Python 노드 rospy ModuleNotFoundError
+
+**에러 메시지:**
+```
+ModuleNotFoundError: No module named 'rospy'
+```
+
+**영향 파일 (12개):**
+- `scripts/lane_tracking_node.py`
+- `scripts/lane_marking_node.py`
+- `scripts/speed_sign_node.py`
+- `scripts/traffic_light_node.py`
+- `scripts/traffic_light_color_node.py`
+- `scripts/obstacle_detection_node.py`
+- `perception_pkg/parking_line_node.py`
+- 기타 Python 노드
+
+**원인:**
+- ROS2 Humble 환경에서 rospy (ROS1 라이브러리) 사용
+- ROS2에서는 rclpy를 사용해야 함
+
+**해결:**
+- `use_cpp:=true` (기본값)으로 실행하면 C++ 노드가 사용되므로 문제 없음
+- Arduino bridge만 Python으로 마이그레이션 완료 (rclpy)
+- 나머지 12개 노드는 C++ 대체 사용 중
+
+```bash
+# 정상 실행 (C++ 노드 사용)
+ros2 launch bringup track_launch.py
+
+# 에러 발생 (Python 노드 사용 시)
+ros2 launch bringup track_launch.py use_cpp:=false
+# -> rospy 에러로 Python 노드 크래시
+```
+
+---
+
+### Error 19: test_mode에서 speed: 0.0 (모터 안 돌아감)
+
+**증상:**
+```bash
+ros2 topic echo /arduino/cmd
+# drive: speed: 0.0, steering_angle: 0.0  <- 속도가 0
+```
+
+**원인 1: use_cpp:=false 사용 시**
+- Python decision_node도 rospy 사용 -> 크래시
+- 크래시된 decision_node가 speed를 발행하지 않음
+
+**원인 2: Arduino bridge가 C++ (boost::asio)**
+- 명령은 발행되지만 시리얼에 write 안됨
+
+**해결:**
+```bash
+# 올바른 실행 방법 (C++ 노드 + Python Arduino bridge)
+ros2 launch bringup track_launch.py test_mode:=true
+
+# 잘못된 실행 방법
+ros2 launch bringup track_launch.py test_mode:=true use_cpp:=false
+```
+
+---
+
+### Error 20: rviz2 "Frame [map] does not exist"
+
+**에러 메시지:**
+```
+[rviz2]: Transform [sender=unknown_publisher]
+For frame [map]: Fixed Frame [map] does not exist
+```
+
+**원인:**
+- rviz2의 Fixed Frame이 `map`으로 설정되어 있으나, SLAM을 사용하지 않아 map 프레임이 존재하지 않음
+
+**해결:**
+- rviz2에서 Fixed Frame을 `base_link`로 변경
+- Global Options -> Fixed Frame -> `base_link`
+
+---
+
+### Error 21: rviz2에서 카메라 Image 안 보임
+
+**증상:**
+- rviz2에서 카메라 영상이 보이지 않음
+- Camera display를 추가했지만 "No Image" 표시
+
+**원인:**
+- `Camera` display는 카메라 캘리브레이션 (camera_info) 토픽이 필요
+- 현재 camera_info가 설정되지 않아 Camera display 사용 불가
+
+**해결:**
+- `Camera` 대신 `Image` display 사용
+- Add -> By display type -> Image
+- Topic: `/camera/front/image` (또는 `/lane_overlay`, `/yolo/overlay`)
+
+---
+
+### Error 22: git add 멈춤 (rosbag2 대용량 파일)
+
+**증상:**
+- `git add .` 실행 시 오래 걸리거나 멈춤
+
+**원인:**
+- `rosbag2_*/` 디렉토리에 대용량 녹화 파일 존재
+- git이 모든 파일을 인덱싱하려다 멈춤
+
+**해결:**
+```bash
+# .gitignore에 추가
+rosbag2_*/
+
+# 이미 추적 중인 파일 제거
+git rm -r --cached rosbag2_*/
+```
+
+---

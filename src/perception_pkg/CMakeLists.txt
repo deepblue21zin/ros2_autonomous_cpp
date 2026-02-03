@@ -100,6 +100,9 @@ install(TARGETS lane_marking_node lane_tracking_node obstacle_detection_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# Install Python package (perception_pkg with submodules)
+ament_python_install_package(${PROJECT_NAME})
+
 # Install Python executables
 install(PROGRAMS
   scripts/lane_tracking_node.py
@@ -108,6 +111,7 @@ install(PROGRAMS
   scripts/traffic_light_node.py
   scripts/traffic_light_color_node.py
   scripts/obstacle_detection_node.py
+  scripts/yolov8n_seg_node.py
   perception_pkg/parking_line_node.py
   DESTINATION lib/${PROJECT_NAME}
 )

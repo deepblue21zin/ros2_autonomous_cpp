@@ -313,6 +313,9 @@ message(STATUS "Execute custom install script")
 # install(DIRECTORY "launch" "DESTINATION" "share/bringup/")
 ament_cmake_symlink_install_directory("/root/ros2_ws/src/bringup" DIRECTORY "launch" "DESTINATION" "share/bringup/")
 
+# install(DIRECTORY "config" "DESTINATION" "share/bringup/")
+ament_cmake_symlink_install_directory("/root/ros2_ws/src/bringup" DIRECTORY "config" "DESTINATION" "share/bringup/")
+
 # install(FILES "/root/ros2_ws/build/bringup/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/bringup" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
 ament_cmake_symlink_install_files("/root/ros2_ws/src/bringup" FILES "/root/ros2_ws/build/bringup/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/bringup" "DESTINATION" "share/ament_index/resource_index/package_run_dependencies")
 

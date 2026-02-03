@@ -807,15 +807,313 @@ rviz2
 
 ---
 
+## 2026-02-01
+
+### 17. Arduino Bridge: C++ -> Python 전환 (모터 제어 수정)
+
+**문제:** C++ arduino_bridge_node의 boost::asio::write가 시리얼 포트에 데이터를 쓰지 못하는 문제 (에러 없이 silent failure)
+
+**수정 파일:**
+- `src/drivers/arduino_driver/scripts/arduino_bridge_node.py` (rospy -> rclpy 마이그레이션)
+- `src/bringup/launch/track_launch.py` (항상 Python bridge 사용으로 변경)
+- `src/drivers/arduino_driver/config/arduino.yaml` (use_legacy_cmd 제거)
+
+**arduino_bridge_node.py 변경:**
+```python
+# 변경 전: rospy (ROS1) 사용
+import rospy
+rospy.init_node('arduino_bridge')
+
+# 변경 후: rclpy (ROS2) 사용
+import rclpy
+from rclpy.node import Node
+
+class ArduinoBridgeNode(Node):
+    def __init__(self):
+        super().__init__("arduino_bridge_node")
+        # pyserial 사용 (boost::asio 대신)
+        self.serial = serial.Serial(self.port, self.baudrate, timeout=0.01)
+        # Arduino DTR 리셋 후 부팅 대기 (2초)
+        time.sleep(2)
+        if self.serial.in_waiting:
+            self.serial.read(self.serial.in_waiting)
+```
+
+**track_launch.py 변경:**
+```python
+# 변경 전: use_cpp에 따라 C++/Python 선택
+if use_cpp:
+    arduino_node = Node(package='arduino_driver', executable='arduino_bridge_node', ...)
+else:
+    arduino_node = Node(package='arduino_driver', executable='arduino_bridge_node.py', ...)
+
+# 변경 후: 항상 Python 사용 (C++ boost::asio 시리얼 문제)
+arduino_node = Node(
+    package='arduino_driver',
+    executable='arduino_bridge_node.py',
+    name='arduino_bridge',
+    ...
+)
+```
+
+**arduino.yaml 변경:**
+```yaml
+# 변경 전
+/**:
+  ros__parameters:
+    port: /dev/ttyACM0
+    baudrate: 115200
+    use_legacy_cmd: false
+    max_speed_mps: 2.0
+    max_steer_deg: 30.0
+    center_servo_deg: 90.0
+
+# 변경 후 (use_legacy_cmd 제거 - 연속 모드만 사용)
+/**:
+  ros__parameters:
+    port: /dev/ttyACM0
+    baudrate: 115200
+    max_speed_mps: 2.0
+    max_steer_deg: 30.0
+    center_servo_deg: 90.0
+```
+
+**핵심:**
+- C++ boost::asio는 시리얼 write가 에러 없이 실패 (silent failure)
+- Python pyserial은 정상 동작
+- Arduino는 시리얼 포트 open 시 DTR 핀으로 리셋됨 -> 2초 대기 필요
+- 다른 노드는 C++ 사용, Arduino bridge만 Python 사용
+
+---
+
+### 18. YOLOv8n-seg 통합 감지기 추가
+
+**배경:** 기존 traffic_sign_detector.pt 기반 detector.py 대신, 새로 학습한 yolov8n-seg.pt에 맞는 감지기 구현
+
+**목적:**
+1. 신호등 감지: COCO class 9 (traffic light) -> HSV 색상 분석 -> 빨간불 정지, 초록불 주행
+2. 차선 인식 보조: 코너/횡단보도 등 어려운 구간에서 세그멘테이션 마스크로 주행 가능 영역 추출
+
+**생성 파일:**
+- `src/perception_pkg/perception_pkg/perception/object_detection/detector_yolov8n.py`
+
+**주요 클래스:**
+```python
+@dataclass
+class Yolov8nSegConfig:
+    model_path: str
+    conf_threshold: float = 0.4
+    iou_threshold: float = 0.45
+    imgsz: int = 640
+    device: Optional[str] = None
+    traffic_light_min_ratio: float = 0.05
+    use_seg_mask: bool = True
+    detect_obstacles: bool = True
+
+class Yolov8nSegDetector:
+    def predict(frame) -> results         # YOLO 추론
+    def detect_traffic_light(frame) -> TrafficLightState  # 신호등 감지+HSV
+    def detect_obstacles(frame) -> List[ObstacleInfo]     # 장애물 감지
+    def get_drivable_mask(frame) -> np.ndarray            # 주행 가능 영역
+    def detect(frame) -> List[Detection]                  # 기존 호환
+    def draw_overlay(frame) -> np.ndarray                 # 디버그 시각화
+```
+
+**COCO 클래스 매핑:**
+| Class ID | Name | 용도 |
+|----------|------|------|
+| 9 | traffic light | 신호등 -> HSV 색상 분석 |
+| 0 | person | 보행자 장애물 |
+| 2 | car | 차량 장애물 |
+| 5 | bus | 차량 장애물 |
+| 7 | truck | 차량 장애물 |
+
+**신호등 HSV 범위:**
+- Red: H(0-10, 170-180), S(80-255), V(80-255)
+- Green: H(45-90), S(80-255), V(80-255)
+- Yellow: H(18-38), S(100-255), V(100-255)
+
+---
+
+### 19. YOLOv8n-seg ROS2 노드 추가
+
+**생성 파일:**
+- `src/perception_pkg/scripts/yolov8n_seg_node.py`
+
+**기능:**
+1. 카메라 토픽 구독 -> YOLOv8n-seg 추론
+2. 신호등 감지 + HSV 색상 분석 -> /perception/traffic_light_state 발행
+3. 장애물 감지 -> /perception/yolo_obstacles 발행
+4. 주행 가능 영역 마스크 -> /perception/drivable_mask 발행
+5. 디버그 오버레이 -> /yolo/overlay 발행 (rviz2 Image 패널)
+
+**발행 토픽:**
+| 토픽 | 타입 | 설명 |
+|------|------|------|
+| `/perception/traffic_light_state` | String | 신호등 상태 (red/green/yellow/unknown) |
+| `/perception/traffic_light_detected` | Bool | 신호등 감지 여부 |
+| `/perception/yolo_obstacles` | Float32MultiArray | 장애물 bbox [x1,y1,x2,y2,conf,...] |
+| `/perception/drivable_mask` | Image (mono8) | 주행 가능 영역 마스크 |
+| `/yolo/overlay` | Image (bgr8) | 디버그 오버레이 (rviz2용) |
+
+**구독 토픽:**
+| 토픽 | 타입 |
+|------|------|
+| `/camera/front/image` | Image |
+
+**파라미터:**
+| 파라미터 | 기본값 | 설명 |
+|----------|--------|------|
+| `model_path` | `""` | 모델 경로 (빈 값이면 자동 탐색) |
+| `camera_topic` | `/camera/front/image` | 카메라 토픽 |
+| `conf_threshold` | `0.4` | 감지 신뢰도 임계값 |
+| `iou_threshold` | `0.45` | NMS IoU 임계값 |
+| `imgsz` | `640` | 입력 이미지 크기 |
+| `rate_hz` | `10.0` | 추론 프레임 레이트 |
+| `publish_overlay` | `true` | 오버레이 발행 여부 |
+| `publish_drivable_mask` | `true` | 주행 가능 마스크 발행 여부 |
+| `detect_obstacles` | `true` | 장애물 감지 여부 |
+
+---
+
+### 20. CMakeLists.txt 업데이트 (yolov8n_seg_node.py 등록)
+
+**파일:** `src/perception_pkg/CMakeLists.txt`
+
+**변경:**
+```cmake
+# install(PROGRAMS) 에 추가
+install(PROGRAMS
+  scripts/lane_tracking_node.py
+  scripts/lane_marking_node.py
+  scripts/speed_sign_node.py
+  scripts/traffic_light_node.py
+  scripts/traffic_light_color_node.py
+  scripts/obstacle_detection_node.py
+  scripts/yolov8n_seg_node.py          # 추가
+  perception_pkg/parking_line_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+```
+
+---
+
+### 21. Dockerfile 업데이트 (ultralytics 추가)
+
+**파일:** `/home/deepblue/target_projects/adas_env/Dockerfile`
+
+**변경:**
+```dockerfile
+# 변경 전
+RUN pip3 install --no-cache-dir \
+    numpy \
+    opencv-python \
+    pyserial
+
+# 변경 후
+RUN pip3 install --no-cache-dir \
+    numpy \
+    opencv-python \
+    pyserial \
+    ultralytics
+```
+
+**설명:** YOLOv8n-seg 모델 사용을 위해 ultralytics 패키지 추가. Docker 이미지 빌드 시 자동 설치되므로 컨테이너 재시작 시에도 유지됨.
+
+---
+
+### 22. start.sh 확장 (빌드/실행 명령 추가)
+
+**파일:** `/home/deepblue/target_projects/adas_env/start.sh`
+
+**추가된 명령:**
+| 명령 | 기능 |
+|------|------|
+| `./start.sh ros-build` | ROS2 colcon 빌드 (컨테이너 내부) |
+| `./start.sh run` | track_launch.py 실행 |
+| `./start.sh test` | test_mode로 실행 |
+| `./start.sh yolo` | YOLOv8n-seg 노드 실행 |
+| `./start.sh help` | 도움말 |
+
+**추가된 헬퍼 함수:**
+```bash
+docker_run() {
+    docker exec -it "$CONTAINER_NAME" bash -c \
+      "source /opt/ros/humble/setup.bash && source /root/ros2_ws/install/setup.bash 2>/dev/null; $1"
+}
+```
+
+---
+
+### 23. .gitignore 업데이트 (rosbag2 제외)
+
+**파일:** `.gitignore`
+
+**추가:**
+```
+rosbag2_*/
+```
+
+**이유:** rosbag2 녹화 파일이 git에 포함되어 git add가 멈추는 문제 방지
+
+---
+
+## 2026-02-03
+
+### 24. YOLO 감지기 best.pt 커스텀 모델 적용
+
+**배경:** 새로 학습한 best.pt 모델은 COCO 80 클래스가 아닌 커스텀 4 클래스 세그멘테이션 모델
+
+**모델 클래스:**
+| Class ID | Name | 용도 |
+|----------|------|------|
+| 0 | green_light | 초록 신호등 -> 주행 |
+| 1 | obstacle | 장애물 -> 정지/회피 |
+| 2 | red_light | 빨간 신호등 -> 정지 |
+| 3 | road_objects2 | 도로 객체 |
+
+**수정 파일:**
+- `src/perception_pkg/perception_pkg/perception/object_detection/detector_yolov8n.py` (전면 수정)
+- `src/perception_pkg/scripts/yolov8n_seg_node.py` (모델 경로 변경)
+
+**주요 변경:**
+1. COCO 클래스 기반 -> 커스텀 4 클래스 기반으로 전환
+2. HSV 색상 분석 제거 (모델이 직접 green_light/red_light 분류)
+3. 모델 자동 탐색 경로에 best.pt 추가 (우선 탐색)
+4. best.pt 파일을 `src/perception_pkg/models/`에 추가
+
+**detector_yolov8n.py 핵심 변경:**
+```python
+# 변경 전: COCO 클래스 기반
+TRAFFIC_LIGHT_ID = 9  # COCO traffic light
+OBSTACLE_IDS = {0, 2, 5, 7}  # person, car, bus, truck
+# HSV 색상 분석으로 신호등 상태 판별
+
+# 변경 후: best.pt 커스텀 클래스 기반
+GREEN_LIGHT_ID = 0
+OBSTACLE_ID = 1
+RED_LIGHT_ID = 2
+ROAD_OBJECTS_ID = 3
+# 모델이 직접 신호등 색상 분류 -> HSV 불필요
+```
+
+---
+
 ## 예정된 변경
 
-- [ ] 차선 추적 YOLO 모델 적용 (GPU 환경 필요)
-- [ ] Docker GPU 지원 추가
+- [ ] Docker GPU 지원 추가 (NVIDIA Container Toolkit)
+- [ ] YOLOv8n-seg track_launch.py 통합 (자동 실행)
+- [ ] C++ boost::asio 시리얼 문제 근본 원인 수정
+- [ ] 12개 Python 노드 rospy -> rclpy 마이그레이션 (현재 C++ 대체 사용중)
+- [ ] 실제 센서 위치 측정 및 TF 업데이트 (sensor_calibration.md 참고)
+- [ ] 카메라 캘리브레이션 파일 생성
+- [ ] 2차 다항식 피팅으로 곡선 근사 개선
 - [x] 실차 테스트 후 파라미터 튜닝 - 완료 (HoughLinesP, slope, Canny)
 - [x] Dockerfile 작성 (필수 패키지 자동 설치) - 완료
 - [x] 2026 경기도 대회 트랙 최적화 - 완료 (점선 감지, 단일 차선 폴백)
 - [x] 전방/후방 듀얼 카메라 시스템 - 완료 (주차 라인 감지)
 - [x] RPLiDAR 드라이버 런치 파일 추가 - 완료
-- [ ] 실제 센서 위치 측정 및 TF 업데이트 (sensor_calibration.md 참고)
-- [ ] 카메라 캘리브레이션 파일 생성
-- [ ] 2차 다항식 피팅으로 곡선 근사 개선 (추가 개선 필요시)
+- [x] Arduino bridge C++ -> Python 전환 - 완료
+- [x] YOLOv8n-seg 통합 감지기 + ROS2 노드 - 완료
+- [x] start.sh 빌드/실행 명령 추가 - 완료
+- [x] Dockerfile ultralytics 추가 - 완료

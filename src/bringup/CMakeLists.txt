@@ -18,6 +18,11 @@ install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}/
 )
 
+# Install config files (rviz2 등)
+install(DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 # Linting (optional)
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

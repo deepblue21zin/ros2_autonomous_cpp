@@ -249,6 +249,32 @@ obstacle_detection_node/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/obstacle_detection_node.dir/build.make CMakeFiles/obstacle_detection_node.dir/build
 .PHONY : obstacle_detection_node/fast
 
+#=============================================================================
+# Target rules for targets named ament_cmake_python_symlink_perception_pkg
+
+# Build rule for target.
+ament_cmake_python_symlink_perception_pkg: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ament_cmake_python_symlink_perception_pkg
+.PHONY : ament_cmake_python_symlink_perception_pkg
+
+# fast build rule for target.
+ament_cmake_python_symlink_perception_pkg/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ament_cmake_python_symlink_perception_pkg.dir/build.make CMakeFiles/ament_cmake_python_symlink_perception_pkg.dir/build
+.PHONY : ament_cmake_python_symlink_perception_pkg/fast
+
+#=============================================================================
+# Target rules for targets named ament_cmake_python_build_perception_pkg_egg
+
+# Build rule for target.
+ament_cmake_python_build_perception_pkg_egg: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ament_cmake_python_build_perception_pkg_egg
+.PHONY : ament_cmake_python_build_perception_pkg_egg
+
+# fast build rule for target.
+ament_cmake_python_build_perception_pkg_egg/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ament_cmake_python_build_perception_pkg_egg.dir/build.make CMakeFiles/ament_cmake_python_build_perception_pkg_egg.dir/build
+.PHONY : ament_cmake_python_build_perception_pkg_egg/fast
+
 src/common/image_utils.o: src/common/image_utils.cpp.o
 .PHONY : src/common/image_utils.o
 
@@ -382,6 +408,8 @@ help:
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... test"
+	@echo "... ament_cmake_python_build_perception_pkg_egg"
+	@echo "... ament_cmake_python_symlink_perception_pkg"
 	@echo "... perception_pkg_uninstall"
 	@echo "... uninstall"
 	@echo "... lane_marking_node"

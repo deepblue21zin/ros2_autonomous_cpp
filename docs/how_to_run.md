@@ -7,6 +7,25 @@ Docker 컨테이너 환경에서 ROS2 자율주행 시스템을 실행하는 방
 ## 빠른 시작 (Quick Start)
 
 ```bash
+# 1. start.sh로 간편 실행 (권장)
+cd /home/deepblue/target_projects/adas_env
+./start.sh              # 컨테이너 시작 + 접속
+
+# 2. ROS2 빌드 (처음 한 번만, 컨테이너 내부에서)
+cd /root/ros2_ws
+colcon build --symlink-install
+source install/setup.bash
+
+# 3. 전체 시스템 실행
+ros2 launch bringup track_launch.py
+
+# 또는 테스트 모드 (센서 없이 모터 테스트)
+ros2 launch bringup track_launch.py test_mode:=true
+```
+
+**수동 방법 (start.sh 없이):**
+
+```bash
 # 1. 호스트에서 X11 권한 설정
 xhost +local:docker
 
@@ -24,9 +43,6 @@ source install/setup.bash
 
 # 5. 전체 시스템 실행
 ros2 launch bringup track_launch.py
-
-# 또는 테스트 모드 (센서 없이 모터 테스트)
-ros2 launch bringup track_launch.py test_mode:=true
 ```
 
 ---
@@ -35,12 +51,14 @@ ros2 launch bringup track_launch.py test_mode:=true
 
 1. [사전 준비](#사전-준비)
 2. [Docker 환경 설정](#docker-환경-설정)
-3. [컨테이너 실행](#컨테이너-실행)
-4. [ROS2 빌드](#ros2-빌드)
-5. [개별 테스트](#개별-테스트)
-6. [전체 시스템 실행](#전체-시스템-실행)
-7. [모니터링 및 시각화](#모니터링-및-시각화)
-8. [문제 해결](#문제-해결)
+3. [start.sh 사용법](#startsh-사용법)
+4. [컨테이너 실행](#컨테이너-실행)
+5. [ROS2 빌드](#ros2-빌드)
+6. [개별 테스트](#개별-테스트)
+7. [YOLOv8n-seg 실행](#yolov8n-seg-실행)
+8. [전체 시스템 실행](#전체-시스템-실행)
+9. [모니터링 및 시각화](#모니터링-및-시각화)
+10. [문제 해결](#문제-해결)
 
 ---
 
@@ -77,7 +95,8 @@ v4l2-ctl --list-devices
 ```
 /home/deepblue/target_projects/adas_env/
 ├── Dockerfile        # 커스텀 이미지 정의
-└── compose.yaml      # 컨테이너 설정
+├── compose.yaml      # 컨테이너 설정
+└── start.sh          # 간편 실행 스크립트
 ```
 
 ### Dockerfile
@@ -91,6 +110,7 @@ RUN apt update && apt install -y \
     ros-humble-ackermann-msgs \
     ros-humble-cv-bridge \
     ros-humble-image-transport \
+    ros-humble-rplidar-ros \
     v4l-utils \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
@@ -99,7 +119,8 @@ RUN apt update && apt install -y \
 RUN pip3 install --no-cache-dir \
     numpy \
     opencv-python \
-    pyserial
+    pyserial \
+    ultralytics
 
 # ROS2 환경 자동 설정
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
@@ -135,7 +156,52 @@ services:
 
 ---
 
+## start.sh 사용법
+
+스크립트 위치: `/home/deepblue/target_projects/adas_env/start.sh`
+
+start.sh는 Docker 컨테이너 관리 및 ROS2 실행을 간편하게 해주는 스크립트입니다.
+실행하면 자동으로 xhost 권한 설정, 장치 확인, 컨테이너 시작 등을 처리합니다.
+
+```bash
+cd /home/deepblue/target_projects/adas_env
+```
+
+| 명령어 | 설명 |
+|--------|------|
+| `./start.sh` | 컨테이너 시작 + 접속 (가장 많이 사용) |
+| `./start.sh build` | Docker 이미지 빌드 후 시작 (처음 또는 Dockerfile 변경 시) |
+| `./start.sh ros-build` | ROS2 colcon 빌드 (컨테이너 내부에서 실행) |
+| `./start.sh run` | track_launch.py 실행 |
+| `./start.sh test` | test_mode로 실행 (센서 없이 모터 테스트) |
+| `./start.sh yolo` | YOLOv8n-seg 노드 실행 |
+| `./start.sh restart` | 컨테이너 재시작 (장치 재마운트, USB 장치를 새로 꽂은 후 사용) |
+| `./start.sh stop` | 컨테이너 정지 |
+| `./start.sh help` | 도움말 |
+
+### 일반적인 워크플로우
+
+```bash
+# 처음 설정
+./start.sh build        # 이미지 빌드 + 시작
+./start.sh ros-build    # ROS2 빌드
+
+# 일상 사용
+./start.sh              # 접속
+./start.sh run          # 시스템 실행
+
+# 테스트
+./start.sh test         # 센서 없이 모터 테스트
+
+# 장치 문제 시
+./start.sh restart      # 컨테이너 재시작 (장치 재마운트)
+```
+
+---
+
 ## 컨테이너 실행
+
+> **참고:** start.sh를 사용하면 아래 과정이 자동으로 처리됩니다.
 
 ### 1. X11 권한 설정 (호스트에서)
 
@@ -185,7 +251,8 @@ Dockerfile에 이미 포함되어 있어 **별도 설치 불필요**:
 - `ros-humble-ackermann-msgs`
 - `ros-humble-cv-bridge`
 - `ros-humble-image-transport`
-- `numpy`, `opencv-python`, `pyserial`
+- `ros-humble-rplidar-ros`
+- `numpy`, `opencv-python`, `pyserial`, `ultralytics`
 
 ### 빌드
 
@@ -193,6 +260,11 @@ Dockerfile에 이미 포함되어 있어 **별도 설치 불필요**:
 cd /root/ros2_ws
 colcon build --symlink-install
 source install/setup.bash
+```
+
+또는 start.sh 사용:
+```bash
+./start.sh ros-build
 ```
 
 ### 빌드 캐시 충돌 시
@@ -223,29 +295,32 @@ ros2 topic hz /camera/front/image
 
 # 이미지 뷰어
 ros2 run rqt_image_view rqt_image_view
-# → /camera/front/image 선택
+# -> /camera/front/image 선택
 ```
 
 ### Arduino 모터 테스트
 
+> **중요:** Arduino bridge는 항상 Python (pyserial) 노드를 사용합니다.
+> C++ boost::asio 방식은 시리얼 쓰기 시 silent failure가 발생하므로 사용하지 않습니다.
+
 **터미널 1 - Arduino 노드:**
 ```bash
-ros2 run arduino_driver arduino_bridge_node --ros-args \
+ros2 run arduino_driver arduino_bridge_node.py --ros-args \
   --params-file /root/ros2_ws/install/arduino_driver/share/arduino_driver/config/arduino.yaml
 ```
 
 **터미널 2 - 수동 명령:**
 ```bash
 # 전진 (속도 0.5 m/s)
-ros2 topic pub --once /cmd_vel ackermann_msgs/msg/AckermannDriveStamped \
+ros2 topic pub --once /arduino/cmd ackermann_msgs/msg/AckermannDriveStamped \
   "{drive: {speed: 0.5, steering_angle: 0.0}}"
 
 # 좌회전
-ros2 topic pub --once /cmd_vel ackermann_msgs/msg/AckermannDriveStamped \
+ros2 topic pub --once /arduino/cmd ackermann_msgs/msg/AckermannDriveStamped \
   "{drive: {speed: 0.3, steering_angle: 0.26}}"
 
 # 정지
-ros2 topic pub --once /cmd_vel ackermann_msgs/msg/AckermannDriveStamped \
+ros2 topic pub --once /arduino/cmd ackermann_msgs/msg/AckermannDriveStamped \
   "{drive: {speed: 0.0, steering_angle: 0.0}}"
 ```
 
@@ -256,23 +331,59 @@ echo "S" > /dev/ttyACM0
 
 ### Arduino 명령 모드
 
-현재 설정: **연속 모드** (`use_legacy_cmd: false`)
+현재 설정: **연속 모드** (V:pwm,S:servo)
 
-| 모드 | 설정값 | 명령 형식 | 설명 |
-|------|--------|-----------|------|
-| 레거시 | `true` | `F`, `B`, `L`, `R`, `S` | 단순 방향 명령 |
-| 연속 | `false` | `V:pwm,S:servo` | PWM/서보 값 직접 전달 |
+명령 형식: `V:<pwm값>,S:<서보값>`
+
+| 예시 | 설명 |
+|------|------|
+| `V:150,S:90` | PWM 150, 서보 중앙(90도) |
+| `V:200,S:70` | PWM 200, 좌회전 |
+| `V:0,S:90` | 정지 |
 
 **연속 모드 장점:**
 - 더 정밀한 속도 제어 (0~255 PWM)
 - 더 정밀한 조향 제어 (서보 각도 직접)
 - 불필요한 명령 변환 없음
 
-**설정 변경 방법:**
-```yaml
-# src/drivers/arduino_driver/config/arduino.yaml
-use_legacy_cmd: false  # 연속 모드 (권장)
+---
+
+## YOLOv8n-seg 실행
+
+YOLOv8n-seg 노드는 카메라 영상에서 신호등, 장애물, 주행 가능 영역을 감지합니다.
+
+### 실행 방법
+
+```bash
+# start.sh로 실행
+./start.sh yolo
+
+# 또는 컨테이너 내부에서 직접 실행
+ros2 run perception_pkg yolov8n_seg_node.py
 ```
+
+### 기능
+
+1. 신호등 감지 + HSV 색상 분석 -> 빨간불 정지, 초록불 주행
+2. 장애물 감지 (보행자, 차량)
+3. 주행 가능 영역 마스크 -> OpenCV 차선 인식 보조
+4. 디버그 오버레이 -> rviz2 Image 패널
+
+### 발행 토픽
+
+| 토픽 | 타입 | 설명 |
+|------|------|------|
+| `/perception/traffic_light_state` | String | 신호등 상태 (red/green/yellow/unknown) |
+| `/perception/traffic_light_detected` | Bool | 신호등 감지 여부 |
+| `/yolo/overlay` | Image | YOLO 디버그 오버레이 (시각화용) |
+| `/perception/drivable_mask` | Image | 주행 가능 영역 마스크 |
+| `/perception/yolo_obstacles` | Float32MultiArray | 장애물 bbox [x1,y1,x2,y2,conf,...] |
+
+### rviz2에서 확인
+
+1. `rviz2` 실행
+2. Add > By topic > `/yolo/overlay` > Image 추가
+3. YOLO 감지 결과가 오버레이된 영상을 실시간으로 확인 가능
 
 ---
 
@@ -281,6 +392,11 @@ use_legacy_cmd: false  # 연속 모드 (권장)
 ### Track 모드 (차선 추종)
 
 ```bash
+# start.sh로 간편 실행
+./start.sh run          # track_launch.py 실행
+./start.sh test         # test_mode로 실행
+
+# 또는 직접 실행
 ros2 launch bringup track_launch.py
 ```
 
@@ -288,23 +404,22 @@ ros2 launch bringup track_launch.py
 - `usb_cam_node_exe` - 카메라
 - `lane_tracking_node` - 차선 추적
 - `lane_marking_node` - 차선 표시 검출
-- `arduino_bridge_node` - 모터 제어
+- `arduino_bridge_node` - 모터 제어 (Python/pyserial)
 - `ultrasonic_processor_node` - 초음파 센서
 - `lidar_obstacle_node` - 라이다 장애물
 - `decision_node` - 주행 결정
 
-### 옵션라이
+### 옵션
 
 ```bash
-# Python 노드 사용 (C++ 대신)
-ros2 launch bringup track_launch.py use_cpp:=false
-
 # AI 결정 모드
 ros2 launch bringup track_launch.py decision_mode:=ai
 
 # 테스트 모드 (센서 없이 모터 구동)
 ros2 launch bringup track_launch.py test_mode:=true
 ```
+
+> **참고:** `use_cpp:=false` 옵션은 Python 노드에 rospy(ROS1) 의존성 문제가 있어 현재 사용하지 않습니다. Arduino bridge만 자동으로 Python을 사용합니다.
 
 ### 테스트 모드 설명
 
@@ -341,6 +456,11 @@ ros2 topic list
 | `/lane/center_offset` | Float32 | 차선 중심 오프셋 |
 | `/arduino/cmd` | AckermannDriveStamped | 최종 모터 명령 |
 | `/cmd_vel` | AckermannDriveStamped | 속도/조향 명령 |
+| `/scan` | LaserScan | LiDAR 스캔 데이터 |
+| `/perception/traffic_light_state` | String | 신호등 상태 |
+| `/perception/yolo_obstacles` | Float32MultiArray | YOLO 장애물 좌표 |
+| `/yolo/overlay` | Image | YOLO 디버그 오버레이 |
+| `/perception/drivable_mask` | Image | 주행 가능 영역 마스크 |
 
 ### 토픽 모니터링
 
@@ -353,6 +473,9 @@ ros2 topic echo /arduino/cmd
 
 # 발행 속도 확인
 ros2 topic hz /lane/steering_angle
+
+# 신호등 상태 확인
+ros2 topic echo /perception/traffic_light_state
 ```
 
 ### 이미지 시각화
@@ -364,13 +487,30 @@ ros2 run rqt_image_view rqt_image_view
 **선택 가능한 토픽:**
 - `/camera/front/image` - 원본 카메라 영상
 - `/lane_overlay` - 차선 인식 오버레이
+- `/yolo/overlay` - YOLO 감지 결과 오버레이
+
+### rviz2 시각화
+
+```bash
+rviz2
+```
+
+**설정 방법:**
+1. Global Options > Fixed Frame: `base_link`으로 설정 (map 아님)
+2. Add > By topic 에서 다음을 추가:
+   - `/yolo/overlay` > Image -- YOLO 감지 결과
+   - `/camera/front/image` > Image -- 원본 카메라 영상
+   - `/lane_overlay` > Image -- 차선 인식 결과
+   - `/scan` > LaserScan -- LiDAR 스캔 데이터
+
+> **주의:** Image를 추가할 때 `Camera`가 아닌 `Image` display를 선택해야 합니다. Camera display는 camera_info 토픽이 필요합니다.
 
 ### 전체 시스템 모니터링
 
 ```bash
 rqt
-# → Plugins > Topics > Topic Monitor
-# → Plugins > Visualization > Image View
+# -> Plugins > Topics > Topic Monitor
+# -> Plugins > Visualization > Image View
 ```
 
 ---
@@ -402,6 +542,10 @@ ros2 topic info /camera/front/image
 ### 컨테이너 재시작
 
 ```bash
+# start.sh 사용 (권장)
+./start.sh restart
+
+# 수동 방법
 cd /home/deepblue/target_projects/adas_env
 docker compose down
 docker compose up -d
@@ -417,6 +561,24 @@ docker compose up -d
    canny_low: 50      # 낮추면 더 민감
    canny_high: 150    # 낮추면 더 민감
    roi_y_ratio: 0.55  # 관심 영역 비율
+   ```
+
+### 모터가 안 돌아갈 때
+
+1. Arduino 연결 확인: `ls /dev/ttyACM0`
+2. arduino_bridge 노드 실행 확인: `ros2 node list | grep arduino`
+3. 명령 발행 확인: `ros2 topic echo /arduino/cmd`
+4. test_mode 사용: `ros2 launch bringup track_launch.py test_mode:=true`
+5. 시리얼 직접 테스트:
+   ```bash
+   python3 -c "
+   import serial, time
+   s = serial.Serial('/dev/ttyACM0', 115200, timeout=0.1)
+   time.sleep(2)
+   s.write(b'V:128,S:90\n')
+   time.sleep(0.1)
+   print(s.readline())
+   "
    ```
 
 ---
@@ -441,14 +603,15 @@ source /root/ros2_ws/install/setup.bash
 
 ## 테스트 체크리스트
 
-- [ ] Docker 이미지 빌드 (`docker compose build`)
-- [ ] Docker 컨테이너 실행 (`docker compose up -d`)
-- [ ] X11 권한 설정 (`xhost +local:docker`)
-- [ ] ROS2 워크스페이스 빌드 (`colcon build --symlink-install`)
+- [ ] Docker 이미지 빌드 (`./start.sh build` 또는 `docker compose build`)
+- [ ] Docker 컨테이너 실행 (`./start.sh` 또는 `docker compose up -d`)
+- [ ] X11 권한 설정 (start.sh 사용 시 자동)
+- [ ] ROS2 워크스페이스 빌드 (`./start.sh ros-build` 또는 `colcon build --symlink-install`)
 - [ ] 카메라 영상 확인 (`rqt_image_view`)
 - [ ] 차선 인식 확인 (`/lane_overlay`)
-- [ ] 모터 수동 테스트 (`ros2 topic pub`)
-- [ ] 전체 시스템 테스트 (`track_launch.py`)
+- [ ] 모터 수동 테스트 (`ros2 topic pub /arduino/cmd ...`)
+- [ ] YOLO 노드 테스트 (`./start.sh yolo`)
+- [ ] 전체 시스템 테스트 (`./start.sh run`)
 
 ---
 
@@ -457,27 +620,5 @@ source /root/ros2_ws/install/setup.bash
 | 상황 | 명령어 | 설치한 패키지 | ROS2 환경 |
 |------|--------|--------------|-----------|
 | 터미널 닫고 다시 접속 | `docker exec -it adas_container bash` | 유지됨 | 자동 설정 |
-| 컨테이너 재시작 | `docker compose down && docker compose up -d` | **Dockerfile에 포함되어 유지** | 자동 설정 |
-| 이미지 재빌드 | `docker compose build` | 새로 설치 | 자동 설정 |
-
-
-스크립트 생성 완료. 사용법:
-
-
-cd /home/deepblue/target_projects/adas_env
-
-./start.sh              # 시작 + 접속 (가장 많이 사용)
-./start.sh restart      # 재시작 (장치 새로 꽂은 후)
-./start.sh build        # 이미지 빌드 후 시작 (처음 또는 Dockerfile 변경 시)
-./start.sh stop         # 컨테이너 정지
-실행하면 자동으로:
-
-xhost +local:docker (X11 권한)
-연결 장치 확인 (Arduino, LiDAR, Camera)
-컨테이너 시작
-컨테이너 내부 장치 마운트 확인
-컨테이너 접속
-지금 USB 웹캠 마운트 문제를 해결하려면:
-
-
-./start.sh restart
+| 컨테이너 재시작 | `./start.sh restart` | **Dockerfile에 포함되어 유지** | 자동 설정 |
+| 이미지 재빌드 | `./start.sh build` | 새로 설치 | 자동 설정 |

@@ -110,7 +110,7 @@ def launch_setup(context, *args, **kwargs):
         else:
             decision_node = Node(
                 package='decision',
-                executable='decision_node_2026.py',
+                executable='decision_node_unified.py',
                 name='decision_node',
                 output='screen',
                 parameters=[
