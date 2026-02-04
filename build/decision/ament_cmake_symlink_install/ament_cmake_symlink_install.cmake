@@ -313,8 +313,8 @@ message(STATUS "Execute custom install script")
 # install("TARGETS" "decision_node" "lidar_obstacle_node" "DESTINATION" "lib/decision")
 include("/root/ros2_ws/build/decision/ament_cmake_symlink_install_targets_0_${CMAKE_INSTALL_CONFIG_NAME}.cmake")
 
-# install(PROGRAMS "scripts/decision_node.py" "scripts/decision_node_2026.py" "scripts/decision_node_ai.py" "scripts/decision_node_unified.py" "scripts/lidar_obstacle_node.py" "DESTINATION" "lib/decision")
-ament_cmake_symlink_install_programs("/root/ros2_ws/src/decision" PROGRAMS "scripts/decision_node.py" "scripts/decision_node_2026.py" "scripts/decision_node_ai.py" "scripts/decision_node_unified.py" "scripts/lidar_obstacle_node.py" "DESTINATION" "lib/decision")
+# install(PROGRAMS "scripts/decision_node.py" "scripts/decision_node_2026.py" "scripts/decision_node_ai.py" "scripts/decision_node_unified.py" "scripts/lidar_obstacle_node.py" "scripts/yolo_lane_drive_node.py" "DESTINATION" "lib/decision")
+ament_cmake_symlink_install_programs("/root/ros2_ws/src/decision" PROGRAMS "scripts/decision_node.py" "scripts/decision_node_2026.py" "scripts/decision_node_ai.py" "scripts/decision_node_unified.py" "scripts/lidar_obstacle_node.py" "scripts/yolo_lane_drive_node.py" "DESTINATION" "lib/decision")
 
 # install(DIRECTORY "include/" "DESTINATION" "include")
 ament_cmake_symlink_install_directory("/root/ros2_ws/src/decision" DIRECTORY "include/" "DESTINATION" "include")

@@ -5,6 +5,7 @@
 /root/ros2_ws/install/decision/lib/decision/decision_node_ai.py
 /root/ros2_ws/install/decision/lib/decision/decision_node_unified.py
 /root/ros2_ws/install/decision/lib/decision/lidar_obstacle_node.py
+/root/ros2_ws/install/decision/lib/decision/yolo_lane_drive_node.py
 /root/ros2_ws/install/decision/include/decision/decision_node.hpp
 /root/ros2_ws/install/decision/include/decision/lidar_obstacle_node.hpp
 /root/ros2_ws/install/decision/share/ament_index/resource_index/package_run_dependencies/decision

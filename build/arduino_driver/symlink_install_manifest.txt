@@ -5,6 +5,7 @@
 /root/ros2_ws/install/arduino_driver/share/arduino_driver//config/arduino.yaml
 /root/ros2_ws/install/arduino_driver/share/arduino_driver//ino/motor_control/motor_control.ino
 /root/ros2_ws/install/arduino_driver/share/arduino_driver//ino/motor_control_with_feedback/motor_control_with_feedback.ino
+/root/ros2_ws/install/arduino_driver/share/arduino_driver//ino/motor_control_with_feedback_ros2/motor_control_with_feedback_ros2.ino
 /root/ros2_ws/install/arduino_driver/share/ament_index/resource_index/package_run_dependencies/arduino_driver
 /root/ros2_ws/install/arduino_driver/share/ament_index/resource_index/parent_prefix_path/arduino_driver
 /root/ros2_ws/install/arduino_driver/share/arduino_driver/environment/ament_prefix_path.sh
