@@ -2,7 +2,7 @@
   ros__parameters:
     # Lane Tracking Parameters (2026 경기도 대회 트랙 최적화)
     kp: 0.7                 # 0.6→0.7 (트랙 폭 850mm에 맞춰 응답성 향상)
-    roi_y_ratio: 0.55
+    roi_y_ratio: 0.40       # 0.55→0.40 (차선 인식 거리 증가, 이탈 방지)
     # Canny 파라미터: 점선 차선 감지를 위해 더 민감하게
     canny_low: 25           # 30→25 (점선 엣지 더 민감하게)
     canny_high: 80          # 100→80 (점선 대비 낮음 대응)

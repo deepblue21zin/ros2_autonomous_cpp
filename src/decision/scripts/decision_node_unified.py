@@ -29,7 +29,7 @@ class DecisionNodeUnified(Node):
         self.declare_parameter('max_steer_rad', 0.6)
         self.declare_parameter('soft_steer_rad', 0.3)
         self.declare_parameter('soft_steer_threshold', 0.35)
-        self.declare_parameter('ultra_safe_distance_m', 0.2)
+        self.declare_parameter('ultra_safe_distance_m', 0.0)  # 초음파 비활성화
         self.declare_parameter('use_obstacle_avoidance', True)
         self.declare_parameter('obstacle_bias_weight', 0.3)
         self.declare_parameter('use_traffic_light', False)
