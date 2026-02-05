@@ -32,6 +32,10 @@ private:
     int canny_high_;
     int gaussian_kernel_;
     int avg_window_;
+    int hough_threshold_;
+    int hough_min_length_;
+    int hough_max_gap_;
+    double slope_min_;
 
     // Moving average buffer
     std::deque<double> offset_buffer_;

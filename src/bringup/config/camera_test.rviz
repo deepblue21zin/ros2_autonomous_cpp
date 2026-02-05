@@ -1,0 +1,77 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    collapsed: true
+  - Class: rviz_common/Views
+    Name: Views
+    collapsed: true
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Image
+      Name: "Camera Raw"
+      Enabled: true
+      Topic:
+        Value: /camera/front/image
+        Depth: 1
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Normalize Range: true
+
+    - Class: rviz_default_plugins/Image
+      Name: "Lane Overlay"
+      Enabled: true
+      Topic:
+        Value: /lane_overlay
+        Depth: 1
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Normalize Range: true
+
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: false
+
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: base_link
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 1
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.01
+      Pitch: 0.5
+      Target Frame: <Fixed Frame>
+      Value: Orbit (rviz)
+      Yaw: 0
+Window Geometry:
+  Displays:
+    collapsed: true
+  Height: 1000
+  Width: 1400
+  X: 50
+  Y: 50
+  "Camera Raw":
+    collapsed: false
+  "Lane Overlay":
+    collapsed: false

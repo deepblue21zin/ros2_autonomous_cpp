@@ -115,9 +115,9 @@ RUN apt update && apt install -y \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# Python 패키지 설치
+# Python 패키지 설치 (numpy<2 필수: cv_bridge 호환성)
 RUN pip3 install --no-cache-dir \
-    numpy \
+    "numpy<2" \
     opencv-python \
     pyserial \
     ultralytics
@@ -174,7 +174,11 @@ cd /home/deepblue/target_projects/adas_env
 | `./start.sh ros-build` | ROS2 colcon 빌드 (컨테이너 내부에서 실행) |
 | `./start.sh run` | track_launch.py 실행 |
 | `./start.sh test` | test_mode로 실행 (센서 없이 모터 테스트) |
+| `./start.sh camera` | 카메라+차선인식 테스트 (Python, 주행 없음) |
+| `./start.sh camera_cpp` | 카메라+차선인식 테스트 (C++, 주행 없음) |
 | `./start.sh yolo` | YOLOv8n-seg 노드 실행 |
+| `./start.sh yolo-drive` | YOLO 차선 주행 모드 (세그멘테이션 기반) |
+| `./start.sh rviz` | rviz2 실행 (토픽 자동 설정) |
 | `./start.sh restart` | 컨테이너 재시작 (장치 재마운트, USB 장치를 새로 꽂은 후 사용) |
 | `./start.sh stop` | 컨테이너 정지 |
 | `./start.sh help` | 도움말 |
@@ -189,6 +193,10 @@ cd /home/deepblue/target_projects/adas_env
 # 일상 사용
 ./start.sh              # 접속
 ./start.sh run          # 시스템 실행
+
+# 차선 인식 테스트 (주행 없이 카메라만)
+./start.sh camera       # Python 차선 인식 (재빌드 불필요)
+./start.sh camera_cpp   # C++ 차선 인식 (ros-build 필요)
 
 # 테스트
 ./start.sh test         # 센서 없이 모터 테스트
@@ -278,7 +286,44 @@ colcon build --symlink-install
 
 ## 개별 테스트
 
-### 카메라 테스트
+### 카메라 + 차선 인식 테스트 (권장)
+
+카메라와 차선 인식만 실행하여 주행 없이 차선 인식 상태를 확인하는 모드입니다.
+자동으로 카메라를 감지하고, rqt_image_view 2개 창(원본/오버레이)을 띄웁니다.
+
+```bash
+# Python 차선 인식 (재빌드 불필요, 파일 수정 즉시 반영)
+./start.sh camera
+
+# C++ 차선 인식 (colcon build 필요)
+./start.sh ros-build        # C++ 변경 시 빌드 필요
+./start.sh camera_cpp
+```
+
+**동작 순서:**
+1. X11 권한 설정 + 컨테이너 시작
+2. USB 카메라 자동 감지 (v4l2-ctl로 Video Capture 장치 확인)
+3. 컨테이너 내 카메라 장치 확인 (없으면 자동 재시작)
+4. (Python 모드만) numpy 버전 호환성 자동 체크
+5. `camera_test_launch.py` 실행 → rqt_image_view x2 자동 실행
+
+**시각화 화면:**
+- 창 1: `/camera/front/image` - 카메라 원본 영상
+- 창 2: `/lane_overlay` - 차선 인식 오버레이
+  - 녹색 작은 선: 원시 Hough 세그먼트
+  - 파란색 곡선: 왼쪽 차선 피팅 (RANSAC + 2차 다항식)
+  - 빨간색 곡선: 오른쪽 차선 피팅
+  - 노란색 점: 추정된 차선 중심
+
+**Python vs C++ 차이:**
+| 항목 | Python (`camera`) | C++ (`camera_cpp`) |
+|------|-------------------|---------------------|
+| 속도 | 느림 (Python 오버헤드) | 빠름 |
+| 수정 반영 | 즉시 (symlink) | 빌드 필요 |
+| cv_bridge | 미사용 (순수 numpy) | 사용 |
+| 알고리즘 | RANSAC + 2차 다항식 | RANSAC + 2차 다항식 |
+
+### 카메라 단독 테스트
 
 **터미널 1 - 카메라 노드 실행:**
 ```bash
@@ -419,7 +464,8 @@ ros2 launch bringup track_launch.py decision_mode:=ai
 ros2 launch bringup track_launch.py test_mode:=true
 ```
 
-> **참고:** `use_cpp:=false` 옵션은 Python 노드에 rospy(ROS1) 의존성 문제가 있어 현재 사용하지 않습니다. Arduino bridge만 자동으로 Python을 사용합니다.
+> **참고:** `use_cpp:=false`로 Python 차선 인식 노드를 사용할 수 있습니다 (ROS2 변환 완료, cv_bridge 미사용).
+> Arduino bridge는 항상 Python을 사용합니다 (C++ boost::asio 시리얼 문제).
 
 ### 테스트 모드 설명
 
@@ -446,7 +492,7 @@ ros2 launch bringup track_launch.py test_mode:=true
 ros2 topic list
 ```
 
-### 주요 토픽
+### 주요 토픽추론 혹시 쿠다로 되어있어 CPU가 아니라?
 
 | 토픽 | 타입 | 설명 |
 |------|------|------|
@@ -553,15 +599,28 @@ docker compose up -d
 
 ### 차선 인식이 안 될 때
 
-1. 카메라 영상 확인
+1. 카메라 영상 확인: `./start.sh camera`로 원본 영상 확인
 2. 조명 조건 확인 (너무 밝거나 어두우면 안 됨)
-3. 흰색 선이 카메라에 보이는지 확인
+3. 흰색/노란색 선이 카메라에 보이는지 확인
 4. 파라미터 조정 (`lane_params.yaml`):
    ```yaml
-   canny_low: 50      # 낮추면 더 민감
-   canny_high: 150    # 낮추면 더 민감
-   roi_y_ratio: 0.55  # 관심 영역 비율
+   canny_low: 25      # 낮추면 더 민감 (현재 25)
+   canny_high: 80     # 낮추면 더 민감 (현재 80)
+   roi_y_ratio: 0.55  # ROI 시작 비율 (화면 하단 45%)
+   kp: 0.7            # 조향 비례 게인
+   avg_window: 2      # 이동평균 크기 (낮으면 반응 빠름, 높으면 안정)
    ```
+
+### 차선 피팅(파란/빨간 선)이 어긋날 때
+
+현재 RANSAC + 2차 다항식 피팅을 사용합니다. 튜닝 가능한 값:
+
+- `detector.py` 또는 `lane_geometry.cpp`의 RANSAC 파라미터:
+  - `ransac_iters`: 반복 횟수 (기본 60, 늘리면 정확도↑ 속도↓)
+  - `inlier_thresh`: 인라이어 판정 거리 (기본 12px, 줄이면 엄격)
+  - `degree`: 다항식 차수 (기본 2, 직선 구간에서는 1도 가능)
+- HoughLinesP 파라미터: `threshold=25, minLineLength=10, maxLineGap=150`
+- slope 임계값: `0.12` (약 7도 미만 수평선 제거)
 
 ### 모터가 안 돌아갈 때
 
@@ -607,8 +666,9 @@ source /root/ros2_ws/install/setup.bash
 - [ ] Docker 컨테이너 실행 (`./start.sh` 또는 `docker compose up -d`)
 - [ ] X11 권한 설정 (start.sh 사용 시 자동)
 - [ ] ROS2 워크스페이스 빌드 (`./start.sh ros-build` 또는 `colcon build --symlink-install`)
-- [ ] 카메라 영상 확인 (`rqt_image_view`)
-- [ ] 차선 인식 확인 (`/lane_overlay`)
+- [ ] 카메라 + 차선 인식 테스트 Python (`./start.sh camera`)
+- [ ] 카메라 + 차선 인식 테스트 C++ (`./start.sh camera_cpp`)
+- [ ] 차선 인식 확인 (`/lane_overlay` 파란/빨간 곡선이 차선 따르는지)
 - [ ] 모터 수동 테스트 (`ros2 topic pub /arduino/cmd ...`)
 - [ ] YOLO 노드 테스트 (`./start.sh yolo`)
 - [ ] 전체 시스템 테스트 (`./start.sh run`)

@@ -1099,15 +1099,266 @@ ROAD_OBJECTS_ID = 3
 
 ---
 
+## 2026-02-05
+
+### 25. 카메라 테스트 전용 launch 파일 생성 (camera_test_launch.py)
+
+**배경:** 주행 없이 카메라 + 차선 인식만 테스트할 수 있는 별도 모드 필요
+
+**생성 파일:**
+- `src/bringup/launch/camera_test_launch.py`
+
+**기능:**
+- USB 카메라 + 차선 인식 노드만 실행 (Arduino, LiDAR, 초음파, Decision 노드 미실행)
+- `rqt_image_view` 2개 창으로 카메라 원본 + 차선 오버레이 시각화
+- `use_cpp` 파라미터로 Python/C++ 차선 인식 전환 가능
+- `video_device` 파라미터로 카메라 장치 지정
+
+**Launch Arguments:**
+| 파라미터 | 기본값 | 설명 |
+|----------|--------|------|
+| `video_device` | `/dev/video4` | 카메라 장치 경로 |
+| `camera_topic` | `/camera/front/image` | 카메라 토픽 |
+| `use_cpp` | `false` | C++ 차선 인식 사용 여부 |
+
+**실행되는 노드:**
+1. USB 카메라 (`usb_cam_driver`)
+2. 차선 인식 (`perception_pkg` - Python 또는 C++)
+3. Static TF (`base_link` → `camera_front`)
+4. `rqt_image_view` x2 (원본 + 오버레이)
+
+---
+
+### 26. start.sh camera/camera_cpp 명령 추가
+
+**파일:** `/home/deepblue/target_projects/adas_env/start.sh`
+
+**추가된 명령:**
+| 명령 | 설명 |
+|------|------|
+| `./start.sh camera` | Python 차선 인식 테스트 |
+| `./start.sh camera_cpp` | C++ 차선 인식 테스트 |
+
+**camera 명령 동작 순서:**
+1. X11 권한 설정
+2. Docker 컨테이너 자동 시작
+3. 카메라 장치 자동 감지 (`v4l2-ctl`로 Video Capture 장치 확인)
+4. 컨테이너 내부 카메라 장치 확인 (없으면 자동 재시작)
+5. numpy 호환성 체크 (2.x → 1.x 자동 다운그레이드)
+6. `camera_test_launch.py` 실행
+
+**카메라 감지 로직:** `detect_and_verify_camera()` 헬퍼 함수로 공통화
+```bash
+# 감지 순서: /dev/video4 → /dev/video6 → /dev/video0 → /dev/video2
+# v4l2-ctl로 실제 캡처 장치인지 확인
+```
+
+---
+
+### 27. lane_tracking_node.py ROS1→ROS2 변환
+
+**파일:** `src/perception_pkg/scripts/lane_tracking_node.py`
+
+**문제:** 기존 Python 노드가 `rospy` (ROS1) 코드 → ROS2 환경에서 실행 불가
+
+**변경 내용:**
+```python
+# 변경 전 (ROS1)
+import rospy
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+
+class LaneTrackingNode:
+    def __init__(self):
+        rospy.init_node('lane_tracking_node')
+        self.bridge = CvBridge()
+        rospy.Subscriber('/camera/front/image', Image, self.image_cb)
+
+# 변경 후 (ROS2)
+import rclpy
+from rclpy.node import Node
+
+class LaneTrackingNode(Node):
+    def __init__(self):
+        super().__init__('lane_tracking_node')
+        self.declare_parameter('camera_topic', '/camera/front/image')
+        self.sub = self.create_subscription(Image, camera_topic, self.image_cb, qos)
+```
+
+**주요 변환 항목:**
+- `rospy` → `rclpy`
+- `rospy.init_node()` → `super().__init__()`
+- `rospy.Subscriber()` → `self.create_subscription()`
+- `rospy.Publisher()` → `self.create_publisher()`
+- `rospy.get_param()` → `self.declare_parameter()` + `self.get_parameter()`
+- QoS 프로필 추가 (BEST_EFFORT, depth=1)
+
+---
+
+### 28. cv_bridge 제거 (순수 numpy 변환)
+
+**파일:** `src/perception_pkg/scripts/lane_tracking_node.py`
+
+**문제:** cv_bridge의 C++ boost 바인딩이 numpy 버전과 호환되지 않음
+- numpy 2.x: `AttributeError: _ARRAY_API not found`
+- numpy 1.x로 다운그레이드 후에도 cv_bridge boost 바인딩 충돌
+
+**해결:** cv_bridge를 완전히 제거하고 순수 numpy로 Image ↔ OpenCV 변환 구현
+
+```python
+def imgmsg_to_cv2(msg: Image) -> np.ndarray:
+    """sensor_msgs/Image -> OpenCV BGR (cv_bridge 없이 직접 변환)."""
+    dtype = np.uint8
+    channels = int(len(msg.data) / (msg.height * msg.width))
+    img = np.frombuffer(msg.data, dtype=dtype).reshape(msg.height, msg.width, channels)
+    if msg.encoding == 'rgb8':
+        return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    elif msg.encoding == 'bgr8':
+        return img.copy()
+    # ... (mono8, yuyv 등 지원)
+
+def cv2_to_imgmsg(frame: np.ndarray, header=None) -> Image:
+    """OpenCV BGR -> sensor_msgs/Image (cv_bridge 없이 직접 변환)."""
+    msg = Image()
+    msg.height, msg.width = frame.shape[:2]
+    msg.encoding = 'bgr8'
+    msg.step = frame.shape[1] * 3
+    msg.data = frame.tobytes()
+    return msg
+```
+
+---
+
+### 29. Dockerfile numpy 버전 고정
+
+**파일:** `/home/deepblue/target_projects/adas_env/Dockerfile`
+
+```dockerfile
+# 변경 전
+RUN pip3 install --no-cache-dir numpy ...
+
+# 변경 후
+RUN pip3 install --no-cache-dir "numpy<2" ...
+```
+
+**이유:** numpy 2.x는 ROS2 Humble의 cv_bridge와 호환되지 않음 (C++ 확장 ABI 변경)
+
+---
+
+### 30. 차선 피팅 알고리즘 개선 (RANSAC + 2차 다항식)
+
+**문제:** 원시 Hough 데이터(녹색 선)는 차선을 잘 따르는데, 피팅된 파란색/빨간색 선은 차선과 어긋남
+
+**원인 분석:**
+1. 1차 다항식(직선) 피팅 → 커브 구간에서 차선 이탈
+2. 이상치(outlier) Hough 세그먼트가 전체 피팅을 왜곡
+3. 모든 Hough 세그먼트의 양 끝점만 사용 → 짧은 노이즈와 긴 차선이 동일 비중
+4. 기울기 부호만으로 좌/우 분류 → 반대편 세그먼트 혼입
+
+**수정 파일:**
+
+#### Python (detector.py)
+
+**파일:** `src/perception_pkg/perception_pkg/perception/lane/detector.py`
+
+| 개선 항목 | 변경 전 | 변경 후 |
+|-----------|---------|---------|
+| 피팅 함수 | `_fit_lane()` - 1차 polyfit | `_fit_lane_ransac()` - RANSAC + 2차 polyfit |
+| 포인트 수집 | 양 끝점 2개만 | `_sample_line_points()` - 5px 간격 샘플링 |
+| 좌/우 분류 | `slope < 0` 만 | slope + x위치 복합 검증 |
+| 차선 렌더링 | `cv2.line()` 직선 | `cv2.polylines()` 곡선 (30개 포인트) |
+
+**핵심 코드:**
+```python
+# RANSAC: 60회 랜덤 샘플링으로 이상치 자동 배제
+def _fit_lane_ransac(points, y_bottom, y_top, degree=2,
+                     ransac_iters=60, inlier_thresh=12.0):
+    # 1. 랜덤 3점 선택 → 2차 다항식 피팅
+    # 2. 인라이어 카운트 (오차 < 12px)
+    # 3. 최다 인라이어 모델 선택
+    # 4. 인라이어만으로 재피팅 (정밀도 향상)
+    # 5. 30개 곡선 포인트 생성
+
+# 길이 비례 포인트 샘플링 (긴 세그먼트 = 더 많은 포인트 = 더 큰 영향)
+def _sample_line_points(x1, y1, x2, y2, step=5.0):
+    length = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+    n_points = max(int(length / step), 2)
+    ...
+
+# 위치+기울기 복합 분류
+if slope < 0 and avg_x < mid_x + w * 0.1:    # 왼쪽
+elif slope > 0 and avg_x > mid_x - w * 0.1:   # 오른쪽
+```
+
+#### C++ (lane_geometry + lane_tracking_node)
+
+**파일:**
+- `src/perception_pkg/include/perception_pkg/common/lane_geometry.hpp`
+- `src/perception_pkg/src/common/lane_geometry.cpp`
+- `src/perception_pkg/src/lane_tracking_node.cpp`
+
+**추가된 함수/구조체:**
+```cpp
+// lane_geometry.hpp
+struct RansacFitResult {
+    Eigen::Vector3d coeffs;              // [a, b, c] for x = a*y^2 + b*y + c
+    bool valid;
+    std::vector<cv::Point> curve_points; // 곡선 렌더링용 30개 포인트
+    int x_bottom;                        // ROI 하단 x 좌표
+};
+
+RansacFitResult fitPolynomial2DRansac(
+    const std::vector<double>& y_points,
+    const std::vector<double>& x_points,
+    int y_bottom, int y_top,
+    int ransac_iters = 60, double inlier_thresh = 12.0);
+
+void sampleLinePoints(int x1, int y1, int x2, int y2,
+                      std::vector<double>& out_x, std::vector<double>& out_y,
+                      double step = 5.0);
+```
+
+**lane_tracking_node.cpp 변경:**
+```cpp
+// 변경 전: 1차 다항식 직선 피팅
+Eigen::Vector2d coef = fitPolynomial1D(all_y, all_x);
+cv::line(overlay, cv::Point(lx_bottom, y_bottom), cv::Point(lx_top, y_top), ...);
+
+// 변경 후: RANSAC + 2차 다항식 곡선 피팅
+RansacFitResult left_result = fitPolynomial2DRansac(left_y, left_x, y_bottom, y_top);
+cv::polylines(overlay, left_result.curve_points, false, cv::Scalar(255,0,0), 3);
+```
+
+**참고:** C++ 버전은 `colcon build --symlink-install` 재빌드 필요. Python 버전은 symlink-install이므로 재빌드 불필요.
+
+---
+
+### 31. start.sh 리팩토링 (카메라 감지 함수 공통화)
+
+**파일:** `/home/deepblue/target_projects/adas_env/start.sh`
+
+**변경:** `camera`와 `camera_cpp` 명령이 동일한 카메라 감지 로직을 공유하도록 `detect_and_verify_camera()` 헬퍼 함수 추출
+
+```bash
+detect_and_verify_camera() {
+    # 1. v4l2-ctl로 실제 캡처 장치 자동 감지
+    # 2. 컨테이너 내부 장치 존재 확인
+    # 3. 없으면 자동 재시작 후 재확인
+    # CAM_DEV 변수에 감지된 장치 경로 저장
+}
+```
+
+---
+
 ## 예정된 변경
 
 - [ ] Docker GPU 지원 추가 (NVIDIA Container Toolkit)
 - [ ] YOLOv8n-seg track_launch.py 통합 (자동 실행)
 - [ ] C++ boost::asio 시리얼 문제 근본 원인 수정
-- [ ] 12개 Python 노드 rospy -> rclpy 마이그레이션 (현재 C++ 대체 사용중)
+- [ ] 나머지 Python 노드 rospy -> rclpy 마이그레이션
 - [ ] 실제 센서 위치 측정 및 TF 업데이트 (sensor_calibration.md 참고)
 - [ ] 카메라 캘리브레이션 파일 생성
-- [ ] 2차 다항식 피팅으로 곡선 근사 개선
+- [ ] YOLO 모델 재학습 (lane2 클래스 추가, 신호등 오감지 개선)
 - [x] 실차 테스트 후 파라미터 튜닝 - 완료 (HoughLinesP, slope, Canny)
 - [x] Dockerfile 작성 (필수 패키지 자동 설치) - 완료
 - [x] 2026 경기도 대회 트랙 최적화 - 완료 (점선 감지, 단일 차선 폴백)
@@ -1117,3 +1368,7 @@ ROAD_OBJECTS_ID = 3
 - [x] YOLOv8n-seg 통합 감지기 + ROS2 노드 - 완료
 - [x] start.sh 빌드/실행 명령 추가 - 완료
 - [x] Dockerfile ultralytics 추가 - 완료
+- [x] 2차 다항식 피팅으로 곡선 근사 개선 - 완료 (RANSAC + polyfit2D, Python/C++ 동시 적용)
+- [x] lane_tracking_node.py ROS2 변환 + cv_bridge 제거 - 완료
+- [x] 카메라 테스트 모드 (camera_test_launch.py) - 완료
+- [x] start.sh camera/camera_cpp 분리 - 완료

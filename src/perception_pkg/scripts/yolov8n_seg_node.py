@@ -61,10 +61,13 @@ class Yolov8nSegNode(Node):
         tl_min_ratio = self.get_parameter("traffic_light_min_ratio").value
         rate_hz = self.get_parameter("rate_hz").value
 
-        # 모델 경로 자동 탐색 (best.pt 우선)
+        # 모델 경로 자동 탐색 (yolo26n_1st.pt 우선)
         if not model_path or not os.path.exists(model_path):
             search_paths = [
+                "/root/ros2_ws/src/perception_pkg/models/yolo26n_1st.pt",
                 "/root/ros2_ws/src/perception_pkg/models/best.pt",
+                os.path.join(os.path.dirname(__file__),
+                             "..", "models", "yolo26n_1st.pt"),
                 os.path.join(os.path.dirname(__file__),
                              "..", "models", "best.pt"),
                 "/root/ros2_ws/src/perception_pkg/models/yolov8n-seg.pt",
@@ -153,9 +156,9 @@ class Yolov8nSegNode(Node):
         if tl is not None:
             tl_msg.data = tl.state
             tl_flag.data = True
+            # TrafficLightState에는 color_ratio가 없으므로 로그에서 제외
             self.get_logger().info(
-                f"신호등: {tl.state} (conf={tl.confidence:.2f}, "
-                f"ratio={tl.color_ratio:.1%})",
+                f"신호등: {tl.state} (conf={tl.confidence:.2f})",
                 throttle_duration_sec=1.0,
             )
         else:

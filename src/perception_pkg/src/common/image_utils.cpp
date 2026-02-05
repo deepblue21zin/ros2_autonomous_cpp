@@ -12,7 +12,7 @@ cv::Mat thresholdWhite(const cv::Mat& hsv) {
 cv::Mat thresholdWhiteTracking(const cv::Mat& hsv) {
     cv::Mat mask;
     // lane_tracking_node: lower=[0, 0, 200], upper=[180, 40, 255]
-    cv::inRange(hsv, cv::Scalar(0, 0, 200), cv::Scalar(180, 40, 255), mask);
+    cv::inRange(hsv, cv::Scalar(0, 0, 120), cv::Scalar(180, 60, 255), mask);
     return mask;
 }
 

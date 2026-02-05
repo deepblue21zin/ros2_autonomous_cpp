@@ -1,17 +1,24 @@
 /**:
   ros__parameters:
     # Lane Tracking Parameters (2026 경기도 대회 트랙 최적화)
-    kp: 0.7                 # 0.6→0.7 (트랙 폭 850mm에 맞춰 응답성 향상)
-    roi_y_ratio: 0.55
-    # Canny 파라미터: 점선 차선 감지를 위해 더 민감하게
-    canny_low: 25           # 30→25 (점선 엣지 더 민감하게)
-    canny_high: 80          # 100→80 (점선 대비 낮음 대응)
-    gaussian_kernel: 5
-    # 딜레이 감소: 대회 트랙 곡선 대응
-    avg_window: 2           # 3→2 (66ms @30fps, 곡선 응답 개선)
-    # 실제 주행 시 false 권장 (오버레이 생성 오버헤드 제거)
+    kp: 0.7                 # 조향 게인 (트랙 폭 850mm)
+    roi_y_ratio: 0.30       # ROI 시작 위치
+
+    # 전처리: 주름/텍스처 노이즈 억제
+    gaussian_kernel: 7      # 5→7 (주름 블러 강화)
+    canny_low: 80           # 60→80 (약한 엣지 무시)
+    canny_high: 200         # 150→200 (강한 엣지만 통과)
+
+    # Hough 변환: 짧은 주름선 필터링
+    hough_threshold: 50     # 25→50 (충분한 증거 필요)
+    hough_min_length: 30    # 10→30 (짧은 주름선 제거)
+    hough_max_gap: 80       # 150→80 (관련없는 선 연결 방지)
+
+    # 기울기 필터: 차선에 가까운 각도만 허용
+    slope_min: 0.3          # 0.12→0.3 (거의 수평인 주름선 제거)
+
+    # 이동 평균
+    avg_window: 2           # 곡선 응답 개선
+
+    # 디버그 (실제 주행 시 false 권장)
     debug: true
-    # 대회 트랙 사양: 도로폭 850mm, 차선폭 50mm, 우측 차선 반시계방향 주행
-
-
-

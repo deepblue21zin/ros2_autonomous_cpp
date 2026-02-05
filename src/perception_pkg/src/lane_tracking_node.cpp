@@ -19,6 +19,10 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("canny_high", 150);
     this->declare_parameter("gaussian_kernel", 5);
     this->declare_parameter("avg_window", 5);
+    this->declare_parameter("hough_threshold", 50);
+    this->declare_parameter("hough_min_length", 30);
+    this->declare_parameter("hough_max_gap", 80);
+    this->declare_parameter("slope_min", 0.3);
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
     use_compressed_ = this->get_parameter("use_compressed").as_bool();
@@ -29,6 +33,10 @@ LaneTrackingNode::LaneTrackingNode()
     canny_high_ = this->get_parameter("canny_high").as_int();
     gaussian_kernel_ = this->get_parameter("gaussian_kernel").as_int();
     avg_window_ = this->get_parameter("avg_window").as_int();
+    hough_threshold_ = this->get_parameter("hough_threshold").as_int();
+    hough_min_length_ = this->get_parameter("hough_min_length").as_int();
+    hough_max_gap_ = this->get_parameter("hough_max_gap").as_int();
+    slope_min_ = this->get_parameter("slope_min").as_double();
 
     // QoS for low latency: best_effort to skip old frames
     auto qos_sensor = rclcpp::QoS(1).best_effort();
@@ -115,6 +123,10 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
 void LaneTrackingNode::updateParams() {
     kp_ = this->get_parameter("kp").as_double();
     roi_y_ratio_ = this->get_parameter("roi_y_ratio").as_double();
+    hough_threshold_ = this->get_parameter("hough_threshold").as_int();
+    hough_min_length_ = this->get_parameter("hough_min_length").as_int();
+    hough_max_gap_ = this->get_parameter("hough_max_gap").as_int();
+    slope_min_ = this->get_parameter("slope_min").as_double();
 }
 
 std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
@@ -123,17 +135,15 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     cv::Mat overlay = roi_color.clone();
     int h = edges.rows;
     int w = edges.cols;
+    int mid_x = w / 2;
 
     // Probabilistic Hough Line Transform
-    // 2026 경기도 대회 트랙 최적화 (도로폭 850mm, 차선폭 50mm)
-    // - threshold: 30→25 (점선 차선 투표수 낮음 대응)
-    // - minLineLength: 20→10 (점선 세그먼트 ~10px 감지)
-    // - maxLineGap: 100→150 (점선 간격 더 넓게 연결)
     std::vector<cv::Vec4i> lines;
-    cv::HoughLinesP(edges, lines, 1, CV_PI / 180, 25, 10, 150);
+    cv::HoughLinesP(edges, lines, 1, CV_PI / 180,
+                    hough_threshold_, hough_min_length_, hough_max_gap_);
 
-    std::vector<std::array<float, 4>> left_points;
-    std::vector<std::array<float, 4>> right_points;
+    // 길이 기반 샘플링된 포인트 수집
+    std::vector<double> left_x, left_y, right_x, right_y;
 
     for (const auto& line : lines) {
         int x1 = line[0], y1 = line[1], x2 = line[2], y2 = line[3];
@@ -142,16 +152,20 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
 
         double slope = static_cast<double>(y2 - y1) / static_cast<double>(x2 - x1);
 
-        // Reject nearly horizontal lines
-        // 0.15→0.12로 완화: 대회 트랙 급커브 대응 (약 7도까지 허용)
-        if (std::abs(slope) < 0.12) continue;
+        if (std::abs(slope) < slope_min_) continue;
 
-        if (slope < 0) {
-            left_points.push_back({static_cast<float>(x1), static_cast<float>(y1),
-                                   static_cast<float>(x2), static_cast<float>(y2)});
-        } else {
-            right_points.push_back({static_cast<float>(x1), static_cast<float>(y1),
-                                    static_cast<float>(x2), static_cast<float>(y2)});
+        double avg_x = (x1 + x2) / 2.0;
+
+        // 기울기 + 위치 기반 좌/우 분류
+        if (slope < 0 && avg_x < mid_x + w * 0.1) {
+            sampleLinePoints(x1, y1, x2, y2, left_x, left_y);
+        } else if (slope > 0 && avg_x > mid_x - w * 0.1) {
+            sampleLinePoints(x1, y1, x2, y2, right_x, right_y);
+        }
+
+        if (debug_) {
+            cv::line(overlay, cv::Point(x1, y1), cv::Point(x2, y2),
+                     cv::Scalar(0, 255, 0), 2);
         }
     }
 
@@ -160,75 +174,45 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
 
     std::vector<int> lane_positions;
 
-    // Fit left lane
-    if (!left_points.empty()) {
-        std::vector<double> all_x, all_y;
-        for (const auto& pts : left_points) {
-            all_x.push_back(pts[0]);
-            all_y.push_back(pts[1]);
-            all_x.push_back(pts[2]);
-            all_y.push_back(pts[3]);
-        }
-        Eigen::Vector2d coef = fitPolynomial1D(all_y, all_x);
-        int lx_bottom = static_cast<int>(evaluatePolynomial1D(coef, y_bottom));
-        int lx_top = static_cast<int>(evaluatePolynomial1D(coef, y_top));
-        lane_positions.push_back(lx_bottom);
+    // RANSAC + 2차 다항식으로 차선 피팅
+    RansacFitResult left_result = fitPolynomial2DRansac(left_y, left_x, y_bottom, y_top);
+    RansacFitResult right_result = fitPolynomial2DRansac(right_y, right_x, y_bottom, y_top);
 
-        // Draw left lane (blue)
-        cv::line(overlay, cv::Point(lx_bottom, y_bottom), cv::Point(lx_top, y_top),
-                 cv::Scalar(255, 0, 0), 3);
+    if (left_result.valid) {
+        lane_positions.push_back(left_result.x_bottom);
+        // 곡선으로 차선 표시 (polylines)
+        cv::polylines(overlay, left_result.curve_points, false,
+                      cv::Scalar(255, 0, 0), 3);
     }
 
-    // Fit right lane
-    if (!right_points.empty()) {
-        std::vector<double> all_x, all_y;
-        for (const auto& pts : right_points) {
-            all_x.push_back(pts[0]);
-            all_y.push_back(pts[1]);
-            all_x.push_back(pts[2]);
-            all_y.push_back(pts[3]);
-        }
-        Eigen::Vector2d coef = fitPolynomial1D(all_y, all_x);
-        int rx_bottom = static_cast<int>(evaluatePolynomial1D(coef, y_bottom));
-        int rx_top = static_cast<int>(evaluatePolynomial1D(coef, y_top));
-        lane_positions.push_back(rx_bottom);
-
-        // Draw right lane (red)
-        cv::line(overlay, cv::Point(rx_bottom, y_bottom), cv::Point(rx_top, y_top),
-                 cv::Scalar(0, 0, 255), 3);
+    if (right_result.valid) {
+        lane_positions.push_back(right_result.x_bottom);
+        cv::polylines(overlay, right_result.curve_points, false,
+                      cv::Scalar(0, 0, 255), 3);
     }
 
     // Calculate center with single-lane fallback
-    // 대회 트랙: 우측 차선 반시계 주행 → 오른쪽=외측 실선, 왼쪽=중앙 점선
-    // 점선이 안 보일 때 실선 기준으로 중앙 추정
     double center_x;
-    bool left_detected = !left_points.empty();
-    bool right_detected = !right_points.empty();
+    bool left_detected = left_result.valid;
+    bool right_detected = right_result.valid;
 
     if (left_detected && right_detected) {
-        // 양쪽 차선 감지 → 평균으로 중앙 계산
         double sum = std::accumulate(lane_positions.begin(), lane_positions.end(), 0.0);
         center_x = sum / lane_positions.size();
     } else if (right_detected && !left_detected) {
-        // 오른쪽(외측 실선)만 감지 → 왼쪽으로 차선폭의 절반만큼 이동
-        // 대회 트랙 차선폭: 850mm/2 = 425mm ≈ 이미지 폭의 약 35%
         int estimated_lane_width = static_cast<int>(w * 0.35);
         center_x = lane_positions[0] - estimated_lane_width / 2;
-        // 경계 체크
         center_x = std::max(0.0, std::min(center_x, static_cast<double>(w - 1)));
     } else if (left_detected && !right_detected) {
-        // 왼쪽(중앙 점선)만 감지 → 오른쪽으로 차선폭의 절반만큼 이동
         int estimated_lane_width = static_cast<int>(w * 0.35);
         center_x = lane_positions[0] + estimated_lane_width / 2;
         center_x = std::max(0.0, std::min(center_x, static_cast<double>(w - 1)));
     } else {
-        // 차선 미감지 → 이미지 중앙 (직진 유지)
         center_x = static_cast<double>(w) / 2.0;
     }
 
-    // Draw center point (green)
-    cv::circle(overlay, cv::Point(static_cast<int>(center_x), y_bottom - 20),
-               10, cv::Scalar(0, 255, 0), -1);
+    cv::circle(overlay, cv::Point(static_cast<int>(center_x), y_bottom),
+               6, cv::Scalar(0, 255, 255), -1);
 
     return {center_x, overlay};
 }

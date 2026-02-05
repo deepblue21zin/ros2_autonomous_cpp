@@ -77,6 +77,8 @@ class Yolov8nSegConfig:
     iou_threshold: float = 0.45
     imgsz: int = 640
     device: Optional[str] = None
+    # 신호등 최소 면적 비율 (현재 미사용: API 호환용)
+    traffic_light_min_ratio: float = 0.0
     # 세그멘테이션 마스크 사용 여부
     use_seg_mask: bool = True
     # 장애물 감지 사용 여부
