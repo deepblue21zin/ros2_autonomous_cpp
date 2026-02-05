@@ -23,6 +23,9 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("hough_min_length", 30);
     this->declare_parameter("hough_max_gap", 80);
     this->declare_parameter("slope_min", 0.3);
+    this->declare_parameter("slope_max", 2.5);
+    this->declare_parameter("lane_x_margin", 0.40);
+    this->declare_parameter("lane_y_bottom", 0.50);
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
     use_compressed_ = this->get_parameter("use_compressed").as_bool();
@@ -37,6 +40,9 @@ LaneTrackingNode::LaneTrackingNode()
     hough_min_length_ = this->get_parameter("hough_min_length").as_int();
     hough_max_gap_ = this->get_parameter("hough_max_gap").as_int();
     slope_min_ = this->get_parameter("slope_min").as_double();
+    slope_max_ = this->get_parameter("slope_max").as_double();
+    lane_x_margin_ = this->get_parameter("lane_x_margin").as_double();
+    lane_y_bottom_ = this->get_parameter("lane_y_bottom").as_double();
 
     // QoS for low latency: best_effort to skip old frames
     auto qos_sensor = rclcpp::QoS(1).best_effort();
@@ -158,7 +164,6 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     cv::Mat overlay = roi_color.clone();
     int h = edges.rows;
     int w = edges.cols;
-    int mid_x = w / 2;
 
     // 디버그: 영역 경계선 시각화 (주차선 필터링 영역)
     if (debug_) {
