@@ -15,36 +15,18 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("kp", 0.6);
     this->declare_parameter("debug", false);
     this->declare_parameter("roi_y_ratio", 0.55);
-    this->declare_parameter("canny_low", 50);
-    this->declare_parameter("canny_high", 150);
+    this->declare_parameter("use_grayscale_threshold", false);
     this->declare_parameter("gaussian_kernel", 5);
     this->declare_parameter("avg_window", 5);
-    this->declare_parameter("hough_threshold", 50);
-    this->declare_parameter("hough_min_length", 30);
-    this->declare_parameter("hough_max_gap", 80);
-    this->declare_parameter("slope_min", 0.3);
-    this->declare_parameter("slope_max", 2.5);
-    this->declare_parameter("lane_x_margin", 0.40);
-    this->declare_parameter("lane_y_bottom", 0.50);
-    this->declare_parameter("min_lane_length", 40);
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
     use_compressed_ = this->get_parameter("use_compressed").as_bool();
     kp_ = this->get_parameter("kp").as_double();
     debug_ = this->get_parameter("debug").as_bool();
     roi_y_ratio_ = this->get_parameter("roi_y_ratio").as_double();
-    canny_low_ = this->get_parameter("canny_low").as_int();
-    canny_high_ = this->get_parameter("canny_high").as_int();
+    use_grayscale_threshold_ = this->get_parameter("use_grayscale_threshold").as_bool();
     gaussian_kernel_ = this->get_parameter("gaussian_kernel").as_int();
     avg_window_ = this->get_parameter("avg_window").as_int();
-    hough_threshold_ = this->get_parameter("hough_threshold").as_int();
-    hough_min_length_ = this->get_parameter("hough_min_length").as_int();
-    hough_max_gap_ = this->get_parameter("hough_max_gap").as_int();
-    slope_min_ = this->get_parameter("slope_min").as_double();
-    slope_max_ = this->get_parameter("slope_max").as_double();
-    lane_x_margin_ = this->get_parameter("lane_x_margin").as_double();
-    lane_y_bottom_ = this->get_parameter("lane_y_bottom").as_double();
-    min_lane_length_ = this->get_parameter("min_lane_length").as_int();
 
     // QoS for low latency: best_effort to skip old frames
     auto qos_sensor = rclcpp::QoS(1).best_effort();
@@ -120,8 +102,15 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
     // Extract ROI
     auto [roi_color, roi_y] = extractROI(frame, roi_y_ratio_);
 
-    // Preprocess: HSV 마스크 → 바이너리 (Sliding Window용)
-    cv::Mat binary_mask = preprocessForSlidingWindow(roi_color, gaussian_kernel_);
+    // Preprocess: 전처리 방식 선택 (Sliding Window용)
+    cv::Mat binary_mask;
+    if (use_grayscale_threshold_) {
+        // Grayscale Binary Threshold 방식
+        binary_mask = preprocessForSlidingWindowGrayscale(roi_color, gaussian_kernel_, 200);
+    } else {
+        // HSV Threshold 방식 (기본값)
+        binary_mask = preprocessForSlidingWindow(roi_color, gaussian_kernel_);
+    }
 
     // Detect lane center (Sliding Window + RANSAC)
     auto [lane_center, roi_overlay] = detectLaneCenter(binary_mask, roi_color, roi_y);

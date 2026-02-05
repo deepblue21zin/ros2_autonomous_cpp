@@ -96,6 +96,21 @@ class ArduinoBridgeNode(Node):
             f"[arduino_bridge] port={self.port} baud={self.baudrate} mode=continuous"
         )
 
+    def cleanup(self) -> None:
+        """Send stop command to Arduino on shutdown."""
+        try:
+            if self.serial and self.serial.is_open:
+                self.get_logger().info("[arduino_bridge] Sending stop command...")
+                stop_cmd = "V:0,S:90\n"
+                with self.serial_lock:
+                    self.serial.write(stop_cmd.encode("utf-8"))
+                    self.serial.flush()
+                import time
+                time.sleep(0.1)  # 명령 전송 대기
+                self.get_logger().info("[arduino_bridge] Motor stopped")
+        except Exception as e:
+            self.get_logger().error(f"[arduino_bridge] Cleanup error: {e}")
+
     def cmd_cb(self, msg: AckermannDrive) -> None:
         pwm = self._speed_to_pwm(msg.speed)
         servo = self._steer_to_servo(msg.steering_angle)
@@ -157,6 +172,9 @@ def main(args=None) -> None:
         pass
     finally:
         try:
+            # 모터 정지 명령 전송 (CRITICAL!)
+            node.cleanup()
+            # 시리얼 포트 닫기
             if node.serial and node.serial.is_open:
                 node.serial.close()
         except Exception:

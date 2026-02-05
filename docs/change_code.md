@@ -1389,6 +1389,552 @@ ros2 launch bringup camera_bag_test_launch.py use_cpp:=false      # Python 노�
 
 ---
 
+### 33. Arduino 조향 PID 클로즈드루프 제어 구현
+
+**날짜:** 2026-02-05
+
+**배경:**
+- 기존 `setServoAngle()`은 오픈루프 방식: 목표 각도에 비례하는 PWM만 출력하고 실제 도달 여부 확인 안 함
+- 서보 모터가 실제 서보가 아닌 DC 모터 + 모터 드라이버 방식이므로, 가변저항 피드백 기반 PID 제어 필수
+- 오픈루프 → 클로즈드루프 전환으로 조향 정확도 향상
+
+**수정 파일:**
+- `src/drivers/arduino_driver/ino/motor_control_with_feedback_ros2/motor_control_with_feedback_ros2.ino`
+
+---
+
+#### 버그 수정: `map_pot_to_angle()` constrain 순서
+
+**문제:** `constrain(pot_value, POT_RIGHT, POT_LEFT)` = `constrain(x, 398, 317)` → min > max이므로 모든 값이 398로 고정됨
+- 가변저항 피드백이 사실상 동작하지 않았음 (항상 120° 반환)
+
+**수정:**
+```cpp
+// 변경 전 (버그)
+pot_value = constrain(pot_value, POT_RIGHT, POT_LEFT);
+
+// 변경 후
+pot_value = constrain(pot_value, POT_LEFT, POT_RIGHT);
+```
+
+---
+
+#### 변경 1: PID 변수 및 상수 추가
+
+```cpp
+// PID 게인 (시리얼 'T' 명령으로 실시간 튜닝 가능)
+float PID_KP = 5.0;              // 비례 게인
+float PID_KI = 0.5;              // 적분 게인
+float PID_KD = 1.0;              // 미분 게인
+
+// PID 제한
+float PID_DEADBAND = 2.0;        // 오차 허용 범위 (도) - 목표 근처에서 모터 정지
+int PID_MIN_PWM = 30;            // 모터 구동 최소 PWM (정지 마찰 극복)
+int PID_MAX_PWM = 200;           // 모터 구동 최대 PWM (안전 제한)
+float PID_INTEGRAL_LIMIT = 50.0; // 적분 와인드업 방지
+
+// PID 상태
+float pid_integral = 0.0;
+float pid_prev_error = 0.0;
+unsigned long pid_last_time = 0;
+bool pid_enabled = true;         // PID 활성/비활성 전환
+```
+
+---
+
+#### 변경 2: `pid_steering_control()` 함수 추가
+
+**동작:**
+1. 가변저항에서 실제 조향각 읽기 (이동평균 필터 적용)
+2. 오차 = 목표 조향각 - 실제 조향각
+3. 데드밴드 체크: 오차 < ±2°이면 모터 정지 + 적분 리셋
+4. PID 출력 계산: `output = Kp*error + Ki*integral + Kd*derivative`
+5. 방향 결정:
+   - output > 0 (target > actual, 우회전 필요) → servo_IN1 활성
+   - output < 0 (target < actual, 좌회전 필요) → servo_IN2 활성
+6. PWM 범위 제한: MIN_PWM ~ MAX_PWM
+
+```cpp
+void pid_steering_control() {
+  read_steering_feedback();  // 가변저항 읽기
+
+  float error = (float)target_steering_angle - actual_steering_angle;
+
+  // 데드밴드: 목표 근처에서 모터 정지
+  if (abs(error) < PID_DEADBAND) {
+    analogWrite(servo_IN1, 0);
+    analogWrite(servo_IN2, 0);
+    pid_integral = 0;
+    return;
+  }
+
+  // PID 계산
+  unsigned long now = millis();
+  float dt = (now - pid_last_time) / 1000.0;
+  if (dt <= 0 || dt > 1.0) dt = 0.01;
+
+  pid_integral += error * dt;
+  pid_integral = constrain(pid_integral, -PID_INTEGRAL_LIMIT, PID_INTEGRAL_LIMIT);
+
+  float derivative = (error - pid_prev_error) / dt;
+
+  float output = PID_KP * error + PID_KI * pid_integral + PID_KD * derivative;
+
+  pid_prev_error = error;
+  pid_last_time = now;
+
+  // PWM 출력
+  int pwm = constrain(abs((int)output), PID_MIN_PWM, PID_MAX_PWM);
+
+  if (output > 0) {
+    // 우회전 방향 (angle 증가)
+    analogWrite(servo_IN1, pwm);
+    analogWrite(servo_IN2, 0);
+  } else {
+    // 좌회전 방향 (angle 감소)
+    analogWrite(servo_IN1, 0);
+    analogWrite(servo_IN2, pwm);
+  }
+}
+```
+
+---
+
+#### 변경 3: `setServoAngle()` 수정
+
+**변경 전:** 직접 모터 PWM 출력 (오픈루프)
+**변경 후:** PID 활성 시 target만 설정, PID 루프가 모터 제어
+
+```cpp
+void setServoAngle(int angle) {
+  target_steering_angle = angle;
+
+  if (pid_enabled) {
+    // PID 모드: target만 설정, pid_steering_control()이 모터 제어
+    return;
+  }
+
+  // 폴백: PID 비활성 시 기존 오픈루프 방식
+  if (angle < 90) {
+    int power = map(90 - angle, 0, 90, 0, 255);
+    analogWrite(servo_IN1, 0);
+    analogWrite(servo_IN2, power);
+  } else if (angle > 90) {
+    int power = map(angle - 90, 0, 90, 0, 255);
+    analogWrite(servo_IN1, power);
+    analogWrite(servo_IN2, 0);
+  } else {
+    analogWrite(servo_IN1, 0);
+    analogWrite(servo_IN2, 0);
+  }
+}
+```
+
+---
+
+#### 변경 4: 메인 루프 수정
+
+```cpp
+void loop() {
+  // 1. 명령 수신 (기존과 동일)
+
+  // 2. PID 조향 제어 (매 루프 실행)
+  if (pid_enabled) {
+    pid_steering_control();
+  }
+
+  // 3. 초음파 측정 (기존과 동일)
+  // 4. 피드백 전송 (디버그용, 기존과 동일)
+}
+```
+
+---
+
+#### 변경 5: 'T' 명령 추가 (PID 실시간 튜닝)
+
+시리얼로 PID 게인을 재플래싱 없이 실시간 조정:
+```
+T:P:5.0   → Kp = 5.0
+T:I:0.5   → Ki = 0.5
+T:D:1.0   → Kd = 1.0
+T:B:2.0   → Deadband = 2.0°
+T:ON      → PID 활성화
+T:OFF     → PID 비활성화 (오픈루프 폴백)
+```
+
+---
+
+#### PID 튜닝 가이드
+
+| 증상 | 조치 |
+|------|------|
+| 목표까지 도달이 느림 | Kp 증가 (5.0 → 8.0) |
+| 목표 근처에서 진동 | Kp 감소 또는 Kd 증가 |
+| 정상상태 오차 (항상 1~2° 차이) | Ki 증가 (0.5 → 1.0) |
+| 적분 와인드업 (과도한 오버슈트) | PID_INTEGRAL_LIMIT 감소 |
+| 모터가 멈추지 않고 떨림 | PID_DEADBAND 증가 (2.0 → 3.0) |
+
+**튜닝 순서:**
+1. Ki=0, Kd=0으로 설정 후 Kp만으로 빠른 응답 확보
+2. 진동이 있으면 Kd 추가
+3. 정상상태 오차가 있으면 Ki 추가
+
+---
+
+#### 변경하지 않는 것
+
+- `arduino_bridge_node.py`: PID는 아두이노에서 처리, ROS2 측 변경 불필요
+- 초음파 센서 코드: 기존 그대로
+- 시리얼 프로토콜 `V:PWM,S:SERVO`: 기존 그대로 (S:값이 target으로 설정됨)
+- 캘리브레이션 모드 ('K' 명령): 기존 그대로
+
+---
+
+#### 테스트 및 튜닝 가이드 (Step-by-Step)
+
+> 아래 과정은 Arduino IDE의 **시리얼 모니터**에서 수행합니다.
+> 차량 바퀴가 자유롭게 움직일 수 있도록 차체를 들어올린 상태에서 테스트하세요.
+
+---
+
+##### STEP 0: 준비
+
+1. Arduino IDE를 열고 `motor_control_with_feedback_ros2.ino` 파일을 엽니다.
+2. 상단 메뉴 **Tools → Board** 에서 사용 중인 보드 선택 (Arduino Mega 2560 등)
+3. **Tools → Port** 에서 아두이노가 연결된 포트 선택 (`/dev/ttyACM0` 또는 `COM3` 등)
+4. **Upload 버튼 (→)** 을 클릭하여 펌웨어를 업로드합니다.
+5. 업로드 완료 후, **Tools → Serial Monitor** 를 엽니다.
+6. 시리얼 모니터 하단에서 다음을 설정합니다:
+   - **Baud rate**: `115200`
+   - **Line ending**: `Newline` (또는 `Both NL & CR`)
+
+업로드 직후 시리얼 모니터에 다음이 표시되면 정상:
+```
+Arduino Ready!
+ROS2 Compatible Firmware (PID Steering)
+Protocol: V:PWM,S:SERVO or single char (F,B,L,R,S)
+PID Tuning: T:P:5.0, T:I:0.5, T:D:1.0, T:B:2.0, T:ON, T:OFF
+Example: V:100,S:90
+```
+
+---
+
+##### STEP 1: 현재 상태 확인 (D 명령)
+
+시리얼 모니터 **입력창**에 `D`를 입력하고 **Enter (또는 Send)** 를 누릅니다.
+
+```
+입력: D
+```
+
+출력 예시:
+```
+========== Debug Info ==========
+[Ultrasonic Sensors]
+  Front:       25 cm
+  Front-Left:  30 cm
+  ...
+[Steering]
+  Target Angle:  90 deg        ← 현재 목표 각도 (90 = 직진)
+  Actual Angle:  89.3 deg      ← 가변저항이 읽은 실제 각도
+  Error:         0.7 deg       ← 목표 - 실제 (0에 가까울수록 좋음)
+  Raw ADC:       355           ← 가변저항 원시 값 (317~398 범위)
+  Voltage:       1.73 V        ← 가변저항 전압
+[Motor]
+  PWM:           0
+[Calibration]
+  POT_LEFT:   317 (1.55V)
+  POT_CENTER: 357 (1.75V)
+  POT_RIGHT:  398 (1.95V)
+[PID Control]
+  Enabled:    YES              ← PID 활성화 상태
+  Kp:         5.00             ← 현재 비례 게인
+  Ki:         0.50             ← 현재 적분 게인
+  Kd:         1.00             ← 현재 미분 게인
+  Deadband:   2.0 deg          ← 오차 허용 범위
+  Integral:   0.00             ← 현재 적분 누적값
+  Prev Error: 0.0              ← 이전 루프의 오차
+[Current Command]
+  Command: S
+================================
+```
+
+**확인할 것:**
+| 항목 | 정상 범위 | 이상 시 원인 |
+|------|-----------|-------------|
+| Actual Angle | 88~92° (바퀴가 직진일 때) | 가변저항 연결 불량 또는 캘리브레이션 필요 |
+| Raw ADC | 340~370 (직진 상태) | 가변저항 핀(A0) 연결 확인 |
+| Error | -2 ~ +2° (데드밴드 이내) | 정상 - PID가 데드밴드 내이므로 모터 정지 상태 |
+| Enabled | YES | YES가 아니면 `T:ON` 입력 |
+
+---
+
+##### STEP 2: 좌회전 테스트
+
+시리얼 모니터에 다음을 입력합니다:
+```
+입력: V:0,S:75
+```
+- `V:0` = 바퀴 모터 정지 (조향만 테스트)
+- `S:75` = 목표 조향각 75° (좌회전 15°)
+
+**예상 동작:**
+1. 입력 직후 → 서보 모터가 **왼쪽으로 회전**하기 시작
+2. 0.5~2초 후 → 바퀴가 왼쪽을 향한 채 **정지**
+
+**확인 방법:** 바퀴가 멈춘 후 `D`를 입력하여 상태를 확인합니다.
+```
+입력: D
+```
+
+출력에서 확인할 항목:
+```
+[Steering]
+  Target Angle:  75 deg        ← 75가 맞는지 확인
+  Actual Angle:  74.2 deg      ← 75° 근처여야 함 (73~77° 범위)
+  Error:         0.8 deg       ← 데드밴드(2°) 이내면 정상
+```
+
+**판단 기준:**
+| 상황 | Actual 값 | 의미 | 대처 |
+|------|-----------|------|------|
+| 정상 | 73~77° | PID가 목표에 수렴함 | 다음 단계로 진행 |
+| 오버슈트 | 70° 이하 | Kp가 너무 크거나 Kd가 부족 | `T:P:3.0` 또는 `T:D:2.0` |
+| 미도달 | 80° 이상 | Kp가 너무 작음 | `T:P:8.0` |
+| 진동 | 계속 변함 (70↔80 반복) | Kp 과대, Kd 부족 | `T:P:3.0` 그리고 `T:D:3.0` |
+| 무반응 | 90° 그대로 | 모터 배선 문제 또는 PID 비활성 | 배선 확인, `T:ON` |
+
+---
+
+##### STEP 3: 우회전 테스트
+
+```
+입력: V:0,S:105
+```
+- `S:105` = 목표 조향각 105° (우회전 15°)
+
+확인:
+```
+입력: D
+```
+```
+[Steering]
+  Target Angle:  105 deg
+  Actual Angle:  104.5 deg     ← 103~107° 범위면 정상
+  Error:         0.5 deg       ← 데드밴드(2°) 이내
+```
+
+---
+
+##### STEP 4: 직진 복귀 테스트
+
+```
+입력: V:0,S:90
+```
+
+확인:
+```
+입력: D
+```
+```
+[Steering]
+  Target Angle:  90 deg
+  Actual Angle:  89.8 deg      ← 88~92° 범위면 정상
+  Error:         0.2 deg
+```
+
+---
+
+##### STEP 5: 연속 피드백으로 수렴 과정 관찰 (선택)
+
+PID가 목표까지 수렴하는 과정을 실시간으로 보려면, 펌웨어에서 `ENABLE_STEERING_FEEDBACK`을 `true`로 변경 후 재업로드해야 합니다.
+
+펌웨어 44번째 줄:
+```cpp
+// 변경 전
+bool ENABLE_STEERING_FEEDBACK = false;
+
+// 변경 후
+bool ENABLE_STEERING_FEEDBACK = true;
+```
+
+재업로드 후 시리얼 모니터에서:
+```
+입력: V:0,S:75
+```
+
+출력 (자동으로 반복 출력됨):
+```
+STR:75,90.0,−15.0,357,1.75       ← 시작: 목표 75, 실제 90, 오차 -15
+STR:75,85.2,−10.2,345,1.68       ← 모터가 좌회전 중
+STR:75,80.1,−5.1,335,1.64        ← 목표에 접근 중
+STR:75,76.3,−1.3,323,1.58        ← 데드밴드 진입 → 모터 정지
+STR:75,75.8,−0.8,321,1.57        ← 수렴 완료 (안정 상태)
+STR:75,75.8,−0.8,321,1.57        ← 계속 유지
+```
+
+**STR 출력 형식 설명:**
+```
+STR:target,actual,error,adc,voltage
+     │       │      │     │    └─ 가변저항 전압 (V)
+     │       │      │     └────── 가변저항 원시 ADC 값 (0~1023)
+     │       │      └──────────── 오차 = target - actual (도)
+     │       └─────────────────── 실제 조향각 (도, 가변저항 측정)
+     └─────────────────────────── 목표 조향각 (도, 명령값)
+```
+
+**정상 수렴 패턴:**
+1. error가 처음에 크다 (예: -15.0)
+2. 점점 0에 가까워진다 (-10 → -5 → -1)
+3. 데드밴드(±2°) 이내로 들어오면 모터 정지
+4. error가 안정적으로 유지됨 (±2° 이내)
+
+**비정상 패턴과 대처:**
+
+| 패턴 | STR 출력 예시 | 원인 | 해결 |
+|------|--------------|------|------|
+| **수렴 안 함** | error가 계속 -15 유지 | 모터 파워 부족 | `T:P:10.0` (Kp 증가) |
+| **진동** | error가 -5, +5, -5 반복 | Kp 과대, 댐핑 부족 | `T:P:3.0` 그리고 `T:D:3.0` |
+| **오버슈트 후 진동** | -15 → +5 → -3 → +2 반복 | Kd 부족 | `T:D:2.0` |
+| **느린 수렴** | -15 → -14 → -13... (1초에 1°) | Kp 부족 | `T:P:8.0` |
+| **정상상태 오차** | error가 -3 에서 안 줄어듦 | Ki 부족 또는 데드밴드 큼 | `T:I:1.0` 또는 `T:B:1.5` |
+
+---
+
+##### STEP 6: PID 튜닝 (실시간)
+
+PID 게인은 **재업로드 없이** 시리얼 명령으로 실시간 변경할 수 있습니다.
+
+**튜닝 명령어:**
+| 입력 | 의미 | 언제 쓰는가 |
+|------|------|------------|
+| `T:P:5.0` | Kp를 5.0으로 변경 | 응답 속도 조절 (클수록 빠름) |
+| `T:I:0.5` | Ki를 0.5로 변경 | 정상상태 오차 제거 (클수록 강함) |
+| `T:D:1.0` | Kd를 1.0으로 변경 | 진동 억제 (클수록 강함) |
+| `T:B:2.0` | Deadband를 2.0°로 변경 | 목표 근처 떨림 방지 (클수록 둔감) |
+| `T:ON` | PID 활성화 | PID 끈 후 다시 켤 때 |
+| `T:OFF` | PID 비활성화 (오픈루프) | PID 문제 시 긴급 비활성화 |
+
+**튜닝 순서 (초보자용):**
+
+**1단계: Kp만 조정 (Ki=0, Kd=0으로 시작)**
+```
+입력: T:I:0.0       ← Ki를 0으로
+입력: T:D:0.0       ← Kd를 0으로
+입력: T:P:3.0       ← 낮은 Kp로 시작
+입력: V:0,S:75      ← 좌회전 명령
+```
+→ 바퀴가 왼쪽으로 천천히 이동하면 Kp 증가:
+```
+입력: T:P:5.0
+입력: V:0,S:90      ← 직진 복귀
+입력: V:0,S:75      ← 다시 좌회전
+```
+→ 바퀴가 빠르게 이동하지만 진동하면 Kp가 너무 큼, 줄이기
+
+**목표:** 바퀴가 0.5~1초 내에 목표에 도달하고, 약간의 오버슈트만 있는 Kp 찾기
+
+**2단계: Kd 추가 (진동 억제)**
+```
+입력: T:D:1.0
+입력: V:0,S:75
+```
+→ 진동이 줄어들면 OK. 아직 진동하면 Kd 증가:
+```
+입력: T:D:2.0
+```
+→ 반응이 너무 느려지면 Kd가 너무 큼, 줄이기
+
+**목표:** 오버슈트 없이 부드럽게 목표에 도달하는 Kd 찾기
+
+**3단계: Ki 추가 (정상상태 오차 제거)**
+```
+입력: T:I:0.3
+입력: V:0,S:75
+```
+→ `D` 명령으로 error 확인. 0에 가까우면 OK
+→ error가 여전히 1~2° 남아있으면:
+```
+입력: T:I:0.5
+```
+→ 오버슈트가 생기면 Ki가 너무 큼, 줄이기
+
+**목표:** Error가 1° 이내로 수렴하는 Ki 찾기
+
+**4단계: 최종 확인**
+다양한 각도에서 테스트:
+```
+입력: V:0,S:60      ← 최대 좌회전
+입력: D              ← 확인
+입력: V:0,S:120     ← 최대 우회전
+입력: D              ← 확인
+입력: V:0,S:90      ← 직진 복귀
+입력: D              ← 확인
+```
+모든 경우에 Error가 데드밴드(±2°) 이내면 튜닝 완료.
+
+**튜닝 완료 후:** 찾은 최적값을 펌웨어에 반영 (다음 업로드 시에도 유지되도록):
+```cpp
+// 예: 최종 튜닝 결과가 Kp=6.0, Ki=0.3, Kd=2.0이면
+float PID_KP = 6.0;
+float PID_KI = 0.3;
+float PID_KD = 2.0;
+```
+
+---
+
+##### STEP 7: ROS2 연동 테스트
+
+PID 튜닝이 완료되면, 실제 ROS2에서 명령을 보내 테스트합니다.
+시리얼 모니터를 **닫고** (ROS2가 시리얼 포트를 사용해야 하므로), 터미널에서:
+
+```bash
+# 터미널 1: 런치 파일 실행
+cd ~/workspace/ros2_ws
+source install/setup.bash
+ros2 launch bringup track_launch.py test_mode:=true
+
+# 터미널 2: 수동으로 조향 명령 보내기
+ros2 topic pub /arduino/cmd ackermann_msgs/msg/AckermannDrive \
+  "{speed: 0.0, steering_angle: -0.26}" --once
+# → steering_angle: -0.26 rad ≈ -15° → Arduino가 S:75 수신 → 좌회전
+
+ros2 topic pub /arduino/cmd ackermann_msgs/msg/AckermannDrive \
+  "{speed: 0.0, steering_angle: 0.0}" --once
+# → 직진 (S:90)
+
+ros2 topic pub /arduino/cmd ackermann_msgs/msg/AckermannDrive \
+  "{speed: 0.0, steering_angle: 0.26}" --once
+# → steering_angle: 0.26 rad ≈ +15° → Arduino가 S:105 수신 → 우회전
+```
+
+**ROS2 조향각 → Arduino 서보각 변환 공식:**
+```
+서보각 = 90 + (steering_angle_rad × 180 / π)
+
+예:
+  steering_angle = -0.52 rad → 90 + (-30) = 60°  (최대 좌회전)
+  steering_angle =  0.00 rad → 90 + ( 0 ) = 90°  (직진)
+  steering_angle = +0.52 rad → 90 + (+30) = 120° (최대 우회전)
+```
+
+---
+
+##### 문제 해결 체크리스트
+
+| 증상 | 확인 사항 | 해결 |
+|------|----------|------|
+| D 입력해도 아무것도 안 나옴 | 시리얼 모니터 baud rate 확인 (115200) | Baud rate 변경 |
+| D 입력 시 Actual Angle이 항상 0 또는 120 | 가변저항 A0 핀 연결 확인 | 점퍼선 재연결 |
+| D 입력 시 Raw ADC가 0 | 가변저항 전원(5V, GND) 확인 | 배선 확인 |
+| V:0,S:75 입력해도 바퀴 안 움직임 | 서보 모터 드라이버 전원 확인 | 모터 드라이버 전원 ON |
+| 바퀴가 반대로 움직임 (우회전해야 하는데 좌회전) | servo_IN1, servo_IN2 배선 뒤바뀜 | 6번, 7번 핀 배선 교체 |
+| 바퀴가 끝까지 가서 안 돌아옴 | PID 방향이 반대 | `T:OFF`로 PID 끄고, servo_IN1/IN2 배선 교체 후 `T:ON` |
+| 바퀴가 목표 근처에서 덜덜 떨림 | 데드밴드가 너무 작음 | `T:B:3.0` (데드밴드 증가) |
+| 초음파 데이터가 시리얼에 계속 나옴 | 정상 동작 (5루프마다 출력) | 무시해도 됨, 형식: `F:25,FL:30,...` |
+
+---
+
 ## 예정된 변경
 
 - [ ] Docker GPU 지원 추가 (NVIDIA Container Toolkit)

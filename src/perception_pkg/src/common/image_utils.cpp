@@ -25,20 +25,6 @@ cv::Mat thresholdWhiteTracking(const cv::Mat& hsv) {
     return mask;
 }
 
-cv::Mat thresholdYellow(const cv::Mat& hsv) {
-    cv::Mat mask;
-    // lane_marking_node: lower=[15, 80, 80], upper=[40, 255, 255]
-    cv::inRange(hsv, cv::Scalar(15, 80, 80), cv::Scalar(40, 255, 255), mask);
-    return mask;
-}
-
-cv::Mat thresholdYellowTracking(const cv::Mat& hsv) {
-    cv::Mat mask;
-    // lane_tracking_node: lower=[15, 80, 80], upper=[35, 255, 255]
-    cv::inRange(hsv, cv::Scalar(15, 80, 80), cv::Scalar(35, 255, 255), mask);
-    return mask;
-}
-
 std::pair<cv::Mat, int> extractROI(const cv::Mat& frame, float roi_y_ratio) {
     int h = frame.rows;
     int y_start = static_cast<int>(h * roi_y_ratio);
@@ -60,13 +46,8 @@ cv::Mat preprocessForLaneDetection(const cv::Mat& roi_color,
     cv::Mat hsv;
     cv::cvtColor(roi_color, hsv, cv::COLOR_BGR2HSV);
 
-    // Threshold white and yellow
-    cv::Mat mask_white = thresholdWhiteTracking(hsv);
-    cv::Mat mask_yellow = thresholdYellowTracking(hsv);
-
-    // Combine masks
-    cv::Mat mask;
-    cv::bitwise_or(mask_white, mask_yellow, mask);
+    // Threshold white only
+    cv::Mat mask = thresholdWhiteTracking(hsv);
 
     // Apply mask to image
     cv::Mat masked;
@@ -95,16 +76,28 @@ cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel
     cv::Mat hsv;
     cv::cvtColor(roi_color, hsv, cv::COLOR_BGR2HSV);
 
-    // 흰색 + 노란색 마스크
-    cv::Mat mask_white = thresholdWhiteTracking(hsv);
-    cv::Mat mask_yellow = thresholdYellowTracking(hsv);
-
-    cv::Mat mask;
-    cv::bitwise_or(mask_white, mask_yellow, mask);
+    // 흰색 마스크만 사용
+    cv::Mat mask = thresholdWhiteTracking(hsv);
 
     // 노이즈 제거: 가우시안 블러 → 모폴로지 닫기 (점선 gap 연결)
     cv::GaussianBlur(mask, mask, cv::Size(gaussian_kernel, gaussian_kernel), 0);
     mask = morphClose(mask, 5, 2);
+
+    return mask;
+}
+
+cv::Mat preprocessForSlidingWindowGrayscale(const cv::Mat& roi_color, int gaussian_kernel, int threshold) {
+    // Grayscale 변환
+    cv::Mat gray;
+    cv::cvtColor(roi_color, gray, cv::COLOR_BGR2GRAY);
+
+    // Binary threshold: 밝기 threshold 이상만 흰색 차선으로 인정
+    cv::Mat binary;
+    cv::threshold(gray, binary, threshold, 255, cv::THRESH_BINARY);
+
+    // 노이즈 제거: 가우시안 블러 → 모폴로지 닫기 (점선 gap 연결)
+    cv::GaussianBlur(binary, binary, cv::Size(gaussian_kernel, gaussian_kernel), 0);
+    cv::Mat mask = morphClose(binary, 5, 2);
 
     return mask;
 }

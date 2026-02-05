@@ -15,14 +15,6 @@ cv::Mat thresholdWhite(const cv::Mat& hsv);
 // Python: lower=[0, 0, 200], upper=[180, 40, 255]
 cv::Mat thresholdWhiteTracking(const cv::Mat& hsv);
 
-// HSV thresholding for yellow center line
-// Python: lower=[15, 80, 80], upper=[40, 255, 255]
-cv::Mat thresholdYellow(const cv::Mat& hsv);
-
-// HSV thresholding for yellow center line (lane_tracking version)
-// Python: lower=[15, 80, 80], upper=[35, 255, 255]
-cv::Mat thresholdYellowTracking(const cv::Mat& hsv);
-
 // Extract ROI from frame starting at roi_y_ratio from top
 // Returns: (roi_color, roi_y_start)
 std::pair<cv::Mat, int> extractROI(const cv::Mat& frame, float roi_y_ratio);
@@ -36,8 +28,11 @@ cv::Mat preprocessForLaneDetection(const cv::Mat& roi_color,
                                    int gaussian_kernel,
                                    int canny_low, int canny_high);
 
-// Preprocess for sliding window (HSV mask → blur → morphClose)
+// Preprocess for sliding window - HSV version (HSV mask → blur → morphClose)
 cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel);
+
+// Preprocess for sliding window - Grayscale version (grayscale → binary threshold → blur → morphClose)
+cv::Mat preprocessForSlidingWindowGrayscale(const cv::Mat& roi_color, int gaussian_kernel, int threshold = 200);
 
 // Apply morphological closing
 cv::Mat morphClose(const cv::Mat& mask, int kernel_size = 3, int iterations = 2);

@@ -31,18 +31,9 @@ private:
     double kp_;
     bool debug_;
     double roi_y_ratio_;
-    int canny_low_;
-    int canny_high_;
+    bool use_grayscale_threshold_;
     int gaussian_kernel_;
     int avg_window_;
-    int hough_threshold_;
-    int hough_min_length_;
-    int hough_max_gap_;
-    double slope_min_;
-    double slope_max_;
-    double lane_x_margin_;
-    double lane_y_bottom_;
-    int min_lane_length_;
 
     // Moving average buffer
     std::deque<double> offset_buffer_;

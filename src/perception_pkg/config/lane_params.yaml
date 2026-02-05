@@ -1,32 +1,18 @@
 /**:
   ros__parameters:
     # Lane Tracking Parameters (2026 경기도 대회 트랙 최적화)
+    # Sliding Window + RANSAC 방식
     kp: 0.7                 # 조향 게인 (트랙 폭 850mm)
     roi_y_ratio: 0.30       # ROI 시작 위치
 
+    # 전처리 방식 선택
+    use_grayscale_threshold: false  # true: Grayscale Binary Threshold, false: HSV Threshold
+
     # 전처리: 주름/텍스처 노이즈 억제
-    gaussian_kernel: 7      # 5→7 (주름 블러 강화)
-    canny_low: 80           # 60→80 (약한 엣지 무시)
-    canny_high: 200         # 150→200 (강한 엣지만 통과)
-
-    # Hough 변환: 점선 검출 최적화
-    hough_threshold: 40     # 50→40 (점선 세그먼트 검출 강화)
-    hough_min_length: 20    # 30→20 (짧은 점선 세그먼트 허용)
-    hough_max_gap: 150      # 80→150 (넓은 점선 간격 연결)
-
-    # 기울기 필터: 차선에 가까운 각도만 허용
-    slope_min: 0.3          # 0.12→0.3 (거의 수평인 주름선 제거)
-    slope_max: 3.5          # 수직에 가까운 선 제거 (74도, 급커브 대응)
-
-    # 선 길이 필터: 짧은 선(주차선/노이즈) 제거
-    min_lane_length: 40     # 최소 40px 이상인 선만 차선으로 인정
-
-    # 영역 필터: 좌우 영역에서만 차선 검출
-    lane_x_margin: 0.45     # 좌측 45%, 우측 45% 영역만 차선으로 인정 (중앙 10% 무시)
-    lane_y_bottom: 0.55     # 선이 하단 45% 영역을 지나야 차선으로 인정 (0.65→0.55, 코너 대응)
+    gaussian_kernel: 7      # 가우시안 블러 커널 크기 (클수록 노이즈 제거 강함)
 
     # 이동 평균
-    avg_window: 10          # 5→10 (넓은 점선 간격 대응, 약 0.33초 유지)
+    avg_window: 10          # 넓은 점선 간격 대응 (약 0.33초 유지)
 
     # 디버그 (실제 주행 시 false 권장)
     debug: false
