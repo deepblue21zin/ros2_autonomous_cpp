@@ -52,6 +52,11 @@ LaneTrackingNode::LaneTrackingNode()
             std::bind(&LaneTrackingNode::imageCallback, this, std::placeholders::_1));
     }
 
+    // Subscribe to stop line for crosswalk filtering
+    stop_line_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
+        "/perception/stop_line", 10,
+        std::bind(&LaneTrackingNode::stopLineCallback, this, std::placeholders::_1));
+
     // Setup publishers
     offset_pub_ = this->create_publisher<std_msgs::msg::Float32>("/lane/center_offset", 10);
     steer_pub_ = this->create_publisher<std_msgs::msg::Float32>("/lane/steering_angle", 10);
@@ -86,6 +91,20 @@ void LaneTrackingNode::compressedCallback(const sensor_msgs::msg::CompressedImag
     }
 }
 
+void LaneTrackingNode::stopLineCallback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
+    // Parse stop line message: [x1, y1, x2, y2, distance_m]
+    if (msg->data.size() >= 5) {
+        current_stop_line_ = StopLine(
+            msg->data[0], msg->data[1],
+            msg->data[2], msg->data[3],
+            msg->data[4]
+        );
+    } else {
+        // No valid stop line
+        current_stop_line_ = StopLine();
+    }
+}
+
 void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::Header& header) {
     // Update parameters dynamically
     updateParams();
@@ -98,7 +117,7 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
                                                 canny_low_, canny_high_);
 
     // Detect lane center
-    auto [lane_center, roi_overlay] = detectLaneCenter(edges, roi_color);
+    auto [lane_center, roi_overlay] = detectLaneCenter(edges, roi_color, roi_y);
 
     // Compute steering
     auto [steering, offset_norm] = computeSteering(lane_center, frame.cols);
@@ -112,10 +131,17 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
     steer_msg.data = static_cast<float>(steering);
     steer_pub_->publish(steer_msg);
 
-    // Publish overlay
+    // Publish overlay (매 프레임 발행, 해상도 축소로 대역폭 절감)
     if (debug_) {
         cv::Mat overlay = composeOverlay(frame, roi_overlay, roi_y, lane_center);
-        sensor_msgs::msg::Image::SharedPtr overlay_msg = cv_bridge::CvImage(header, "bgr8", overlay).toImageMsg();
+
+        // 해상도 절반으로 축소 (640x480 → 320x240, 대역폭 1/4로 감소)
+        cv::Mat small_overlay;
+        cv::resize(overlay, small_overlay, cv::Size(), 0.5, 0.5, cv::INTER_LINEAR);
+
+        // 일반 Image로 발행
+        sensor_msgs::msg::Image::SharedPtr overlay_msg =
+            cv_bridge::CvImage(header, "bgr8", small_overlay).toImageMsg();
         overlay_pub_->publish(*overlay_msg);
     }
 }
@@ -130,7 +156,7 @@ void LaneTrackingNode::updateParams() {
 }
 
 std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
-    const cv::Mat& edges, const cv::Mat& roi_color) {
+    const cv::Mat& edges, const cv::Mat& roi_color, int roi_y) {
 
     cv::Mat overlay = roi_color.clone();
     int h = edges.rows;
@@ -145,6 +171,17 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     // 길이 기반 샘플링된 포인트 수집
     std::vector<double> left_x, left_y, right_x, right_y;
 
+    // Get crosswalk bbox for filtering (if valid)
+    float crosswalk_x1 = 0, crosswalk_x2 = 0;
+    float crosswalk_y1 = 0, crosswalk_y2 = 0;
+    bool has_crosswalk = current_stop_line_.valid;
+    if (has_crosswalk) {
+        crosswalk_x1 = current_stop_line_.x1;
+        crosswalk_y1 = current_stop_line_.y1 - roi_y;  // Convert to ROI coordinates
+        crosswalk_x2 = current_stop_line_.x2;
+        crosswalk_y2 = current_stop_line_.y2 - roi_y;
+    }
+
     for (const auto& line : lines) {
         int x1 = line[0], y1 = line[1], x2 = line[2], y2 = line[3];
 
@@ -153,6 +190,18 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         double slope = static_cast<double>(y2 - y1) / static_cast<double>(x2 - x1);
 
         if (std::abs(slope) < slope_min_) continue;
+
+        // Filter out lines inside crosswalk bbox (횡단보도 필터링)
+        if (has_crosswalk) {
+            // Check if line is inside crosswalk region
+            bool line_in_crosswalk =
+                (x1 >= crosswalk_x1 && x1 <= crosswalk_x2 &&
+                 y1 >= crosswalk_y1 && y1 <= crosswalk_y2) ||
+                (x2 >= crosswalk_x1 && x2 <= crosswalk_x2 &&
+                 y2 >= crosswalk_y1 && y2 <= crosswalk_y2);
+
+            if (line_in_crosswalk) continue;  // Skip crosswalk lines
+        }
 
         double avg_x = (x1 + x2) / 2.0;
 
@@ -170,7 +219,7 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     }
 
     int y_bottom = h - 1;
-    int y_top = static_cast<int>(h * 0.6);
+    int y_top = static_cast<int>(h * 0.3); // ROI 내에서 라인 그리기 범위 작아질수록 증가(상단의 30%까지 봄)
 
     std::vector<int> lane_positions;
 

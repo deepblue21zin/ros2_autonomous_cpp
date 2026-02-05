@@ -1,1 +1,0 @@
-/root/ros2_ws/src/perception_pkg/include/perception_pkg/common/image_utils.hpp

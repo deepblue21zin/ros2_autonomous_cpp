@@ -1,1 +1,0 @@
-/root/ros2_ws/src/drivers/arduino_driver/include/arduino_driver/serial_protocol.hpp

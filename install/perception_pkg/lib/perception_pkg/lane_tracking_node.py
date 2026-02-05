@@ -1,1 +1,0 @@
-/root/ros2_ws/src/perception_pkg/scripts/lane_tracking_node.py

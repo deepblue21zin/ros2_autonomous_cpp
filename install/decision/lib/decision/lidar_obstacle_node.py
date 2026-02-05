@@ -1,1 +1,0 @@
-/root/ros2_ws/src/decision/scripts/lidar_obstacle_node.py

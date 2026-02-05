@@ -11,8 +11,17 @@ cv::Mat thresholdWhite(const cv::Mat& hsv) {
 
 cv::Mat thresholdWhiteTracking(const cv::Mat& hsv) {
     cv::Mat mask;
-    // lane_tracking_node: lower=[0, 0, 200], upper=[180, 40, 255]
-    cv::inRange(hsv, cv::Scalar(0, 0, 120), cv::Scalar(180, 60, 255), mask);
+    // 흰색 차선 검출 - HSV 파라미터 가이드:
+    // cv::Scalar(H, S, V):
+    //   H (Hue/색상):        0-180 범위
+    //   S (Saturation/채도): 0-255 (0=무채색, 255=순수 색상)
+    //   V (Value/밝기):      0-255 (0=검정, 255=흰색)
+    //
+    // 조명이 어두울 때: S와 V 범위를 넓게 설정
+    cv::inRange(hsv,
+                cv::Scalar(0, 0, 120),    // lower: H=0,   S=0,  V=120 (어두운 회색도 포함)
+                cv::Scalar(180, 60, 255), // upper: H=180, S=60, V=255 (약간 채도 있어도 허용)
+                mask);
     return mask;
 }
 

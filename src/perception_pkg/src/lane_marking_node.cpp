@@ -14,8 +14,6 @@ LaneMarkingNode::LaneMarkingNode()
     this->declare_parameter("camera_topic", "/camera/image_raw");
     this->declare_parameter("use_compressed", false);
     this->declare_parameter("roi_y_ratio", 0.55);
-    this->declare_parameter("canny_low", 50);
-    this->declare_parameter("canny_high", 150);
     this->declare_parameter("stop_roi_ratio", 0.25);
     this->declare_parameter("nwindows", 9);
     this->declare_parameter("window_margin", 50);
@@ -29,8 +27,6 @@ LaneMarkingNode::LaneMarkingNode()
     camera_topic_ = this->get_parameter("camera_topic").as_string();
     use_compressed_ = this->get_parameter("use_compressed").as_bool();
     roi_y_ratio_ = this->get_parameter("roi_y_ratio").as_double();
-    canny_low_ = this->get_parameter("canny_low").as_int();
-    canny_high_ = this->get_parameter("canny_high").as_int();
     stop_roi_ratio_ = this->get_parameter("stop_roi_ratio").as_double();
     nwindows_ = this->get_parameter("nwindows").as_int();
     window_margin_ = this->get_parameter("window_margin").as_int();
@@ -113,29 +109,27 @@ void LaneMarkingNode::handleFrame(const cv::Mat& frame) {
     cv::Mat hsv;
     cv::cvtColor(roi_color, hsv, cv::COLOR_BGR2HSV);
 
-    // Threshold white and yellow
+    // Threshold white only (no yellow center line detection)
     cv::Mat white_mask = thresholdWhite(hsv);
-    cv::Mat yellow_mask = thresholdYellow(hsv);
 
     // Apply morphological closing
     white_mask = morphClose(white_mask, 3, 2);
-    yellow_mask = morphClose(yellow_mask, 3, 2);
 
     // Detect lane segments
-    std::vector<LineSegment> segments = detectLaneSegments(white_mask, yellow_mask, roi_y);
+    std::vector<LineSegment> segments = detectLaneSegments(white_mask, roi_y);
 
     // Publish lane segments
     publishLaneSegments(segments);
 
     // Detect stop line (only if traffic light allows)
     if (trafficLightAllowsStop() || !use_traffic_light_gate_) {
-        StopLine stop_line = detectStopLine(frame, roi_y);
+        StopLine stop_line = detectStopLine(frame);
         publishStopLine(stop_line);
     }
 }
 
 std::vector<LineSegment> LaneMarkingNode::detectLaneSegments(
-    const cv::Mat& white_mask, const cv::Mat& yellow_mask, int roi_y) {
+    const cv::Mat& white_mask, int roi_y) {
 
     std::vector<LineSegment> all_segments;
 
@@ -144,10 +138,7 @@ std::vector<LineSegment> LaneMarkingNode::detectLaneSegments(
                                           {LineType::LEFT_WHITE, LineType::RIGHT_WHITE});
     all_segments.insert(all_segments.end(), white_segments.begin(), white_segments.end());
 
-    // Detect yellow center line
-    auto yellow_segments = fitLaneFromMask(yellow_mask, roi_y, 1,
-                                           {LineType::YELLOW_CENTER});
-    all_segments.insert(all_segments.end(), yellow_segments.begin(), yellow_segments.end());
+    // Yellow center line detection removed (not needed for 2026 competition)
 
     return all_segments;
 }
@@ -233,7 +224,7 @@ std::vector<LineSegment> LaneMarkingNode::fitLaneFromMask(
         double x_top = evaluatePolynomial2D(poly, y_top);
 
         // Estimate style
-        LineStyle style = estimateStyle(mask, lane_x, lane_y);
+        LineStyle style = estimateStyle(mask, lane_x);
 
         segments.emplace_back(
             type_ids[idx], style,
@@ -247,8 +238,7 @@ std::vector<LineSegment> LaneMarkingNode::fitLaneFromMask(
 }
 
 LineStyle LaneMarkingNode::estimateStyle(const cv::Mat& mask,
-                                         const std::vector<int>& xs,
-                                         const std::vector<int>& ys) {
+                                         const std::vector<int>& xs) {
     if (xs.empty()) {
         return LineStyle::UNKNOWN;
     }
@@ -265,9 +255,8 @@ LineStyle LaneMarkingNode::estimateStyle(const cv::Mat& mask,
     return LineStyle::UNKNOWN;
 }
 
-StopLine LaneMarkingNode::detectStopLine(const cv::Mat& frame, int roi_y) {
+StopLine LaneMarkingNode::detectStopLine(const cv::Mat& frame) {
     int h = frame.rows;
-    int w = frame.cols;
 
     // Get stop line ROI (bottom portion)
     int stop_y_start = static_cast<int>(h * (1.0 - stop_roi_ratio_));

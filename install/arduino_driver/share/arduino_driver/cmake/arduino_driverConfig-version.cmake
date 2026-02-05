@@ -1,1 +1,0 @@
-/root/ros2_ws/build/arduino_driver/ament_cmake_core/arduino_driverConfig-version.cmake
