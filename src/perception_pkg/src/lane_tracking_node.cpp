@@ -131,17 +131,11 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
     steer_msg.data = static_cast<float>(steering);
     steer_pub_->publish(steer_msg);
 
-    // Publish overlay (매 프레임 발행, 해상도 축소로 대역폭 절감)
+    // Publish overlay
     if (debug_) {
         cv::Mat overlay = composeOverlay(frame, roi_overlay, roi_y, lane_center);
-
-        // 해상도 절반으로 축소 (640x480 → 320x240, 대역폭 1/4로 감소)
-        cv::Mat small_overlay;
-        cv::resize(overlay, small_overlay, cv::Size(), 0.5, 0.5, cv::INTER_LINEAR);
-
-        // 일반 Image로 발행
         sensor_msgs::msg::Image::SharedPtr overlay_msg =
-            cv_bridge::CvImage(header, "bgr8", small_overlay).toImageMsg();
+            cv_bridge::CvImage(header, "bgr8", overlay).toImageMsg();
         overlay_pub_->publish(*overlay_msg);
     }
 }
@@ -174,12 +168,36 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     // Get crosswalk bbox for filtering (if valid)
     float crosswalk_x1 = 0, crosswalk_x2 = 0;
     float crosswalk_y1 = 0, crosswalk_y2 = 0;
+    float bbox_x1 = 0, bbox_x2 = 0, bbox_y1 = 0, bbox_y2 = 0;
     bool has_crosswalk = current_stop_line_.valid;
+
     if (has_crosswalk) {
         crosswalk_x1 = current_stop_line_.x1;
         crosswalk_y1 = current_stop_line_.y1 - roi_y;  // Convert to ROI coordinates
         crosswalk_x2 = current_stop_line_.x2;
         crosswalk_y2 = current_stop_line_.y2 - roi_y;
+
+        // bbox를 약간 축소 (10% 마진)하여 경계 부근의 차선은 통과
+        float margin_x = (crosswalk_x2 - crosswalk_x1) * 0.1f;
+        float margin_y = (crosswalk_y2 - crosswalk_y1) * 0.1f;
+        bbox_x1 = crosswalk_x1 + margin_x;
+        bbox_x2 = crosswalk_x2 - margin_x;
+        bbox_y1 = crosswalk_y1 + margin_y;
+        bbox_y2 = crosswalk_y2 - margin_y;
+
+        // Visualize crosswalk bbox
+        if (debug_) {
+            // 원본 bbox (빨간색)
+            cv::rectangle(overlay,
+                         cv::Point(static_cast<int>(crosswalk_x1), static_cast<int>(crosswalk_y1)),
+                         cv::Point(static_cast<int>(crosswalk_x2), static_cast<int>(crosswalk_y2)),
+                         cv::Scalar(0, 0, 255), 2);
+            // 축소된 필터링 bbox (보라색)
+            cv::rectangle(overlay,
+                         cv::Point(static_cast<int>(bbox_x1), static_cast<int>(bbox_y1)),
+                         cv::Point(static_cast<int>(bbox_x2), static_cast<int>(bbox_y2)),
+                         cv::Scalar(255, 0, 255), 2);
+        }
     }
 
     for (const auto& line : lines) {
@@ -193,14 +211,23 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
 
         // Filter out lines inside crosswalk bbox (횡단보도 필터링)
         if (has_crosswalk) {
-            // Check if line is inside crosswalk region
-            bool line_in_crosswalk =
-                (x1 >= crosswalk_x1 && x1 <= crosswalk_x2 &&
-                 y1 >= crosswalk_y1 && y1 <= crosswalk_y2) ||
-                (x2 >= crosswalk_x1 && x2 <= crosswalk_x2 &&
-                 y2 >= crosswalk_y1 && y2 <= crosswalk_y2);
+            // 선의 중심점 계산
+            float line_center_x = (x1 + x2) / 2.0f;
+            float line_center_y = (y1 + y2) / 2.0f;
 
-            if (line_in_crosswalk) continue;  // Skip crosswalk lines
+            // 선의 중심점이 축소된 bbox 안에 있으면 횡단보도로 판단
+            bool line_center_in_crosswalk =
+                (line_center_x >= bbox_x1 && line_center_x <= bbox_x2 &&
+                 line_center_y >= bbox_y1 && line_center_y <= bbox_y2);
+
+            // 또는 양 끝점이 모두 bbox 안에 있는 경우 (완전히 횡단보도 내부)
+            bool both_ends_in_crosswalk =
+                (x1 >= bbox_x1 && x1 <= bbox_x2 && y1 >= bbox_y1 && y1 <= bbox_y2) &&
+                (x2 >= bbox_x1 && x2 <= bbox_x2 && y2 >= bbox_y1 && y2 <= bbox_y2);
+
+            if (line_center_in_crosswalk || both_ends_in_crosswalk) {
+                continue;  // Skip crosswalk lines
+            }
         }
 
         double avg_x = (x1 + x2) / 2.0;
