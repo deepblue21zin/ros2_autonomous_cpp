@@ -1,1 +1,0 @@
-/root/ros2_ws/src/drivers/arduino_driver/include/arduino_driver/arduino_bridge_node.hpp

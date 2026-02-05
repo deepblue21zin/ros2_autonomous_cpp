@@ -1,1 +1,0 @@
-ament_cmake_symlink_install_targets("TARGET_FILES" "/root/ros2_ws/build/perception_pkg/lane_marking_node" "/root/ros2_ws/build/perception_pkg/lane_tracking_node" "/root/ros2_ws/build/perception_pkg/obstacle_detection_node" "TARGETS" "lane_marking_node" "lane_tracking_node" "obstacle_detection_node" "DESTINATION" "lib/perception_pkg")

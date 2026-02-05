@@ -1,1 +1,0 @@
-/root/ros2_ws/src/drivers/usb_cam_driver/launch/usb_cam_launch.py

@@ -1,1 +1,0 @@
-/root/ros2_ws/src/decision/scripts/decision_node_2026.py

@@ -31,8 +31,6 @@ private:
     std::string camera_topic_;
     bool use_compressed_;
     double roi_y_ratio_;
-    int canny_low_;
-    int canny_high_;
     double stop_roi_ratio_;
     int nwindows_;
     int window_margin_;
@@ -54,7 +52,7 @@ private:
 
     // Lane detection (sliding window + polynomial fitting)
     std::vector<LineSegment> detectLaneSegments(
-        const cv::Mat& white_mask, const cv::Mat& yellow_mask, int roi_y);
+        const cv::Mat& white_mask, int roi_y);
 
     std::vector<LineSegment> fitLaneFromMask(
         const cv::Mat& mask, int roi_y,
@@ -62,11 +60,10 @@ private:
 
     // Style estimation
     LineStyle estimateStyle(const cv::Mat& mask,
-                           const std::vector<int>& xs,
-                           const std::vector<int>& ys);
+                           const std::vector<int>& xs);
 
     // Stop line detection
-    StopLine detectStopLine(const cv::Mat& frame, int roi_y);
+    StopLine detectStopLine(const cv::Mat& frame);
 
     // Traffic light gating
     bool trafficLightAllowsStop() const;

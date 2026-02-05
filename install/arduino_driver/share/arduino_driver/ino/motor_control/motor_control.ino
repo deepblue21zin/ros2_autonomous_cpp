@@ -1,1 +1,0 @@
-/root/ros2_ws/src/drivers/arduino_driver/ino/motor_control/motor_control.ino

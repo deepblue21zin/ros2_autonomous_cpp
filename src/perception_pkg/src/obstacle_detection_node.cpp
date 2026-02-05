@@ -1,6 +1,6 @@
 #include "perception_pkg/obstacle_detection_node.hpp"
 #include "perception_pkg/common/image_utils.hpp"
-#include <opencv2/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 namespace perception_pkg {
 

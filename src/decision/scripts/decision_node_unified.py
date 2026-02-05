@@ -17,7 +17,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.time import Time
 from ackermann_msgs.msg import AckermannDrive
-from std_msgs.msg import Bool, Float32, String
+from std_msgs.msg import Bool, Float32, Float32MultiArray, String
 
 
 class DecisionNodeUnified(Node):
@@ -34,6 +34,7 @@ class DecisionNodeUnified(Node):
         self.declare_parameter('obstacle_bias_weight', 0.3)
         self.declare_parameter('use_traffic_light', False)
         self.declare_parameter('stop_on_yellow', True)
+        self.declare_parameter('stop_line_stop_distance_m', 0.5)  # 정지선 정지 거리
         self.declare_parameter('lane_timeout_sec', 0.5)
         self.declare_parameter('allow_no_lane', False)
         self.declare_parameter('shutdown_stop_repeats', 5)
@@ -51,6 +52,7 @@ class DecisionNodeUnified(Node):
         self.obstacle_bias_weight = self.get_parameter('obstacle_bias_weight').get_parameter_value().double_value
         self.use_traffic_light = self.get_parameter('use_traffic_light').get_parameter_value().bool_value
         self.stop_on_yellow = self.get_parameter('stop_on_yellow').get_parameter_value().bool_value
+        self.stop_line_stop_distance = self.get_parameter('stop_line_stop_distance_m').get_parameter_value().double_value
         self.lane_timeout = self.get_parameter('lane_timeout_sec').get_parameter_value().double_value
         self.allow_no_lane = self.get_parameter('allow_no_lane').get_parameter_value().bool_value
         self.shutdown_stop_repeats = self.get_parameter('shutdown_stop_repeats').get_parameter_value().integer_value
@@ -65,6 +67,7 @@ class DecisionNodeUnified(Node):
         self.ultra_min = 0.0
         self.camera_obstacle_bias = 0.0
         self.traffic_state = "unknown"
+        self.stop_line_distance = -1.0  # 정지선까지 거리 (m), -1=없음
 
         # Subscribers
         self.create_subscription(Float32, '/lane/steering_angle', self.lane_cb, 1)
@@ -72,6 +75,7 @@ class DecisionNodeUnified(Node):
         self.create_subscription(Float32, '/ultrasonic/min_range', self.ultra_cb, 1)
         self.create_subscription(Float32, '/perception/obstacle_bias', self.camera_obstacle_cb, 1)
         self.create_subscription(String, '/perception/traffic_light_state', self.traffic_cb, 1)
+        self.create_subscription(Float32MultiArray, '/perception/stop_line', self.stop_line_cb, 1)
 
         # Publisher
         self.cmd_pub = self.create_publisher(AckermannDrive, '/decision/cmd', 1)
@@ -86,6 +90,9 @@ class DecisionNodeUnified(Node):
             f'bias_weight={self.obstacle_bias_weight:.2f}')
         self.get_logger().info(f'[decision_unified] allow_no_lane={self.allow_no_lane}')
         self.get_logger().info(f'[decision_unified] control_hz={control_hz:.1f}')
+        self.get_logger().info(
+            f'[decision_unified] traffic_light={self.use_traffic_light} '
+            f'stop_line_distance={self.stop_line_stop_distance:.2f}m')
 
     # -- Callbacks --
 
@@ -105,6 +112,13 @@ class DecisionNodeUnified(Node):
     def traffic_cb(self, msg: String) -> None:
         self.traffic_state = msg.data.lower()
 
+    def stop_line_cb(self, msg: Float32MultiArray) -> None:
+        """정지선 콜백: [x1, y1, x2, y2, distance_m]"""
+        if len(msg.data) >= 5:
+            self.stop_line_distance = float(msg.data[4])
+        else:
+            self.stop_line_distance = -1.0  # 정지선 없음
+
     # -- Control loop --
 
     def timer_cb(self) -> None:
@@ -121,14 +135,15 @@ class DecisionNodeUnified(Node):
             should_stop = True
             reason = f"ultrasonic({self.ultra_min:.2f}m)"
 
-        # 우선순위 3: 신호등 (선택적)
+        # 우선순위 3: 신호등 + 정지선 (선택적)
         if not should_stop and self.use_traffic_light:
-            if self.traffic_state == "red":
-                should_stop = True
-                reason = "red_light"
-            elif self.stop_on_yellow and self.traffic_state == "yellow":
-                should_stop = True
-                reason = "yellow_light"
+            # Option B: 빨강/노랑 + 정지선 가까움 → 정지, 초록 → 주행
+            if self.traffic_state in ["red", "yellow"]:
+                # 빨강/노랑 신호일 때 정지선 거리 확인
+                if self.stop_line_distance > 0.0 and self.stop_line_distance < self.stop_line_stop_distance:
+                    should_stop = True
+                    reason = f"{self.traffic_state}_light_at_stopline({self.stop_line_distance:.2f}m)"
+            # 초록불이면 정지선 무시하고 주행 (명시적으로 처리 안 해도 should_stop=False 유지)
 
         # 우선순위 4: 차선 유효성 확인
         if not should_stop and not self.allow_no_lane:

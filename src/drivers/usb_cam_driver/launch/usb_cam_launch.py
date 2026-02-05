@@ -16,7 +16,7 @@ def generate_launch_description():
     # Declare launch arguments
     video_device_arg = DeclareLaunchArgument(
         'video_device',
-        default_value='/dev/video6',
+        default_value='/dev/video4',
         description='Video device path (default: front camera)'
     )
 

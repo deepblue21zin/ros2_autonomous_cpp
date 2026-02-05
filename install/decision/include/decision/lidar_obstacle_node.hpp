@@ -1,1 +1,0 @@
-/root/ros2_ws/src/decision/include/decision/lidar_obstacle_node.hpp

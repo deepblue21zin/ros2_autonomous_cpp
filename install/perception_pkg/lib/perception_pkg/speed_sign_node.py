@@ -1,1 +1,0 @@
-/root/ros2_ws/src/perception_pkg/scripts/speed_sign_node.py

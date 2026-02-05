@@ -1,1 +1,0 @@
-/root/ros2_ws/src/drivers/ultrasonic_driver/scripts/ultrasonic_processor_node.py

@@ -1,1 +1,0 @@
-/root/ros2_ws/src/drivers/arduino_driver/scripts/arduino_bridge_node.py
