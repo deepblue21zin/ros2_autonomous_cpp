@@ -39,6 +39,9 @@ private:
     int hough_min_length_;
     int hough_max_gap_;
     double slope_min_;
+    double slope_max_;
+    double lane_x_margin_;
+    double lane_y_bottom_;
 
     // Moving average buffer
     std::deque<double> offset_buffer_;
