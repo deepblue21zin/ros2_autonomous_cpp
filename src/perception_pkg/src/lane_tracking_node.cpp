@@ -158,7 +158,6 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     cv::Mat overlay = roi_color.clone();
     int h = edges.rows;
     int w = edges.cols;
-    int mid_x = w / 2;
 
     // 디버그: 영역 경계선 시각화 (주차선 필터링 영역)
     if (debug_) {
