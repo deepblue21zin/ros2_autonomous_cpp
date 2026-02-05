@@ -687,3 +687,23 @@ source /root/ros2_ws/install/setup.bash
 | 터미널 닫고 다시 접속 | `docker exec -it adas_container bash` | 유지됨 | 자동 설정 |
 | 컨테이너 재시작 | `./start.sh restart` | **Dockerfile에 포함되어 유지** | 자동 설정 |
 | 이미지 재빌드 | `./start.sh build` | 새로 설치 | 자동 설정 |
+
+
+
+
+
+docker exec -it adas_container bash
+ros2 launch bringup bag_motor_launch.py
+ros2 launch bringup bag_motor_launch.py rate:=0.5          # 0.5배속
+ros2 launch bringup bag_motor_launch.py use_cpp:=false     # Python 노드
+ros2 launch bringup bag_motor_launch.py bag_path:=/root/ros2_ws/다른_bag
+
+
+# decision_node가 실제로 모터 명령을 보내고 있는지 확인
+ros2 topic echo /arduino/cmd
+
+# decision이 보내는 최종 명령 확인
+ros2 topic echo /arduino/cmd
+
+# 차선 인식이 보내는 조향값 확인
+ros2 topic echo /lane/steering_angle

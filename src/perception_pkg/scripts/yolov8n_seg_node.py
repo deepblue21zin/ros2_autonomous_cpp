@@ -64,15 +64,15 @@ class Yolov8nSegNode(Node):
         # 모델 경로 자동 탐색 (yolo26n_1st.pt 우선)
         if not model_path or not os.path.exists(model_path):
             search_paths = [
-                "/root/ros2_ws/src/perception_pkg/models/yolo26n_1st.pt",
-                "/root/ros2_ws/src/perception_pkg/models/best.pt",
-                os.path.join(os.path.dirname(__file__),
-                             "..", "models", "yolo26n_1st.pt"),
-                os.path.join(os.path.dirname(__file__),
-                             "..", "models", "best.pt"),
-                "/root/ros2_ws/src/perception_pkg/models/yolov8n-seg.pt",
-                os.path.join(os.path.dirname(__file__),
-                             "..", "models", "yolov8n-seg.pt"),
+                "/root/ros2_ws/src/perception_pkg/models/lane_traffic_light_1st.pt",
+                #"/root/ros2_ws/src/perception_pkg/models/best.pt",
+               # os.path.join(os.path.dirname(__file__),
+                #             "..", "models", "yolo26n_1st.pt"),
+                #os.path.join(os.path.dirname(__file__),
+                #             "..", "models", "best.pt"),
+                #"/root/ros2_ws/src/perception_pkg/models/yolov8n-seg.pt",
+                #os.path.join(os.path.dirname(__file__),
+                #             "..", "models", "yolov8n-seg.pt"),
             ]
             for p in search_paths:
                 if os.path.exists(p):

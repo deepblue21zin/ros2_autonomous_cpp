@@ -23,17 +23,17 @@ int servo_IN2 = 7;        // 모터 드라이버 3 IN2 (빨)
 // 가변저항 핀 (조향 피드백용)
 int STEERING_POT_PIN = A0;        // 가변저항 아날로그 입력 핀
 
-// 가변저항 캘리브레이션 값 (실측값 기반, 2026-02-05 재측정)
-// 시리얼 모니터 측정값: 왼쪽 1.55V, 중앙 1.75V (계산), 오른쪽 1.95V
-// ADC = (전압 / 5.0) * 1023
-int POT_LEFT = 317;               // 최대 좌회전 시 ADC 값 (1.55V, 실측)
-int POT_CENTER = 357;             // 중앙(직진) 시 ADC 값 (1.75V, 계산: (317+398)/2)
-int POT_RIGHT = 398;              // 최대 우회전 시 ADC 값 (1.95V, 실측)
+// 가변저항 캘리브레이션 값 (INTERNAL2V56 기준, K 명령으로 재측정 필요)
+// ADC = (전압 / 2.56) * 1023
+// 분압기 거친 전압: 좌 1.55V, 우 1.95V (멀티미터 실측의 약 절반)
+int POT_LEFT = 909;               // 최대 좌회전 시 ADC 값 (1.55V / 2.56V * 1023)            // 중앙(직진) 시 ADC 값 ((619+779)/2)
+int POT_RIGHT = 589;              // 최대 우회전 시 ADC 값 (1.95V / 2.56V * 1023)
+int POT_CENTER = (POT_RIGHT + POT_LEFT)/2; 
 
 // 조향각 범위 (도)
-float ANGLE_LEFT = 60.0;          // 최대 좌회전 각도
+float ANGLE_LEFT = 120.0;          // 최대 좌회전 각도
 float ANGLE_CENTER_DEG = 90.0;    // 중앙 각도
-float ANGLE_RIGHT = 120.0;        // 최대 우회전 각도
+float ANGLE_RIGHT = 60.0;        // 최대 우회전 각도
 
 // 피드백 필터링
 int pot_readings[5];              // 이동평균 필터 버퍼
@@ -41,7 +41,7 @@ int pot_index = 0;
 bool pot_buffer_filled = false;
 
 // 피드백 데이터 전송 주기 설정
-bool ENABLE_STEERING_FEEDBACK = false;   // 피드백 데이터 시리얼 전송 여부 (디버그용)
+bool ENABLE_STEERING_FEEDBACK = true;    // 피드백 데이터 시리얼 전송 여부 (디버그용)
 int FEEDBACK_SEND_INTERVAL = 10;        // N번 루프마다 피드백 전송 (5 = 센서데이터와 동일 주기)
 
 // ==================== PID 조향 제어 설정 ====================
@@ -116,6 +116,10 @@ void setup() {
 
   // 가변저항 핀 설정 (아날로그 입력)
   pinMode(STEERING_POT_PIN, INPUT);
+
+  // ADC 기준 전압을 2.56V로 변경 (분해능 향상: 81→160 counts)
+  // 주의: 모든 아날로그 입력이 2.56V 기준으로 변환됨
+  analogReference(INTERNAL2V56);
 
   // 초음파 센서 6개 핀 설정
   for (int i = 0; i < 6; i++) {
@@ -299,7 +303,7 @@ void send_steering_feedback() {
   // voltage: 가변저항 전압값
 
   int raw_adc = analogRead(STEERING_POT_PIN);
-  float voltage = (raw_adc / 1023.0) * 5.0;
+  float voltage = (raw_adc / 1023.0) * 2.56;
   float error = (float)target_steering_angle - actual_steering_angle;
 
   Serial.print("STR:");
@@ -432,7 +436,7 @@ void calibrate_steering_pot() {
     if (Serial.available() > 0) {
       char c = Serial.read();
       int raw = analogRead(STEERING_POT_PIN);
-      float voltage = (raw / 1023.0) * 5.0;
+      float voltage = (raw / 1023.0) * 2.56;
 
       switch(c) {
         case 'L':
@@ -711,7 +715,7 @@ void print_debug_info() {
 
   // 조향 정보
   int raw_adc = analogRead(STEERING_POT_PIN);
-  float voltage = (raw_adc / 1023.0) * 5.0;
+  float voltage = (raw_adc / 1023.0) * 2.56;
   Serial.println("[Steering]");
   Serial.print("  Target Angle:  "); Serial.print(target_steering_angle); Serial.println(" deg");
   Serial.print("  Actual Angle:  "); Serial.print(actual_steering_angle, 1); Serial.println(" deg");
@@ -725,9 +729,9 @@ void print_debug_info() {
 
   // 캘리브레이션 값
   Serial.println("[Calibration]");
-  Serial.print("  POT_LEFT:   "); Serial.print(POT_LEFT);   Serial.println(" (1.55V)");
-  Serial.print("  POT_CENTER: "); Serial.print(POT_CENTER); Serial.println(" (1.75V)");
-  Serial.print("  POT_RIGHT:  "); Serial.print(POT_RIGHT);  Serial.println(" (1.95V)");
+  Serial.print("  POT_LEFT:   "); Serial.print(POT_LEFT);   Serial.println(" (1.55V, ref=2.56V)");
+  Serial.print("  POT_CENTER: "); Serial.print(POT_CENTER); Serial.println(" (1.75V, ref=2.56V)");
+  Serial.print("  POT_RIGHT:  "); Serial.print(POT_RIGHT);  Serial.println(" (1.95V, ref=2.56V)");
 
   // PID 상태
   Serial.println("[PID Control]");
