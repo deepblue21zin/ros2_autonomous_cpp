@@ -26,6 +26,7 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("slope_max", 2.5);
     this->declare_parameter("lane_x_margin", 0.40);
     this->declare_parameter("lane_y_bottom", 0.50);
+    this->declare_parameter("min_lane_length", 40);
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
     use_compressed_ = this->get_parameter("use_compressed").as_bool();
@@ -43,6 +44,7 @@ LaneTrackingNode::LaneTrackingNode()
     slope_max_ = this->get_parameter("slope_max").as_double();
     lane_x_margin_ = this->get_parameter("lane_x_margin").as_double();
     lane_y_bottom_ = this->get_parameter("lane_y_bottom").as_double();
+    min_lane_length_ = this->get_parameter("min_lane_length").as_int();
 
     // QoS for low latency: best_effort to skip old frames
     auto qos_sensor = rclcpp::QoS(1).best_effort();
@@ -118,12 +120,11 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
     // Extract ROI
     auto [roi_color, roi_y] = extractROI(frame, roi_y_ratio_);
 
-    // Preprocess for lane detection
-    cv::Mat edges = preprocessForLaneDetection(roi_color, gaussian_kernel_,
-                                                canny_low_, canny_high_);
+    // Preprocess: HSV 마스크 → 바이너리 (Sliding Window용)
+    cv::Mat binary_mask = preprocessForSlidingWindow(roi_color, gaussian_kernel_);
 
-    // Detect lane center
-    auto [lane_center, roi_overlay] = detectLaneCenter(edges, roi_color, roi_y);
+    // Detect lane center (Sliding Window + RANSAC)
+    auto [lane_center, roi_overlay] = detectLaneCenter(binary_mask, roi_color, roi_y);
 
     // Compute steering
     auto [steering, offset_norm] = computeSteering(lane_center, frame.cols);
@@ -149,208 +150,82 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
 void LaneTrackingNode::updateParams() {
     kp_ = this->get_parameter("kp").as_double();
     roi_y_ratio_ = this->get_parameter("roi_y_ratio").as_double();
-    hough_threshold_ = this->get_parameter("hough_threshold").as_int();
-    hough_min_length_ = this->get_parameter("hough_min_length").as_int();
-    hough_max_gap_ = this->get_parameter("hough_max_gap").as_int();
-    slope_min_ = this->get_parameter("slope_min").as_double();
-    slope_max_ = this->get_parameter("slope_max").as_double();
-    lane_x_margin_ = this->get_parameter("lane_x_margin").as_double();
-    lane_y_bottom_ = this->get_parameter("lane_y_bottom").as_double();
 }
 
 std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
-    const cv::Mat& edges, const cv::Mat& roi_color, int roi_y) {
+    const cv::Mat& binary_mask, const cv::Mat& roi_color, int roi_y) {
 
     cv::Mat overlay = roi_color.clone();
-    int h = edges.rows;
-    int w = edges.cols;
+    int h = binary_mask.rows;
+    int w = binary_mask.cols;
 
-    // 디버그: 영역 경계선 시각화 (주차선 필터링 영역)
-    if (debug_) {
-        int left_x_max = static_cast<int>(w * lane_x_margin_);
-        int right_x_min = static_cast<int>(w * (1.0 - lane_x_margin_));
-        int y_bottom_threshold = static_cast<int>(h * (1.0 - lane_y_bottom_));
+    // 횡단보도 영역 마스킹 (해당 영역 픽셀을 0으로 채워서 무시)
+    cv::Mat mask = binary_mask.clone();
+    if (current_stop_line_.valid) {
+        float cx1 = current_stop_line_.x1;
+        float cy1 = current_stop_line_.y1 - roi_y;
+        float cx2 = current_stop_line_.x2;
+        float cy2 = current_stop_line_.y2 - roi_y;
+        float mx = (cx2 - cx1) * 0.1f;
+        float my = (cy2 - cy1) * 0.1f;
 
-        // 좌/우 영역 경계 (노란색 수직선)
-        cv::line(overlay, cv::Point(left_x_max, 0), cv::Point(left_x_max, h),
-                 cv::Scalar(0, 255, 255), 1);
-        cv::line(overlay, cv::Point(right_x_min, 0), cv::Point(right_x_min, h),
-                 cv::Scalar(0, 255, 255), 1);
-        // 하단 경계 (노란색 수평선)
-        cv::line(overlay, cv::Point(0, y_bottom_threshold), cv::Point(w, y_bottom_threshold),
-                 cv::Scalar(0, 255, 255), 1);
-    }
+        cv::rectangle(mask,
+                      cv::Point(static_cast<int>(cx1 + mx), static_cast<int>(cy1 + my)),
+                      cv::Point(static_cast<int>(cx2 - mx), static_cast<int>(cy2 - my)),
+                      cv::Scalar(0), -1);
 
-    // Probabilistic Hough Line Transform
-    std::vector<cv::Vec4i> lines;
-    cv::HoughLinesP(edges, lines, 1, CV_PI / 180,
-                    hough_threshold_, hough_min_length_, hough_max_gap_);
-
-    // 길이 기반 샘플링된 포인트 수집
-    std::vector<double> left_x, left_y, right_x, right_y;
-
-    // Get crosswalk bbox for filtering (if valid)
-    float crosswalk_x1 = 0, crosswalk_x2 = 0;
-    float crosswalk_y1 = 0, crosswalk_y2 = 0;
-    float bbox_x1 = 0, bbox_x2 = 0, bbox_y1 = 0, bbox_y2 = 0;
-    bool has_crosswalk = current_stop_line_.valid;
-
-    // Debug: check if no crosswalk detected
-    if (!has_crosswalk && debug_) {
-        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
-                             "[lane] No stop line detected (current_stop_line_.valid=false)");
-    }
-
-    if (has_crosswalk) {
-        crosswalk_x1 = current_stop_line_.x1;
-        crosswalk_y1 = current_stop_line_.y1 - roi_y;  // Convert to ROI coordinates
-        crosswalk_x2 = current_stop_line_.x2;
-        crosswalk_y2 = current_stop_line_.y2 - roi_y;
-
-        // Debug: log bbox coordinates
-        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
-                             "[lane] Stop line detected: full_img(%.0f,%.0f-%.0f,%.0f) roi_y=%d → roi(%.0f,%.0f-%.0f,%.0f)",
-                             current_stop_line_.x1, current_stop_line_.y1,
-                             current_stop_line_.x2, current_stop_line_.y2,
-                             roi_y, crosswalk_x1, crosswalk_y1, crosswalk_x2, crosswalk_y2);
-
-        // bbox를 약간 축소 (10% 마진)하여 경계 부근의 차선은 통과
-        float margin_x = (crosswalk_x2 - crosswalk_x1) * 0.1f;
-        float margin_y = (crosswalk_y2 - crosswalk_y1) * 0.1f;
-        bbox_x1 = crosswalk_x1 + margin_x;
-        bbox_x2 = crosswalk_x2 - margin_x;
-        bbox_y1 = crosswalk_y1 + margin_y;
-        bbox_y2 = crosswalk_y2 - margin_y;
-
-        // Visualize crosswalk bbox
         if (debug_) {
-            // 원본 bbox (빨간색)
             cv::rectangle(overlay,
-                         cv::Point(static_cast<int>(crosswalk_x1), static_cast<int>(crosswalk_y1)),
-                         cv::Point(static_cast<int>(crosswalk_x2), static_cast<int>(crosswalk_y2)),
+                         cv::Point(static_cast<int>(cx1), static_cast<int>(cy1)),
+                         cv::Point(static_cast<int>(cx2), static_cast<int>(cy2)),
                          cv::Scalar(0, 0, 255), 2);
-            // 축소된 필터링 bbox (보라색)
-            cv::rectangle(overlay,
-                         cv::Point(static_cast<int>(bbox_x1), static_cast<int>(bbox_y1)),
-                         cv::Point(static_cast<int>(bbox_x2), static_cast<int>(bbox_y2)),
-                         cv::Scalar(255, 0, 255), 2);
-
-            // Check if bbox is outside ROI
-            if (crosswalk_y1 < 0 || crosswalk_y2 < 0 ||
-                crosswalk_y1 > h || crosswalk_y2 > h) {
-                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
-                                     "[lane] Crosswalk bbox partially outside ROI! roi_h=%d bbox_y=(%.0f,%.0f)",
-                                     h, crosswalk_y1, crosswalk_y2);
-            }
         }
     }
 
-    // Debug: count filtered lines
-    int total_lines = static_cast<int>(lines.size());
-    int filtered_lines = 0;
+    // 1. 히스토그램: 하단 50%에서 좌/우 차선 시작점 찾기
+    std::vector<int> histogram = computeHistogram(mask, h / 2);
+    int midpoint = w / 2;
+    int left_base = findHistogramPeak(histogram, 0, midpoint);
+    int right_base = findHistogramPeak(histogram, midpoint, w);
 
-    for (const auto& line : lines) {
-        int x1 = line[0], y1 = line[1], x2 = line[2], y2 = line[3];
+    // 2. Sliding Window 탐색
+    SlidingWindowResult left_sw = slidingWindowSearch(mask, left_base, 9, 50, 50);
+    SlidingWindowResult right_sw = slidingWindowSearch(mask, right_base, 9, 50, 50);
 
-        if (x2 == x1) continue;
-
-        double slope = static_cast<double>(y2 - y1) / static_cast<double>(x2 - x1);
-
-        // 기울기 필터: 최소값 (거의 수평) 및 최대값 (거의 수직) 제거
-        if (std::abs(slope) < slope_min_) continue;
-        if (std::abs(slope) > slope_max_) continue;  // 주차선 같은 수직선 제거
-
-        // Y 좌표 하단 체크: 차선은 이미지 하단 영역을 지나야 함
-        int y_bottom_threshold = static_cast<int>(h * (1.0 - lane_y_bottom_));
-        if (y1 < y_bottom_threshold && y2 < y_bottom_threshold) {
-            continue;  // 두 끝점 모두 상단에만 있으면 차선 아님 (주차선/차량)
-        }
-
-        // Filter out lines inside crosswalk bbox (횡단보도 필터링)
-        if (has_crosswalk) {
-            // 선의 중심점 계산
-            float line_center_x = (x1 + x2) / 2.0f;
-            float line_center_y = (y1 + y2) / 2.0f;
-
-            // 선의 중심점이 축소된 bbox 안에 있으면 횡단보도로 판단
-            bool line_center_in_crosswalk =
-                (line_center_x >= bbox_x1 && line_center_x <= bbox_x2 &&
-                 line_center_y >= bbox_y1 && line_center_y <= bbox_y2);
-
-            // 또는 양 끝점이 모두 bbox 안에 있는 경우 (완전히 횡단보도 내부)
-            bool both_ends_in_crosswalk =
-                (x1 >= bbox_x1 && x1 <= bbox_x2 && y1 >= bbox_y1 && y1 <= bbox_y2) &&
-                (x2 >= bbox_x1 && x2 <= bbox_x2 && y2 >= bbox_y1 && y2 <= bbox_y2);
-
-            if (line_center_in_crosswalk || both_ends_in_crosswalk) {
-                filtered_lines++;
-                continue;  // Skip crosswalk lines
-            }
-        }
-
-        double avg_x = (x1 + x2) / 2.0;
-
-        // 양 끝 10% 영역 필터링 (주차선/트랙 바깥 제거)
-        int edge_margin = static_cast<int>(w * 0.10);
-        if (avg_x < edge_margin || avg_x > w - edge_margin) {
-            continue;  // 이미지 양 끝은 주차선이므로 무시
-        }
-
-        // X 좌표 영역 + 기울기 기반 좌/우 분류 (중앙 영역 무시)
-        int left_x_max = static_cast<int>(w * lane_x_margin_);          // 왼쪽 35% 영역
-        int right_x_min = static_cast<int>(w * (1.0 - lane_x_margin_)); // 오른쪽 35% 영역
-
-        if (slope < 0 && avg_x < left_x_max) {
-            // 왼쪽 차선: 음의 기울기 + 왼쪽 영역
-            sampleLinePoints(x1, y1, x2, y2, left_x, left_y);
-        } else if (slope > 0 && avg_x > right_x_min) {
-            // 오른쪽 차선: 양의 기울기 + 오른쪽 영역
-            sampleLinePoints(x1, y1, x2, y2, right_x, right_y);
-        } else {
-            // 중앙 영역이거나 기울기 방향과 위치가 안 맞으면 무시
-            continue;
-        }
-
-        if (debug_) {
-            cv::line(overlay, cv::Point(x1, y1), cv::Point(x2, y2),
-                     cv::Scalar(0, 255, 0), 2);
-        }
-    }
-
-    // Debug: log filtering statistics
-    if (has_crosswalk && debug_) {
-        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
-                             "[lane] Crosswalk filtering: total_lines=%d filtered=%d remaining=%d",
-                             total_lines, filtered_lines, total_lines - filtered_lines);
-    }
-
+    // 3. RANSAC + 2차 다항식 피팅
     int y_bottom = h - 1;
-    int y_top = static_cast<int>(h * 0.3); // ROI 내에서 라인 그리기 범위 작아질수록 증가(상단의 30%까지 봄)
+    int y_top = static_cast<int>(h * 0.3);
 
     std::vector<int> lane_positions;
+    bool left_detected = false;
+    bool right_detected = false;
 
-    // RANSAC + 2차 다항식으로 차선 피팅
-    RansacFitResult left_result = fitPolynomial2DRansac(left_y, left_x, y_bottom, y_top);
-    RansacFitResult right_result = fitPolynomial2DRansac(right_y, right_x, y_bottom, y_top);
-
-    if (left_result.valid) {
-        lane_positions.push_back(left_result.x_bottom);
-        // 곡선으로 차선 표시 (polylines)
-        cv::polylines(overlay, left_result.curve_points, false,
-                      cv::Scalar(255, 0, 0), 3);
+    if (left_sw.valid) {
+        std::vector<double> ly(left_sw.lane_y.begin(), left_sw.lane_y.end());
+        std::vector<double> lx(left_sw.lane_x.begin(), left_sw.lane_x.end());
+        RansacFitResult left_fit = fitPolynomial2DRansac(ly, lx, y_bottom, y_top);
+        if (left_fit.valid) {
+            left_detected = true;
+            lane_positions.push_back(left_fit.x_bottom);
+            cv::polylines(overlay, left_fit.curve_points, false,
+                          cv::Scalar(255, 0, 0), 3);
+        }
     }
 
-    if (right_result.valid) {
-        lane_positions.push_back(right_result.x_bottom);
-        cv::polylines(overlay, right_result.curve_points, false,
-                      cv::Scalar(0, 0, 255), 3);
+    if (right_sw.valid) {
+        std::vector<double> ry(right_sw.lane_y.begin(), right_sw.lane_y.end());
+        std::vector<double> rx(right_sw.lane_x.begin(), right_sw.lane_x.end());
+        RansacFitResult right_fit = fitPolynomial2DRansac(ry, rx, y_bottom, y_top);
+        if (right_fit.valid) {
+            right_detected = true;
+            lane_positions.push_back(right_fit.x_bottom);
+            cv::polylines(overlay, right_fit.curve_points, false,
+                          cv::Scalar(0, 0, 255), 3);
+        }
     }
 
-    // Calculate center with single-lane fallback
+    // 4. 차선 중심 계산 (단일 차선 폴백)
     double center_x;
-    bool left_detected = left_result.valid;
-    bool right_detected = right_result.valid;
-
     if (left_detected && right_detected) {
         double sum = std::accumulate(lane_positions.begin(), lane_positions.end(), 0.0);
         center_x = sum / lane_positions.size();

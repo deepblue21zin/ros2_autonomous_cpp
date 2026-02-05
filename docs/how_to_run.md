@@ -176,6 +176,7 @@ cd /home/deepblue/target_projects/adas_env
 | `./start.sh test` | test_mode로 실행 (센서 없이 모터 테스트) |
 | `./start.sh camera` | 카메라+차선인식 테스트 (Python, 주행 없음) |
 | `./start.sh camera_cpp` | 카메라+차선인식 테스트 (C++, 주행 없음) |
+| `./start.sh camera_cpp_bag` | rosbag 재생 + 차선인식 테스트 (C++, rviz2 시각화) |
 | `./start.sh yolo` | YOLOv8n-seg 노드 실행 |
 | `./start.sh yolo-drive` | YOLO 차선 주행 모드 (세그멘테이션 기반) |
 | `./start.sh rviz` | rviz2 실행 (토픽 자동 설정) |
@@ -197,6 +198,9 @@ cd /home/deepblue/target_projects/adas_env
 # 차선 인식 테스트 (주행 없이 카메라만)
 ./start.sh camera       # Python 차선 인식 (재빌드 불필요)
 ./start.sh camera_cpp   # C++ 차선 인식 (ros-build 필요)
+
+# rosbag 재생 테스트 (카메라 없이 녹화 영상으로 테스트)
+./start.sh camera_cpp_bag  # rosbag + C++ 차선 인식 + rviz2
 
 # 테스트
 ./start.sh test         # 센서 없이 모터 테스트
@@ -668,6 +672,7 @@ source /root/ros2_ws/install/setup.bash
 - [ ] ROS2 워크스페이스 빌드 (`./start.sh ros-build` 또는 `colcon build --symlink-install`)
 - [ ] 카메라 + 차선 인식 테스트 Python (`./start.sh camera`)
 - [ ] 카메라 + 차선 인식 테스트 C++ (`./start.sh camera_cpp`)
+- [ ] rosbag 재생 테스트 (`./start.sh camera_cpp_bag`) - 카메라 없이 녹화 영상으로 테스트
 - [ ] 차선 인식 확인 (`/lane_overlay` 파란/빨간 곡선이 차선 따르는지)
 - [ ] 모터 수동 테스트 (`ros2 topic pub /arduino/cmd ...`)
 - [ ] YOLO 노드 테스트 (`./start.sh yolo`)

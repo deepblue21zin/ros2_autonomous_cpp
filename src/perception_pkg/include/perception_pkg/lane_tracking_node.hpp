@@ -42,6 +42,7 @@ private:
     double slope_max_;
     double lane_x_margin_;
     double lane_y_bottom_;
+    int min_lane_length_;
 
     // Moving average buffer
     std::deque<double> offset_buffer_;

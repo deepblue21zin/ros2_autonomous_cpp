@@ -36,6 +36,9 @@ cv::Mat preprocessForLaneDetection(const cv::Mat& roi_color,
                                    int gaussian_kernel,
                                    int canny_low, int canny_high);
 
+// Preprocess for sliding window (HSV mask → blur → morphClose)
+cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel);
+
 // Apply morphological closing
 cv::Mat morphClose(const cv::Mat& mask, int kernel_size = 3, int iterations = 2);
 

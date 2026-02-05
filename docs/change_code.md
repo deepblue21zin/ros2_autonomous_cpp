@@ -1350,6 +1350,45 @@ detect_and_verify_camera() {
 
 ---
 
+### 32. rosbag 재생 테스트 모드 추가 (camera_bag_test_launch.py)
+
+**파일:**
+- `src/bringup/launch/camera_bag_test_launch.py` (신규)
+- `/home/deepblue/target_projects/adas_env/start.sh`
+
+**변경:** 카메라 없이 rosbag 파일로 차선 인식을 테스트할 수 있는 모드 추가
+
+**구조:**
+```
+camera_bag_test_launch.py
+├── ros2 bag play (rosbag 재생, --loop, /camera/front/image만)
+├── lane_bringup_launch.py (C++ lane_tracking_node)
+├── static_transform_publisher (base_link → camera_front)
+└── rviz2 (camera_test.rviz 설정)
+```
+
+**실행:**
+```bash
+./start.sh camera_cpp_bag    # 기본 (rosbag2_2026_01_30-03_08_19)
+
+# 컨테이너 내부에서 직접 실행 (옵션 조절):
+ros2 launch bringup camera_bag_test_launch.py rate:=0.5           # 0.5배속
+ros2 launch bringup camera_bag_test_launch.py bag_path:=/root/ros2_ws/다른_bag_경로
+ros2 launch bringup camera_bag_test_launch.py use_cpp:=false      # Python 노드 사용
+```
+
+**파라미터:**
+| 파라미터 | 기본값 | 설명 |
+|---------|--------|------|
+| `bag_path` | `/root/ros2_ws/rosbag2_2026_01_30-03_08_19` | rosbag 경로 |
+| `rate` | `1.0` | 재생 속도 (0.5=반속, 2.0=2배속) |
+| `loop` | `true` | 반복 재생 |
+| `use_cpp` | `true` | C++/Python 선택 |
+
+**용도:** 카메라 없이도 동일한 영상으로 반복 테스트 가능, 파라미터 튜닝에 활용
+
+---
+
 ## 예정된 변경
 
 - [ ] Docker GPU 지원 추가 (NVIDIA Container Toolkit)
@@ -1372,3 +1411,4 @@ detect_and_verify_camera() {
 - [x] lane_tracking_node.py ROS2 변환 + cv_bridge 제거 - 완료
 - [x] 카메라 테스트 모드 (camera_test_launch.py) - 완료
 - [x] start.sh camera/camera_cpp 분리 - 완료
+- [x] rosbag 재생 테스트 모드 (camera_bag_test_launch.py) - 완료

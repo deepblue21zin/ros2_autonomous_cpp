@@ -90,6 +90,25 @@ cv::Mat preprocessForLaneDetection(const cv::Mat& roi_color,
     return edges;
 }
 
+cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel) {
+    // HSV 변환
+    cv::Mat hsv;
+    cv::cvtColor(roi_color, hsv, cv::COLOR_BGR2HSV);
+
+    // 흰색 + 노란색 마스크
+    cv::Mat mask_white = thresholdWhiteTracking(hsv);
+    cv::Mat mask_yellow = thresholdYellowTracking(hsv);
+
+    cv::Mat mask;
+    cv::bitwise_or(mask_white, mask_yellow, mask);
+
+    // 노이즈 제거: 가우시안 블러 → 모폴로지 닫기 (점선 gap 연결)
+    cv::GaussianBlur(mask, mask, cv::Size(gaussian_kernel, gaussian_kernel), 0);
+    mask = morphClose(mask, 5, 2);
+
+    return mask;
+}
+
 cv::Mat morphClose(const cv::Mat& mask, int kernel_size, int iterations) {
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT,
                                                 cv::Size(kernel_size, kernel_size));
