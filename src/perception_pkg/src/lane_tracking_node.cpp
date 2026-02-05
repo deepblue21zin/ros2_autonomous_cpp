@@ -290,9 +290,15 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
 
         double avg_x = (x1 + x2) / 2.0;
 
+        // 양 끝 10% 영역 필터링 (주차선/트랙 바깥 제거)
+        int edge_margin = static_cast<int>(w * 0.10);
+        if (avg_x < edge_margin || avg_x > w - edge_margin) {
+            continue;  // 이미지 양 끝은 주차선이므로 무시
+        }
+
         // X 좌표 영역 + 기울기 기반 좌/우 분류 (중앙 영역 무시)
-        int left_x_max = static_cast<int>(w * lane_x_margin_);          // 왼쪽 40% 영역
-        int right_x_min = static_cast<int>(w * (1.0 - lane_x_margin_)); // 오른쪽 40% 영역
+        int left_x_max = static_cast<int>(w * lane_x_margin_);          // 왼쪽 35% 영역
+        int right_x_min = static_cast<int>(w * (1.0 - lane_x_margin_)); // 오른쪽 35% 영역
 
         if (slope < 0 && avg_x < left_x_max) {
             // 왼쪽 차선: 음의 기울기 + 왼쪽 영역
