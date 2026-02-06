@@ -67,7 +67,7 @@ def generate_launch_description():
             'camera_topic': LaunchConfiguration('camera_topic'),
             'use_compressed': 'false',
             'lane_marking_enabled': 'false',
-            'lane_debug': 'false',
+            'lane_debug': 'true',
             'traffic_light_enabled': 'false',
             'obstacle_enabled': 'false',
             'speed_sign_enabled': 'false',

@@ -1,5 +1,6 @@
 /**:
   ros__parameters:
+    use_legacy_cmd: fasle
     # Arduino 시리얼 포트 설정
     port: /dev/ttyACM0
     baudrate: 115200

@@ -61,7 +61,7 @@ def generate_launch_description():
         parameters=[
             {
                 'camera_topic': LaunchConfiguration('camera_topic'),
-                'model_path': '/root/ros2_ws/src/perception_pkg/models/lane_traffic_light_1st.pt',
+                'model_path': '/root/ros2_ws/src/perception_pkg/models/lane_trafficlight_ver2.pt',
                 'conf_threshold': 0.4,
                 'iou_threshold': 0.45,
                 'imgsz': 640,

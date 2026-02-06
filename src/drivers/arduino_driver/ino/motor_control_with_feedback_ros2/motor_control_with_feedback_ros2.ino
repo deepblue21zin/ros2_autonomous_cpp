@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Arduino.h>
 
 // ==================== ROS2 호환 펌웨어 ====================
 // 프로토콜: V:PWM,S:SERVO (예: V:100,S:90)
@@ -25,9 +26,9 @@ int STEERING_POT_PIN = A0;        // 가변저항 아날로그 입력 핀
 
 // 가변저항 캘리브레이션 값 (INTERNAL2V56 기준, K 명령으로 재측정 필요)
 // ADC = (전압 / 2.56) * 1023
-// 분압기 거친 전압: 좌 1.55V, 우 1.95V (멀티미터 실측의 약 절반)
-int POT_LEFT = 909;               // 최대 좌회전 시 ADC 값 (1.55V / 2.56V * 1023)            // 중앙(직진) 시 ADC 값 ((619+779)/2)
-int POT_RIGHT = 589;              // 최대 우회전 시 ADC 값 (1.95V / 2.56V * 1023)
+// 실측 ADC 기준: 좌 909, 우 589 (전압 환산 약 2.27V, 1.47V)
+int POT_LEFT = 909;               // 최대 좌회전 시 ADC 값
+int POT_RIGHT = 589;              // 최대 우회전 시 ADC 값
 int POT_CENTER = (POT_RIGHT + POT_LEFT)/2; 
 
 // 조향각 범위 (도)
@@ -79,8 +80,13 @@ int SPEED_FORWARD = 150;      // 전진 속도 (0~255)
 int SPEED_BACKWARD = 120;     // 후진 속도
 int SPEED_TURN = 100;         // 회전 속도
 
+// 서보 조향 각도 (ANGLE_* 실측값과 일치)
 // 서보 조향 각도 (새 매핑: 좌회전=120°, 우회전=60°)
 int SERVO_CENTER = 90;        // 중앙 (직진)
+int SERVO_LEFT_MAX = 120;     // 최대 좌회전 각도
+int SERVO_RIGHT_MAX = 60;     // 최대 우회전 각도
+int SERVO_LEFT_SOFT = (SERVO_CENTER + SERVO_LEFT_MAX)/2;     // 약한 좌회전
+int SERVO_RIGHT_SOFT = (SERVO_CENTER + SERVO_RIGHT_MAX)/2;   // 약한 우회전
 int SERVO_LEFT_MAX = 120;     // 최대 좌회전 각도
 int SERVO_RIGHT_MAX = 60;     // 최대 우회전 각도
 int SERVO_LEFT_SOFT = 105;    // 약한 좌회전
@@ -230,10 +236,13 @@ void parseROS2Command(String cmd) {
 
     // 범위 제한
     pwm = constrain(pwm, 0, 255);
-    servo = constrain(servo, 0, 180);
+    int servo_min = min(SERVO_LEFT_MAX, SERVO_RIGHT_MAX);
+    int servo_max = max(SERVO_LEFT_MAX, SERVO_RIGHT_MAX);
+    servo = constrain(servo, servo_min, servo_max);
 
     // 명령 실행
     current_pwm = pwm;
+    command = 'V';
 
     if (pwm > 0) {
       motor_forward(pwm);
@@ -270,18 +279,41 @@ void read_steering_feedback() {
 }
 
 // 가변저항 ADC 값을 각도로 변환
+// 현재 실측 기준: POT_LEFT(909) > POT_RIGHT(589)
 // ADC 높을수록 좌회전(120°), 낮을수록 우회전(60°)
 // POT_LEFT=909 (좌회전), POT_CENTER=749, POT_RIGHT=589 (우회전)
 float map_pot_to_angle(int pot_value) {
+  // 범위 제한 (min/max 자동 정렬)
+  int pot_min = min(POT_LEFT, POT_RIGHT);
+  int pot_max = max(POT_LEFT, POT_RIGHT);
+  pot_value = constrain(pot_value, pot_min, pot_max);
+
+  // 실측 기준: ADC 값이 클수록 왼쪽
+  bool left_is_higher = (POT_LEFT > POT_RIGHT);
   // 범위 제한 (POT_RIGHT=589 < POT_LEFT=909)
   pot_value = constrain(pot_value, POT_RIGHT, POT_LEFT);
 
   // 선형 보간 (구간별 매핑)
   float angle;
+  if (left_is_higher) {
+    if (pot_value >= POT_CENTER) {
+      // 좌회전 영역: POT_CENTER ~ POT_LEFT → 90° ~ 120°
+      angle = map_float(pot_value, POT_CENTER, POT_LEFT, ANGLE_CENTER_DEG, ANGLE_LEFT);
+    } else {
+      // 우회전 영역: POT_RIGHT ~ POT_CENTER → 60° ~ 90°
+      angle = map_float(pot_value, POT_RIGHT, POT_CENTER, ANGLE_RIGHT, ANGLE_CENTER_DEG);
+    }
   if (pot_value >= POT_CENTER) {
     // 좌회전 영역: POT_CENTER(749) ~ POT_LEFT(909) → 90° ~ 120°
     angle = map_float(pot_value, POT_CENTER, POT_LEFT, ANGLE_CENTER_DEG, ANGLE_LEFT);
   } else {
+    if (pot_value >= POT_CENTER) {
+      // 우회전 영역: POT_CENTER ~ POT_RIGHT → 90° ~ 120°
+      angle = map_float(pot_value, POT_CENTER, POT_RIGHT, ANGLE_CENTER_DEG, ANGLE_RIGHT);
+    } else {
+      // 좌회전 영역: POT_LEFT ~ POT_CENTER → 60° ~ 90°
+      angle = map_float(pot_value, POT_LEFT, POT_CENTER, ANGLE_LEFT, ANGLE_CENTER_DEG);
+    }
     // 우회전 영역: POT_RIGHT(589) ~ POT_CENTER(749) → 60° ~ 90°
     angle = map_float(pot_value, POT_RIGHT, POT_CENTER, ANGLE_RIGHT, ANGLE_CENTER_DEG);
   }
@@ -363,6 +395,7 @@ void pid_steering_control() {
   int pwm = constrain(abs((int)output), PID_MIN_PWM, PID_MAX_PWM);
 
   if (output > 0) {
+    // target > actual → 좌회전 방향 (angle 증가)
     // target > actual → 좌회전 방향 (angle 증가, ADC 높아져야 함)
     analogWrite(servo_IN1, 0);
     analogWrite(servo_IN2, pwm);
@@ -370,6 +403,10 @@ void pid_steering_control() {
     // target < actual → 우회전 방향 (angle 감소, ADC 낮아져야 함)
     analogWrite(servo_IN1, pwm);
     analogWrite(servo_IN2, 0);
+  } else {
+    // target < actual → 우회전 방향 (angle 감소)
+    analogWrite(servo_IN1, 0);
+    analogWrite(servo_IN2, pwm);
   }
 }
 
@@ -490,6 +527,7 @@ void calibrate_steering_pot() {
 
 // ==================== 명령 실행 (단일 문자) ====================
 void executeCommand(char cmd) {
+  command = cmd;
   switch(cmd) {
     case 'F':  // 전진 + 직진
       motor_forward(SPEED_FORWARD);
@@ -732,9 +770,9 @@ void print_debug_info() {
 
   // 캘리브레이션 값
   Serial.println("[Calibration]");
-  Serial.print("  POT_LEFT:   "); Serial.print(POT_LEFT);   Serial.println(" (1.55V, ref=2.56V)");
-  Serial.print("  POT_CENTER: "); Serial.print(POT_CENTER); Serial.println(" (1.75V, ref=2.56V)");
-  Serial.print("  POT_RIGHT:  "); Serial.print(POT_RIGHT);  Serial.println(" (1.95V, ref=2.56V)");
+  Serial.print("  POT_LEFT:   "); Serial.print(POT_LEFT);   Serial.println(" (~2.27V, ref=2.56V)");
+  Serial.print("  POT_CENTER: "); Serial.print(POT_CENTER); Serial.println(" (~1.87V, ref=2.56V)");
+  Serial.print("  POT_RIGHT:  "); Serial.print(POT_RIGHT);  Serial.println(" (~1.47V, ref=2.56V)");
 
   // PID 상태
   Serial.println("[PID Control]");
