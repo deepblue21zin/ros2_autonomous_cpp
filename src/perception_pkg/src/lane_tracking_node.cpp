@@ -60,9 +60,28 @@ LaneTrackingNode::LaneTrackingNode()
 
 void LaneTrackingNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr msg) {
     try {
-        cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(msg, "bgr8");
-        handleFrame(cv_ptr->image, msg->header);
-    } catch (const cv_bridge::Exception& e) {
+        cv::Mat bgr_frame;
+        const std::string& enc = msg->encoding;
+
+        if (enc == "yuv422_yuy2" || enc == "yuyv") {
+            // YUV422 YUYV → BGR (cv_bridge가 지원하지 않는 포맷)
+            cv::Mat yuv(msg->height, msg->width, CV_8UC2,
+                        const_cast<uint8_t*>(msg->data.data()), msg->step);
+            cv::cvtColor(yuv, bgr_frame, cv::COLOR_YUV2BGR_YUY2);
+        } else if (enc == "uyvy") {
+            cv::Mat yuv(msg->height, msg->width, CV_8UC2,
+                        const_cast<uint8_t*>(msg->data.data()), msg->step);
+            cv::cvtColor(yuv, bgr_frame, cv::COLOR_YUV2BGR_UYVY);
+        } else {
+            // bgr8, rgb8, mono8 등 - cv_bridge가 처리
+            cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(msg, "bgr8");
+            bgr_frame = cv_ptr->image;
+        }
+
+        if (!bgr_frame.empty()) {
+            handleFrame(bgr_frame, msg->header);
+        }
+    } catch (const std::exception& e) {
         RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
     }
 }

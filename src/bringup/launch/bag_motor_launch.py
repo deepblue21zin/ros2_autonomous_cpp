@@ -3,7 +3,7 @@ Bag motor test launch file.
 rosbag 파일을 재생하여 차선 인식 + 모터 구동까지 테스트하는 모드.
 카메라/라이다 대신 rosbag에서 토픽을 재생하고,
 lane_tracking → decision → arduino_bridge로 실제 모터를 구동.
-rviz2로 시각화.
+시각화는 호스트에서 ./rviz.sh 실행.
 """
 
 from launch import LaunchDescription
@@ -129,21 +129,6 @@ def generate_launch_description():
         arguments=['0', '0', '0.1', '0', '0', '0', 'base_link', 'laser']
     )
 
-    # 7. rviz2 시각화
-    rviz_config = PathJoinSubstitution([
-        FindPackageShare('bringup'),
-        'config',
-        'camera_test.rviz'
-    ])
-
-    rviz2 = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        arguments=['-d', rviz_config],
-        output='screen'
-    )
-
     return LaunchDescription([
         bag_path_arg,
         camera_topic_arg,
@@ -156,5 +141,4 @@ def generate_launch_description():
         arduino_node,
         static_tf_camera,
         static_tf_laser,
-        rviz2,
     ])
