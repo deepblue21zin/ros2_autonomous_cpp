@@ -29,6 +29,7 @@ private:
     std::string camera_topic_;
     bool use_compressed_;
     double kp_;
+    double kd_;
     bool debug_;
     double roi_y_ratio_;
     bool use_grayscale_threshold_;
@@ -38,13 +39,19 @@ private:
     double lane_width_ratio_;
     double max_steer_delta_;
     double prev_steering_;
+    double prev_smooth_offset_;
     double lookahead_ratio_;
     int max_lost_frames_;
+
+    // Crosswalk Predict+Hold parameters
+    double crosswalk_density_threshold_;
+    int max_crosswalk_frames_;
 
     // Predict+Hold state
     double prev_center_x_;
     int lost_count_;
     bool has_prev_center_;
+    int crosswalk_hold_count_;
 
     // Moving average buffer
     std::deque<double> offset_buffer_;

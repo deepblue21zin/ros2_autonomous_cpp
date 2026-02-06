@@ -13,6 +13,7 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("camera_topic", "/camera/image_raw");
     this->declare_parameter("use_compressed", false);
     this->declare_parameter("kp", 0.6);
+    this->declare_parameter("kd", 0.0);
     this->declare_parameter("debug", false);
     this->declare_parameter("roi_y_ratio", 0.55);
     this->declare_parameter("use_grayscale_threshold", false);
@@ -22,10 +23,13 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("max_steer_delta", 0.15);
     this->declare_parameter("lookahead_ratio", 0.4);
     this->declare_parameter("max_lost_frames", 15);
+    this->declare_parameter("crosswalk_density_threshold", 0.15);
+    this->declare_parameter("max_crosswalk_frames", 60);
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
     use_compressed_ = this->get_parameter("use_compressed").as_bool();
     kp_ = this->get_parameter("kp").as_double();
+    kd_ = this->get_parameter("kd").as_double();
     debug_ = this->get_parameter("debug").as_bool();
     roi_y_ratio_ = this->get_parameter("roi_y_ratio").as_double();
     use_grayscale_threshold_ = this->get_parameter("use_grayscale_threshold").as_bool();
@@ -35,10 +39,14 @@ LaneTrackingNode::LaneTrackingNode()
     max_steer_delta_ = this->get_parameter("max_steer_delta").as_double();
     lookahead_ratio_ = this->get_parameter("lookahead_ratio").as_double();
     max_lost_frames_ = this->get_parameter("max_lost_frames").as_int();
+    crosswalk_density_threshold_ = this->get_parameter("crosswalk_density_threshold").as_double();
+    max_crosswalk_frames_ = this->get_parameter("max_crosswalk_frames").as_int();
     prev_steering_ = 0.0;
+    prev_smooth_offset_ = 0.0;
     prev_center_x_ = 0.0;
     lost_count_ = 0;
     has_prev_center_ = false;
+    crosswalk_hold_count_ = 0;
 
     // QoS for low latency: best_effort to skip old frames
     auto qos_sensor = rclcpp::QoS(1).best_effort();
@@ -66,7 +74,7 @@ LaneTrackingNode::LaneTrackingNode()
 
     RCLCPP_INFO(this->get_logger(), "LaneTrackingNode initialized");
     RCLCPP_INFO(this->get_logger(), "  camera_topic: %s", camera_topic_.c_str());
-    RCLCPP_INFO(this->get_logger(), "  kp: %.2f", kp_);
+    RCLCPP_INFO(this->get_logger(), "  kp: %.2f, kd: %.2f", kp_, kd_);
     RCLCPP_INFO(this->get_logger(), "  roi_y_ratio: %.2f", roi_y_ratio_);
 }
 
@@ -169,6 +177,7 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
 
 void LaneTrackingNode::updateParams() {
     kp_ = this->get_parameter("kp").as_double();
+    kd_ = this->get_parameter("kd").as_double();
     roi_y_ratio_ = this->get_parameter("roi_y_ratio").as_double();
 }
 
@@ -201,6 +210,32 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
                          cv::Scalar(0, 0, 255), 2);
         }
     }
+
+    // 횡단보도 Predict+Hold: 흰 픽셀 밀도로 횡단보도 감지
+    double white_density = static_cast<double>(cv::countNonZero(mask)) / (h * w);
+    if (white_density > crosswalk_density_threshold_) {
+        // 횡단보도 감지 → lane 업데이트 중단, 이전 center 유지
+        double center_x;
+        if (has_prev_center_ && crosswalk_hold_count_ < max_crosswalk_frames_) {
+            center_x = prev_center_x_;
+            crosswalk_hold_count_++;
+        } else {
+            center_x = static_cast<double>(w) / 2.0;
+        }
+
+        if (debug_) {
+            cv::putText(overlay,
+                        "CROSSWALK HOLD (" + std::to_string(crosswalk_hold_count_) + ")",
+                        cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6,
+                        cv::Scalar(255, 0, 255), 2);
+            cv::circle(overlay, cv::Point(static_cast<int>(center_x), h / 2),
+                       8, cv::Scalar(255, 0, 255), -1);
+        }
+        return {center_x, overlay};
+    }
+
+    // 횡단보도 종료 → hold 카운터 리셋, 정상 sliding window 재획득
+    crosswalk_hold_count_ = 0;
 
     // 1. 히스토그램: 하단 50%에서 좌/우 차선 시작점 찾기
     std::vector<int> histogram = computeHistogram(mask, h / 2);
@@ -306,8 +341,10 @@ std::pair<double, double> LaneTrackingNode::computeSteering(double lane_center, 
     double sum = std::accumulate(offset_buffer_.begin(), offset_buffer_.end(), 0.0);
     double smooth_offset = sum / offset_buffer_.size();
 
-    // Proportional control with sign inversion
-    double steering = clamp(kp_ * (-smooth_offset), -1.0, 1.0);
+    // PD control with sign inversion
+    double d_offset = smooth_offset - prev_smooth_offset_;
+    prev_smooth_offset_ = smooth_offset;
+    double steering = clamp(kp_ * (-smooth_offset) + kd_ * (-d_offset), -1.0, 1.0);
 
     // Rate limit: 프레임 간 급격한 조향 변화 방지
     double delta = steering - prev_steering_;
