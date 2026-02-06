@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""YOLOv8n-seg ROS2 노드.
+"""YOLOv26n-seg ROS2 노드.
 
 기능:
-  1. 카메라 토픽 구독 → YOLOv8n-seg 추론
+  1. 카메라 토픽 구독 → YOLOv26n-seg 추론
   2. 신호등 감지 + HSV 색상 분석 → /perception/traffic_light_state 발행
   3. 장애물 감지 → /perception/yolo_obstacles 발행
   4. 주행 가능 영역 마스크 → /perception/drivable_mask 발행
@@ -23,17 +23,17 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String, Bool, Float32MultiArray
 from cv_bridge import CvBridge
 
-from perception_pkg.perception.object_detection.detector_yolov8n import (
-    Yolov8nSegDetector,
-    Yolov8nSegConfig,
+from perception_pkg.perception.object_detection.detector_yolov26n import (
+    Yolov26nSegDetector,
+    Yolov26nSegConfig,
 )
 
 
-class Yolov8nSegNode(Node):
-    """YOLOv8n-seg 통합 감지 ROS2 노드."""
+class Yolov26nSegNode(Node):
+    """YOLOv26n-seg 통합 감지 ROS2 노드."""
 
     def __init__(self) -> None:
-        super().__init__("yolov8n_seg_node")
+        super().__init__("yolov26n_seg_node")
 
         # ── 파라미터 선언 ──
         self.declare_parameter("model_path", "")
@@ -64,15 +64,9 @@ class Yolov8nSegNode(Node):
         # 모델 경로 자동 탐색 (yolo26n_1st.pt 우선)
         if not model_path or not os.path.exists(model_path):
             search_paths = [
-                "/root/ros2_ws/src/perception_pkg/models/lane_traffic_light_1st.pt",
-                #"/root/ros2_ws/src/perception_pkg/models/best.pt",
-               # os.path.join(os.path.dirname(__file__),
-                #             "..", "models", "yolo26n_1st.pt"),
-                #os.path.join(os.path.dirname(__file__),
-                #             "..", "models", "best.pt"),
-                #"/root/ros2_ws/src/perception_pkg/models/yolov8n-seg.pt",
-                #os.path.join(os.path.dirname(__file__),
-                #             "..", "models", "yolov8n-seg.pt"),
+                "/root/ros2_ws/src/perception_pkg/models/yolo26n_1st.pt",
+                os.path.join(os.path.dirname(__file__),
+                             "..", "models", "yolo26n_1st.pt"),
             ]
             for p in search_paths:
                 if os.path.exists(p):
@@ -84,7 +78,7 @@ class Yolov8nSegNode(Node):
             raise RuntimeError(f"모델 파일 없음: {model_path}")
 
         # ── 감지기 초기화 ──
-        config = Yolov8nSegConfig(
+        config = Yolov26nSegConfig(
             model_path=model_path,
             conf_threshold=conf_threshold,
             iou_threshold=iou_threshold,
@@ -94,7 +88,7 @@ class Yolov8nSegNode(Node):
             use_seg_mask=True,
             detect_obstacles=detect_obstacles,
         )
-        self.detector = Yolov8nSegDetector(config)
+        self.detector = Yolov26nSegDetector(config)
         self.bridge = CvBridge()
 
         # ── 퍼블리셔 ──
@@ -127,7 +121,7 @@ class Yolov8nSegNode(Node):
         self.create_timer(period, self._inference_cb)
 
         self.get_logger().info(
-            f"[yolov8n_seg] 초기화 완료: model={model_path}, "
+            f"[yolov26n_seg] 초기화 완료: model={model_path}, "
             f"conf={conf_threshold}, rate={rate_hz}Hz, "
             f"camera={camera_topic}"
         )
@@ -209,7 +203,7 @@ class Yolov8nSegNode(Node):
 
 def main(args=None) -> None:
     rclpy.init(args=args)
-    node = Yolov8nSegNode()
+    node = Yolov26nSegNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

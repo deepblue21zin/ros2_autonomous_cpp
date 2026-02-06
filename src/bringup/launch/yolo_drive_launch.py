@@ -76,11 +76,11 @@ def generate_launch_description():
         ]
     )
 
-    # 2. YOLOv8n-seg Node
+    # 2. YOLOv26n-seg Node
     yolo_node = Node(
         package='perception_pkg',
-        executable='yolov8n_seg_node.py',
-        name='yolov8n_seg_node',
+        executable='yolov26n_seg_node.py',
+        name='yolov26n_seg_node',
         output='screen',
         parameters=[
             {

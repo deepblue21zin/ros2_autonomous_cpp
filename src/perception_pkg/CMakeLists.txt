@@ -111,7 +111,7 @@ install(PROGRAMS
   scripts/traffic_light_node.py
   scripts/traffic_light_color_node.py
   scripts/obstacle_detection_node.py
-  scripts/yolov8n_seg_node.py
+  scripts/yolov26n_seg_node.py
   perception_pkg/parking_line_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
