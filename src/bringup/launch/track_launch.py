@@ -90,8 +90,25 @@ def launch_setup(context, *args, **kwargs):
     nodes_to_launch.append(lidar_obstacle_node)
 
     # Decision node based on mode
-    # decision은 항상 Python unified 노드 사용 (ROS2 변환 완료)
     if decision_mode == '2026':
+        # C++ decision node (기본값: 낮은 레이턴시)
+        decision_node = Node(
+            package='decision',
+            executable='decision_node',
+            name='decision_node',
+            output='screen',
+            parameters=[
+                {
+                    'stop_on_yellow': False,
+                    'test_mode': test_mode,
+                }
+            ],
+            remappings=[
+                ('/decision/cmd', '/arduino/cmd'),
+            ]
+        )
+    elif decision_mode == 'unified':
+        # Python fallback (C++ 노드 문제 시 사용)
         decision_node = Node(
             package='decision',
             executable='decision_node_unified.py',
@@ -124,7 +141,7 @@ def launch_setup(context, *args, **kwargs):
             ]
         )
     else:
-        # Default to 2026 C++ node
+        # Default to C++ node
         decision_node = Node(
             package='decision',
             executable='decision_node',
