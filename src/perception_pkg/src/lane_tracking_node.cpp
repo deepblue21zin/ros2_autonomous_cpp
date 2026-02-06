@@ -213,6 +213,16 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
 
     // 횡단보도 Predict+Hold: 흰 픽셀 밀도로 횡단보도 감지
     double white_density = static_cast<double>(cv::countNonZero(mask)) / (h * w);
+
+    // 디버그: 밀도 값 항상 표시 (임계값 튜닝용)
+    if (debug_) {
+        char density_buf[64];
+        snprintf(density_buf, sizeof(density_buf), "density: %.1f%%", white_density * 100.0);
+        cv::putText(overlay, density_buf,
+                    cv::Point(10, h - 10), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                    cv::Scalar(200, 200, 200), 1);
+    }
+
     if (white_density > crosswalk_density_threshold_) {
         // 횡단보도 감지 → lane 업데이트 중단, 이전 center 유지
         double center_x;
