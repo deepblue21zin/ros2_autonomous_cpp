@@ -9,7 +9,9 @@ DecisionNode::DecisionNode()
       obstacle_bias_(0.0),
       ultra_min_(0.0),
       traffic_state_("unknown"),
-      stop_line_distance_(-1.0) {
+      stop_line_distance_(-1.0),
+      current_cmd_speed_(0.0),
+      lane_lost_count_(0) {
     // Declare and load parameters
     this->declare_parameter("cruise_speed_mps", 1.0);
     this->declare_parameter("max_steer_rad", 0.6);
@@ -24,6 +26,18 @@ DecisionNode::DecisionNode()
     this->declare_parameter("obstacle_bias_weight", 0.3);
     this->declare_parameter("test_mode", false);  // 테스트 모드: 센서 없이 모터 구동
 
+    // Speed control parameters
+    this->declare_parameter("min_speed_mps", 0.3);
+    this->declare_parameter("curve_factor", 0.6);
+    this->declare_parameter("accel_rate_mps2", 0.5);
+    this->declare_parameter("decel_rate_mps2", 1.0);
+    this->declare_parameter("obstacle_d_stop_m", 0.5);
+    this->declare_parameter("obstacle_d_slow_m", 1.5);
+    this->declare_parameter("obstacle_k", 0.8);
+    this->declare_parameter("obstacle_max_speed_mps", 0.6);
+    this->declare_parameter("lane_lost_hold_frames", 45);
+    this->declare_parameter("lost_lane_speed_mps", 0.3);
+
     cruise_speed_ = this->get_parameter("cruise_speed_mps").as_double();
     max_steer_rad_ = this->get_parameter("max_steer_rad").as_double();
     soft_steer_rad_ = this->get_parameter("soft_steer_rad").as_double();
@@ -36,6 +50,20 @@ DecisionNode::DecisionNode()
     use_obstacle_avoidance_ = this->get_parameter("use_obstacle_avoidance").as_bool();
     obstacle_bias_weight_ = this->get_parameter("obstacle_bias_weight").as_double();
     test_mode_ = this->get_parameter("test_mode").as_bool();
+
+    // Speed control
+    min_speed_ = this->get_parameter("min_speed_mps").as_double();
+    curve_factor_ = this->get_parameter("curve_factor").as_double();
+    accel_rate_ = this->get_parameter("accel_rate_mps2").as_double();
+    decel_rate_ = this->get_parameter("decel_rate_mps2").as_double();
+    obstacle_d_stop_ = this->get_parameter("obstacle_d_stop_m").as_double();
+    obstacle_d_slow_ = this->get_parameter("obstacle_d_slow_m").as_double();
+    obstacle_k_ = this->get_parameter("obstacle_k").as_double();
+    obstacle_max_speed_ = this->get_parameter("obstacle_max_speed_mps").as_double();
+    lane_lost_hold_frames_ = this->get_parameter("lane_lost_hold_frames").as_int();
+    lost_lane_speed_ = this->get_parameter("lost_lane_speed_mps").as_double();
+
+    last_timer_time_ = this->now();
 
     // Setup subscribers
     lane_sub_ = this->create_subscription<std_msgs::msg::Float32>(
@@ -130,79 +158,129 @@ double DecisionNode::mapSteer(double steer_norm) const {
 }
 
 void DecisionNode::timerCallback() {
+    // dt 계산 (실제 시간 기반)
+    rclcpp::Time now = this->now();
+    double dt = (now - last_timer_time_).seconds();
+    last_timer_time_ = now;
+    dt = clamp(dt, 0.001, 0.2);  // 이상치 방어 (1ms ~ 200ms)
+
     ackermann_msgs::msg::AckermannDrive cmd;
-    bool should_stop = false;
+    bool e_stop = false;
     std::string reason = "";
+
+    // === 긴급 정지 판정 (e-stop: 램핑 무시, 즉시 0) ===
 
     // 우선순위 1: 라이다 장애물 (위험 거리)
     if (obstacle_) {
-        should_stop = true;
+        e_stop = true;
         reason = "lidar_obstacle";
     }
 
     // 우선순위 2: 초음파 전방 장애물 (위험 거리)
-    if (!should_stop && ultra_min_ > 0.0 && ultra_min_ < ultra_safe_m_) {
-        should_stop = true;
+    if (!e_stop && ultra_min_ > 0.0 && ultra_min_ < ultra_safe_m_) {
+        e_stop = true;
         char buf[64];
         snprintf(buf, sizeof(buf), "ultrasonic(%.2fm)", ultra_min_);
         reason = buf;
     }
 
     // 우선순위 3: 신호등 + 정지선 (선택적)
-    if (!should_stop && use_traffic_light_) {
-        // Option B: 빨강/노랑 + 정지선 가까움 → 정지, 초록 → 주행
+    if (!e_stop && use_traffic_light_) {
         if (traffic_state_ == "red" || traffic_state_ == "yellow") {
-            // 빨강/노랑 신호일 때 정지선 거리 확인
             if (stop_line_distance_ > 0.0 && stop_line_distance_ < stop_line_stop_distance_) {
-                should_stop = true;
+                e_stop = true;
                 char buf[128];
                 snprintf(buf, sizeof(buf), "%s_light_at_stopline(%.2fm)",
                          traffic_state_.c_str(), stop_line_distance_);
                 reason = buf;
             }
         }
-        // 초록불이면 정지선 무시하고 주행 (명시적으로 처리 안 해도 should_stop=False 유지)
     }
 
-    // 우선순위 4: 차선 유효성 확인
-    if (!should_stop) {
-        if (!lane_stamp_.has_value()) {
-            should_stop = true;
-            reason = "no_lane_data";
-        } else {
-            double age = (this->now() - lane_stamp_.value()).seconds();
-            if (age > lane_timeout_) {
-                should_stop = true;
-                char buf[64];
-                snprintf(buf, sizeof(buf), "lane_timeout(%.1fs)", age);
-                reason = buf;
-            }
-        }
-    }
-
-    // 명령 생성
-    if (should_stop) {
+    // 긴급 정지 시 즉시 0 (램핑 무시)
+    if (e_stop) {
         cmd.speed = 0.0;
         cmd.steering_angle = 0.0;
+        current_cmd_speed_ = 0.0;
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
-                             "[decision_unified] STOP: %s", reason.c_str());
-    } else {
-        // 주행: 차선 추종 + 장애물 회피
-        double steer = clamp(lane_steer_norm_, -1.0, 1.0);
-
-        // 카메라 장애물 회피 바이어스 적용
-        if (use_obstacle_avoidance_ && std::abs(obstacle_bias_) > 0.01) {
-            steer += obstacle_bias_ * obstacle_bias_weight_;
-            steer = clamp(steer, -1.0, 1.0);
-            RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
-                                 "[decision_unified] AVOID: lane_steer=%.2f bias=%.2f → final=%.2f",
-                                 lane_steer_norm_, obstacle_bias_, steer);
-        }
-
-        cmd.speed = cruise_speed_;
-        cmd.steering_angle = mapSteer(steer);
+                             "[decision] E-STOP: %s", reason.c_str());
+        cmd_pub_->publish(cmd);
+        return;
     }
 
+    // === 차선 유효성 + 차선 소실 감속 ===
+    bool lane_valid = false;
+    if (lane_stamp_.has_value()) {
+        double age = (now - lane_stamp_.value()).seconds();
+        if (age <= lane_timeout_) {
+            lane_valid = true;
+            lane_lost_count_ = 0;
+        }
+    }
+
+    if (!lane_valid && !test_mode_) {
+        lane_lost_count_++;
+        if (lane_lost_count_ > lane_lost_hold_frames_) {
+            // hold 초과 → 정지
+            cmd.speed = 0.0;
+            cmd.steering_angle = 0.0;
+            current_cmd_speed_ = 0.0;
+            RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                                 "[decision] STOP: lane_lost(%d frames)", lane_lost_count_);
+            cmd_pub_->publish(cmd);
+            return;
+        }
+    }
+
+    // === 조향 계산 ===
+    double steer = clamp(lane_steer_norm_, -1.0, 1.0);
+
+    // 카메라 장애물 회피 바이어스 적용
+    if (use_obstacle_avoidance_ && std::abs(obstacle_bias_) > 0.01) {
+        steer += obstacle_bias_ * obstacle_bias_weight_;
+        steer = clamp(steer, -1.0, 1.0);
+    }
+
+    // === target_speed 결정 ===
+    double target_speed = cruise_speed_;
+
+    // 1) 커브 감속: |steer| 비례
+    double steer_norm = std::abs(steer);
+    double curve_speed = cruise_speed_ * (1.0 - curve_factor_ * steer_norm);
+    target_speed = std::min(target_speed, curve_speed);
+
+    // 2) 장애물 거리 감속 (초음파 piecewise)
+    if (ultra_min_ > 0.0) {
+        double d = ultra_min_;
+        if (d <= obstacle_d_stop_) {
+            target_speed = 0.0;
+        } else if (d < obstacle_d_slow_) {
+            double v_obstacle = obstacle_k_ * (d - obstacle_d_stop_);
+            v_obstacle = clamp(v_obstacle, 0.0, obstacle_max_speed_);
+            target_speed = std::min(target_speed, v_obstacle);
+        }
+    }
+
+    // 3) 차선 소실 감속
+    if (!lane_valid && !test_mode_ && lane_lost_count_ <= lane_lost_hold_frames_) {
+        target_speed = std::min(target_speed, lost_lane_speed_);
+    }
+
+    // min_speed 적용 (NORMAL 상태에서만 - 위의 조건들에서 0으로 설정된 경우는 0 유지)
+    if (target_speed > 0.0) {
+        target_speed = std::max(target_speed, min_speed_);
+    }
+
+    // === dt 기반 속도 램핑 ===
+    double dv_up = accel_rate_ * dt;
+    double dv_dn = decel_rate_ * dt;
+    double delta = target_speed - current_cmd_speed_;
+    current_cmd_speed_ += clamp(delta, -dv_dn, dv_up);
+    current_cmd_speed_ = clamp(current_cmd_speed_, 0.0, cruise_speed_);
+
+    // === 출력 ===
+    cmd.speed = current_cmd_speed_;
+    cmd.steering_angle = mapSteer(steer);
     cmd_pub_->publish(cmd);
 }
 
