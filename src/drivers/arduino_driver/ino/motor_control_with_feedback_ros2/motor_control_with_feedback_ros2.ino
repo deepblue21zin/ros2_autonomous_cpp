@@ -26,8 +26,8 @@ int STEERING_POT_PIN = A0;        // 가변저항 아날로그 입력 핀
 // 가변저항 캘리브레이션 값 (INTERNAL2V56 기준, K 명령으로 재측정 필요)
 // ADC = (전압 / 2.56) * 1023
 // 실측 ADC 기준: 좌 909, 우 589 (전압 환산 약 2.27V, 1.47V)
-int POT_LEFT = 909;               // 최대 좌회전 시 ADC 값
-int POT_RIGHT = 589;              // 최대 우회전 시 ADC 값
+int POT_LEFT = 890;               // 최대 좌회전 시 ADC 값
+int POT_RIGHT = 640;              // 최대 우회전 시 ADC 값
 int POT_CENTER = (POT_RIGHT + POT_LEFT)/2; 
 
 // 조향각 범위 (도)
@@ -44,19 +44,16 @@ bool pot_buffer_filled = false;
 bool ENABLE_STEERING_FEEDBACK = true;    // 피드백 데이터 시리얼 전송 여부 (디버그용)
 int FEEDBACK_SEND_INTERVAL = 10;        // N번 루프마다 피드백 전송 (5 = 센서데이터와 동일 주기)
 
-// 시리얼 출력 제어 (시리얼 모니터 수동 테스트 시 끄기 위함)
-bool serial_output_enabled = true;      // false면 자동 출력 중단 (D, K 등 수동 명령은 동작)
-
 // ==================== PID 조향 제어 설정 ====================
 // PID 게인 (시리얼 'T' 명령으로 실시간 튜닝 가능)
-float PID_KP = 5.0;              // 비례 게인
-float PID_KI = 0.5;              // 적분 게인
-float PID_KD = 1.0;              // 미분 게인
+float PID_KP = 10.0;              // 비례 게인
+float PID_KI = 0.0;              // 적분 게인
+float PID_KD = 2.0;              // 미분 게인
 
 // PID 제한
-float PID_DEADBAND = 2.0;        // 오차 허용 범위 (도) - 목표 근처에서 모터 정지
-int PID_MIN_PWM = 30;            // 모터 구동 최소 PWM (정지 마찰 극복)
-int PID_MAX_PWM = 200;           // 모터 구동 최대 PWM (안전 제한)
+float PID_DEADBAND = 2.5;        // 오차 허용 범위 (도) - 목표 근처에서 모터 정지
+int PID_MIN_PWM = 60;            // 모터 구동 최소 PWM (정지 마찰 극복)
+int PID_MAX_PWM = 255;           // 모터 구동 최대 PWM (안전 제한)
 float PID_INTEGRAL_LIMIT = 50.0; // 적분 와인드업 방지
 
 // PID 상태
@@ -82,12 +79,14 @@ int SPEED_FORWARD = 150;      // 전진 속도 (0~255)
 int SPEED_BACKWARD = 120;     // 후진 속도
 int SPEED_TURN = 100;         // 회전 속도
 
-// 서보 조향 각도 (실측: 좌회전=120°, 우회전=60°)
+
+// 서보 조향 각도 (새 매핑: 좌회전=120°, 우회전=60°)
 int SERVO_CENTER = 90;        // 중앙 (직진)
 int SERVO_LEFT_MAX = 120;     // 최대 좌회전 각도
-int SERVO_RIGHT_MAX = 60;     // 최대 우회전 각도
-int SERVO_LEFT_SOFT = (SERVO_CENTER + SERVO_LEFT_MAX) / 2;   // 약한 좌회전 (105)
-int SERVO_RIGHT_SOFT = (SERVO_CENTER + SERVO_RIGHT_MAX) / 2; // 약한 우회전 (75)
+int SERVO_RIGHT_MAX = 69;     // 최대 우회전 각도
+int SERVO_LEFT_SOFT = (SERVO_CENTER + SERVO_LEFT_MAX)/2;    // 약한 좌회전
+int SERVO_RIGHT_SOFT = (SERVO_CENTER + SERVO_RIGHT_MAX)/2;    // 약한 우회전
+
 
 // ==================== 전역 변수 ====================
 char command = 'S';               // 수신한 명령
@@ -146,8 +145,6 @@ void setup() {
   Serial.println("ROS2 Compatible Firmware (PID Steering)");
   Serial.println("Protocol: V:PWM,S:SERVO or single char (F,B,L,R,S)");
   Serial.println("PID Tuning: T:P:5.0, T:I:0.5, T:D:1.0, T:B:2.0, T:ON, T:OFF");
-  Serial.println("Q: Toggle serial output (OFF for manual testing)");
-  Serial.println("D: Print debug info");
   Serial.println("Example: V:100,S:90");
 }
 
@@ -166,11 +163,10 @@ void loop() {
     } else {
       serial_buffer += c;
 
-      // 단일 문자 명령 즉시 처리 (F, B, L, R, S, K, D, Q)
+      // 단일 문자 명령 즉시 처리 (F, B, L, R, S, K, D)
       if (serial_buffer.length() == 1 &&
           (c == 'F' || c == 'B' || c == 'L' || c == 'R' || c == 'S' ||
-           c == 'l' || c == 'r' || c == 'K' || c == 'D' || c == 'd' ||
-           c == 'Q' || c == 'q')) {
+           c == 'l' || c == 'r' || c == 'K' || c == 'D')) {
         processCommand(serial_buffer);
         serial_buffer = "";
       }
@@ -188,16 +184,14 @@ void loop() {
   // 3. 초음파 측정은 5회 중 1회만 (딜레이 감소)
   loop_count++;
   if (loop_count >= 5) {
-    measure_all_ultrasonic();
-    if (serial_output_enabled) {
-      send_sensor_data();
-    }
+    //measure_all_ultrasonic();
+    //send_sensor_data();
     loop_count = 0;
   }
 
   // 4. 조향 피드백 전송 (별도 주기)
   feedback_count++;
-  if (serial_output_enabled && ENABLE_STEERING_FEEDBACK && feedback_count >= FEEDBACK_SEND_INTERVAL) {
+  if (ENABLE_STEERING_FEEDBACK && feedback_count >= FEEDBACK_SEND_INTERVAL) {
     send_steering_feedback();
     feedback_count = 0;
   }
@@ -281,15 +275,14 @@ void read_steering_feedback() {
 }
 
 // 가변저항 ADC 값을 각도로 변환
-// 현재 실측 기준: POT_LEFT(909) > POT_RIGHT(589)
+
 // ADC 높을수록 좌회전(120°), 낮을수록 우회전(60°)
 // POT_LEFT=909 (좌회전), POT_CENTER=749, POT_RIGHT=589 (우회전)
 float map_pot_to_angle(int pot_value) {
   // 범위 제한 (POT_RIGHT=589 < POT_LEFT=909)
-  pot_value = constrain(pot_value, min(POT_LEFT, POT_RIGHT), max(POT_LEFT, POT_RIGHT));
+  pot_value = constrain(pot_value, POT_RIGHT, POT_LEFT);
 
   // 선형 보간 (구간별 매핑)
-  // ADC 높을수록 좌회전(120°), 낮을수록 우회전(60°)
   float angle;
   if (pot_value >= POT_CENTER) {
     // 좌회전 영역: POT_CENTER(749) ~ POT_LEFT(909) → 90° ~ 120°
@@ -297,6 +290,7 @@ float map_pot_to_angle(int pot_value) {
   } else {
     // 우회전 영역: POT_RIGHT(589) ~ POT_CENTER(749) → 60° ~ 90°
     angle = map_float(pot_value, POT_RIGHT, POT_CENTER, ANGLE_RIGHT, ANGLE_CENTER_DEG);
+
   }
 
   return angle;
@@ -376,7 +370,9 @@ void pid_steering_control() {
   int pwm = constrain(abs((int)output), PID_MIN_PWM, PID_MAX_PWM);
 
   if (output > 0) {
+
     // target > actual → 좌회전 방향 (angle 증가, ADC 높아져야 함)
+
     analogWrite(servo_IN1, 0);
     analogWrite(servo_IN2, pwm);
   } else {
@@ -545,16 +541,8 @@ void executeCommand(char cmd) {
       calibrate_steering_pot();
       break;
 
-    case 'D':  // 디버그 정보 출력
-    case 'd':
+    case 'D':  // 디버그 정보 출력 (NEW)
       print_debug_info();
-      break;
-
-    case 'Q':  // 자동 시리얼 출력 토글 (시리얼 모니터 수동 테스트용)
-    case 'q':
-      serial_output_enabled = !serial_output_enabled;
-      Serial.print("Serial output: ");
-      Serial.println(serial_output_enabled ? "ON (ROS2 mode)" : "OFF (manual test mode)");
       break;
 
     default:
@@ -690,7 +678,7 @@ long measure_ultrasonic(int index) {
   digitalWrite(trigPins[index], LOW);
 
   // Echo 핀에서 반사파 수신 (타임아웃 10ms로 축소)
-  long duration = pulseIn(echoPins[index], HIGH, 10000);
+  long duration = pulseIn(echoPins[index], HIGH, 2000);
 
   // 거리 계산: duration(us) * 0.034(cm/us) / 2
   long distance = duration * 0.034 / 2;

@@ -2,8 +2,8 @@
   ros__parameters:
     # Lane Tracking Parameters (2026 경기도 대회 트랙 최적화)
     # Sliding Window + RANSAC 방식
-    kp: 3.0                 # 조향 게인 (트랙 폭 850mm)
-    roi_y_ratio: 0.30       # ROI 시작 위치
+    kp: 10.0                 # 조향 게인 (트랙 폭 850mm)
+    roi_y_ratio: 0.20       # ROI 시작 위치
 
     # 전처리 방식 선택
     use_grayscale_threshold: false  # true: Grayscale Binary Threshold, false: HSV Threshold

@@ -125,7 +125,7 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
     cv::Mat binary_mask;
     if (use_grayscale_threshold_) {
         // Grayscale Binary Threshold 방식
-        binary_mask = preprocessForSlidingWindowGrayscale(roi_color, gaussian_kernel_, 200);
+        binary_mask = preprocessForSlidingWindowGrayscale(roi_color, gaussian_kernel_, 120);
     } else {
         // HSV Threshold 방식 (기본값)
         binary_mask = preprocessForSlidingWindow(roi_color, gaussian_kernel_);
