@@ -23,7 +23,8 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("max_steer_delta", 0.15);
     this->declare_parameter("lookahead_ratio", 0.4);
     this->declare_parameter("max_lost_frames", 15);
-    this->declare_parameter("crosswalk_density_threshold", 0.15);
+    this->declare_parameter("crosswalk_density_threshold", 0.30);
+    this->declare_parameter("crosswalk_density_max", 0.50);
     this->declare_parameter("max_crosswalk_frames", 60);
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
@@ -40,6 +41,7 @@ LaneTrackingNode::LaneTrackingNode()
     lookahead_ratio_ = this->get_parameter("lookahead_ratio").as_double();
     max_lost_frames_ = this->get_parameter("max_lost_frames").as_int();
     crosswalk_density_threshold_ = this->get_parameter("crosswalk_density_threshold").as_double();
+    crosswalk_density_max_ = this->get_parameter("crosswalk_density_max").as_double();
     max_crosswalk_frames_ = this->get_parameter("max_crosswalk_frames").as_int();
     prev_steering_ = 0.0;
     prev_smooth_offset_ = 0.0;
@@ -223,8 +225,8 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
                     cv::Scalar(200, 200, 200), 1);
     }
 
-    if (white_density > crosswalk_density_threshold_) {
-        // 횡단보도 감지 → lane 업데이트 중단, 이전 center 유지
+    if (white_density > crosswalk_density_threshold_ && white_density < crosswalk_density_max_) {
+        // 횡단보도 감지 (밴드: threshold < density < max) → 이전 center 유지
         double center_x;
         if (has_prev_center_ && crosswalk_hold_count_ < max_crosswalk_frames_) {
             center_x = prev_center_x_;

@@ -45,6 +45,7 @@ private:
 
     // Crosswalk Predict+Hold parameters
     double crosswalk_density_threshold_;
+    double crosswalk_density_max_;
     int max_crosswalk_frames_;
 
     // Predict+Hold state
