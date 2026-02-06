@@ -1,4 +1,4 @@
-#include <Car_Library.h>
+#include <Arduino.h>
 
 // ==================== ROS2 호환 펌웨어 ====================
 // 프로토콜: V:PWM,S:SERVO (예: V:100,S:90)
@@ -79,12 +79,12 @@ int SPEED_FORWARD = 150;      // 전진 속도 (0~255)
 int SPEED_BACKWARD = 120;     // 후진 속도
 int SPEED_TURN = 100;         // 회전 속도
 
-// 서보 조향 각도 (실제 차량에 맞게 조정 필요)
+// 서보 조향 각도 (새 매핑: 좌회전=120°, 우회전=60°)
 int SERVO_CENTER = 90;        // 중앙 (직진)
-int SERVO_LEFT_MAX = 60;      // 최대 좌회전 각도
-int SERVO_RIGHT_MAX = 120;    // 최대 우회전 각도
-int SERVO_LEFT_SOFT = 75;     // 약한 좌회전
-int SERVO_RIGHT_SOFT = 105;   // 약한 우회전
+int SERVO_LEFT_MAX = 120;     // 최대 좌회전 각도
+int SERVO_RIGHT_MAX = 60;     // 최대 우회전 각도
+int SERVO_LEFT_SOFT = 105;    // 약한 좌회전
+int SERVO_RIGHT_SOFT = 75;    // 약한 우회전
 
 // ==================== 전역 변수 ====================
 char command = 'S';               // 수신한 명령
@@ -270,19 +270,20 @@ void read_steering_feedback() {
 }
 
 // 가변저항 ADC 값을 각도로 변환
-// ADC 낮을수록 왼쪽(60°), 높을수록 오른쪽(120°)
+// ADC 높을수록 좌회전(120°), 낮을수록 우회전(60°)
+// POT_LEFT=909 (좌회전), POT_CENTER=749, POT_RIGHT=589 (우회전)
 float map_pot_to_angle(int pot_value) {
-  // 범위 제한 (POT_LEFT=317 < POT_RIGHT=398)
-  pot_value = constrain(pot_value, POT_LEFT, POT_RIGHT);
+  // 범위 제한 (POT_RIGHT=589 < POT_LEFT=909)
+  pot_value = constrain(pot_value, POT_RIGHT, POT_LEFT);
 
   // 선형 보간 (구간별 매핑)
   float angle;
   if (pot_value >= POT_CENTER) {
-    // 우회전 영역: POT_CENTER(357) ~ POT_RIGHT(398) → 90° ~ 120°
-    angle = map_float(pot_value, POT_CENTER, POT_RIGHT, ANGLE_CENTER_DEG, ANGLE_RIGHT);
+    // 좌회전 영역: POT_CENTER(749) ~ POT_LEFT(909) → 90° ~ 120°
+    angle = map_float(pot_value, POT_CENTER, POT_LEFT, ANGLE_CENTER_DEG, ANGLE_LEFT);
   } else {
-    // 좌회전 영역: POT_LEFT(317) ~ POT_CENTER(357) → 60° ~ 90°
-    angle = map_float(pot_value, POT_LEFT, POT_CENTER, ANGLE_LEFT, ANGLE_CENTER_DEG);
+    // 우회전 영역: POT_RIGHT(589) ~ POT_CENTER(749) → 60° ~ 90°
+    angle = map_float(pot_value, POT_RIGHT, POT_CENTER, ANGLE_RIGHT, ANGLE_CENTER_DEG);
   }
 
   return angle;
@@ -358,16 +359,17 @@ void pid_steering_control() {
   pid_last_time = now;
 
   // 9. PWM 출력 (방향 + 크기)
+  // 새 매핑: ANGLE_LEFT=120°(ADC 높음), ANGLE_RIGHT=60°(ADC 낮음)
   int pwm = constrain(abs((int)output), PID_MIN_PWM, PID_MAX_PWM);
 
   if (output > 0) {
-    // target > actual → 우회전 방향 (angle 증가)
-    analogWrite(servo_IN1, pwm);
-    analogWrite(servo_IN2, 0);
-  } else {
-    // target < actual → 좌회전 방향 (angle 감소)
+    // target > actual → 좌회전 방향 (angle 증가, ADC 높아져야 함)
     analogWrite(servo_IN1, 0);
     analogWrite(servo_IN2, pwm);
+  } else {
+    // target < actual → 우회전 방향 (angle 감소, ADC 낮아져야 함)
+    analogWrite(servo_IN1, pwm);
+    analogWrite(servo_IN2, 0);
   }
 }
 
@@ -424,7 +426,7 @@ void parsePIDTuning(String cmd) {
 // 시리얼에서 'K' 명령을 받으면 실행
 void calibrate_steering_pot() {
   Serial.println("=== Steering Potentiometer Calibration ===");
-  Serial.println("ADC: Higher = Left, Lower = Right");
+  Serial.println("ADC: Higher = Left (120deg), Lower = Right (60deg)");
   Serial.println("1. Turn steering to FULL LEFT and send 'L'");
   Serial.println("2. Turn steering to CENTER and send 'C'");
   Serial.println("3. Turn steering to FULL RIGHT and send 'R'");
@@ -609,17 +611,18 @@ void setServoAngle(int angle) {
   }
 
   // 폴백: PID 비활성 시 기존 오픈루프 방식 (모터 드라이버 직접 제어)
+  // 새 매핑: angle < 90 = 우회전(60°), angle > 90 = 좌회전(120°)
   if (angle < 90) {
-    // 왼쪽 회전
+    // 우회전 방향 (angle 감소)
     int power = map(90 - angle, 0, 90, 0, 255);
-    analogWrite(servo_IN1, 0);
-    analogWrite(servo_IN2, power);
-  }
-  else if (angle > 90) {
-    // 오른쪽 회전
-    int power = map(angle - 90, 0, 90, 0, 255);
     analogWrite(servo_IN1, power);
     analogWrite(servo_IN2, 0);
+  }
+  else if (angle > 90) {
+    // 좌회전 방향 (angle 증가)
+    int power = map(angle - 90, 0, 90, 0, 255);
+    analogWrite(servo_IN1, 0);
+    analogWrite(servo_IN2, power);
   }
   else {
     // 중앙 (정지)

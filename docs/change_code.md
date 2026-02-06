@@ -1391,7 +1391,7 @@ ros2 launch bringup camera_bag_test_launch.py use_cpp:=false      # Python 노�
 
 ### 33. Arduino 조향 PID 클로즈드루프 제어 구현
 
-**날짜:** 2026-02-05
+**날짜:** 2026-02-05 (2026-02-06 캘리브레이션 수정)
 
 **배경:**
 - 기존 `setServoAngle()`은 오픈루프 방식: 목표 각도에 비례하는 PWM만 출력하고 실제 도달 여부 확인 안 함
@@ -1403,18 +1403,54 @@ ros2 launch bringup camera_bag_test_launch.py use_cpp:=false      # Python 노�
 
 ---
 
-#### 버그 수정: `map_pot_to_angle()` constrain 순서
+#### 캘리브레이션 값 (INTERNAL2V56 기준, 2026-02-06 실측)
 
-**문제:** `constrain(pot_value, POT_RIGHT, POT_LEFT)` = `constrain(x, 398, 317)` → min > max이므로 모든 값이 398로 고정됨
-- 가변저항 피드백이 사실상 동작하지 않았음 (항상 120° 반환)
-
-**수정:**
 ```cpp
-// 변경 전 (버그)
-pot_value = constrain(pot_value, POT_RIGHT, POT_LEFT);
+// ADC 기준전압: 2.56V (analogReference(INTERNAL2V56))
+// 실측 결과: ADC 높을수록 좌회전, 낮을수록 우회전
+int POT_LEFT = 909;               // 최대 좌회전 시 ADC 값
+int POT_RIGHT = 589;              // 최대 우회전 시 ADC 값
+int POT_CENTER = (POT_RIGHT + POT_LEFT)/2;  // 749 (중앙)
 
-// 변경 후
-pot_value = constrain(pot_value, POT_LEFT, POT_RIGHT);
+// 각도 매핑 (새 매핑)
+float ANGLE_LEFT = 120.0;         // 최대 좌회전 각도 (ADC 높음)
+float ANGLE_CENTER_DEG = 90.0;    // 중앙 각도
+float ANGLE_RIGHT = 60.0;         // 최대 우회전 각도 (ADC 낮음)
+
+// 서보 명령 각도도 동일하게 변경
+int SERVO_LEFT_MAX = 120;         // 최대 좌회전 명령
+int SERVO_RIGHT_MAX = 60;         // 최대 우회전 명령
+int SERVO_LEFT_SOFT = 105;        // 약한 좌회전
+int SERVO_RIGHT_SOFT = 75;        // 약한 우회전
+```
+
+**매핑 규칙:**
+| ADC 값 | 조향각 | 방향 |
+|--------|--------|------|
+| 909 (POT_LEFT) | 120° | 최대 좌회전 |
+| 749 (POT_CENTER) | 90° | 직진 |
+| 589 (POT_RIGHT) | 60° | 최대 우회전 |
+
+---
+
+#### 수정된 `map_pot_to_angle()` 함수
+
+```cpp
+// ADC 높을수록 좌회전(120°), 낮을수록 우회전(60°)
+float map_pot_to_angle(int pot_value) {
+  // 범위 제한 (POT_RIGHT=589 < POT_LEFT=909)
+  pot_value = constrain(pot_value, POT_RIGHT, POT_LEFT);
+
+  float angle;
+  if (pot_value >= POT_CENTER) {
+    // 좌회전 영역: POT_CENTER(749) ~ POT_LEFT(909) → 90° ~ 120°
+    angle = map_float(pot_value, POT_CENTER, POT_LEFT, ANGLE_CENTER_DEG, ANGLE_LEFT);
+  } else {
+    // 우회전 영역: POT_RIGHT(589) ~ POT_CENTER(749) → 60° ~ 90°
+    angle = map_float(pot_value, POT_RIGHT, POT_CENTER, ANGLE_RIGHT, ANGLE_CENTER_DEG);
+  }
+  return angle;
+}
 ```
 
 ---
@@ -1449,9 +1485,9 @@ bool pid_enabled = true;         // PID 활성/비활성 전환
 2. 오차 = 목표 조향각 - 실제 조향각
 3. 데드밴드 체크: 오차 < ±2°이면 모터 정지 + 적분 리셋
 4. PID 출력 계산: `output = Kp*error + Ki*integral + Kd*derivative`
-5. 방향 결정:
-   - output > 0 (target > actual, 우회전 필요) → servo_IN1 활성
-   - output < 0 (target < actual, 좌회전 필요) → servo_IN2 활성
+5. 방향 결정 (새 매핑 기준):
+   - output > 0 (target > actual, 좌회전 필요) → servo_IN2 활성 (ADC 증가)
+   - output < 0 (target < actual, 우회전 필요) → servo_IN1 활성 (ADC 감소)
 6. PWM 범위 제한: MIN_PWM ~ MAX_PWM
 
 ```cpp
@@ -1483,17 +1519,17 @@ void pid_steering_control() {
   pid_prev_error = error;
   pid_last_time = now;
 
-  // PWM 출력
+  // PWM 출력 (새 매핑: ANGLE_LEFT=120°, ANGLE_RIGHT=60°)
   int pwm = constrain(abs((int)output), PID_MIN_PWM, PID_MAX_PWM);
 
   if (output > 0) {
-    // 우회전 방향 (angle 증가)
-    analogWrite(servo_IN1, pwm);
-    analogWrite(servo_IN2, 0);
-  } else {
-    // 좌회전 방향 (angle 감소)
+    // target > actual → 좌회전 방향 (angle 증가, ADC 높아져야 함)
     analogWrite(servo_IN1, 0);
     analogWrite(servo_IN2, pwm);
+  } else {
+    // target < actual → 우회전 방향 (angle 감소, ADC 낮아져야 함)
+    analogWrite(servo_IN1, pwm);
+    analogWrite(servo_IN2, 0);
   }
 }
 ```
@@ -1514,15 +1550,18 @@ void setServoAngle(int angle) {
     return;
   }
 
-  // 폴백: PID 비활성 시 기존 오픈루프 방식
+  // 폴백: PID 비활성 시 오픈루프 방식 (새 매핑)
+  // angle < 90 = 우회전(60°), angle > 90 = 좌회전(120°)
   if (angle < 90) {
+    // 우회전 방향 (angle 감소)
     int power = map(90 - angle, 0, 90, 0, 255);
-    analogWrite(servo_IN1, 0);
-    analogWrite(servo_IN2, power);
-  } else if (angle > 90) {
-    int power = map(angle - 90, 0, 90, 0, 255);
     analogWrite(servo_IN1, power);
     analogWrite(servo_IN2, 0);
+  } else if (angle > 90) {
+    // 좌회전 방향 (angle 증가)
+    int power = map(angle - 90, 0, 90, 0, 255);
+    analogWrite(servo_IN1, 0);
+    analogWrite(servo_IN2, power);
   } else {
     analogWrite(servo_IN1, 0);
     analogWrite(servo_IN2, 0);
@@ -1638,14 +1677,14 @@ Example: V:100,S:90
   Target Angle:  90 deg        ← 현재 목표 각도 (90 = 직진)
   Actual Angle:  89.3 deg      ← 가변저항이 읽은 실제 각도
   Error:         0.7 deg       ← 목표 - 실제 (0에 가까울수록 좋음)
-  Raw ADC:       355           ← 가변저항 원시 값 (317~398 범위)
-  Voltage:       1.73 V        ← 가변저항 전압
+  Raw ADC:       745           ← 가변저항 원시 값 (589~909 범위, ref=2.56V)
+  Voltage:       1.86 V        ← 가변저항 전압 (2.56V 기준)
 [Motor]
   PWM:           0
 [Calibration]
-  POT_LEFT:   317 (1.55V)
-  POT_CENTER: 357 (1.75V)
-  POT_RIGHT:  398 (1.95V)
+  POT_LEFT:   909 (ref=2.56V)  ← 좌회전=ADC 높음
+  POT_CENTER: 749 (ref=2.56V)
+  POT_RIGHT:  589 (ref=2.56V)  ← 우회전=ADC 낮음
 [PID Control]
   Enabled:    YES              ← PID 활성화 상태
   Kp:         5.00             ← 현재 비례 게인
@@ -1663,7 +1702,7 @@ Example: V:100,S:90
 | 항목 | 정상 범위 | 이상 시 원인 |
 |------|-----------|-------------|
 | Actual Angle | 88~92° (바퀴가 직진일 때) | 가변저항 연결 불량 또는 캘리브레이션 필요 |
-| Raw ADC | 340~370 (직진 상태) | 가변저항 핀(A0) 연결 확인 |
+| Raw ADC | 720~780 (직진 상태, ref=2.56V) | 가변저항 핀(A0) 연결 확인 |
 | Error | -2 ~ +2° (데드밴드 이내) | 정상 - PID가 데드밴드 내이므로 모터 정지 상태 |
 | Enabled | YES | YES가 아니면 `T:ON` 입력 |
 
@@ -1673,10 +1712,10 @@ Example: V:100,S:90
 
 시리얼 모니터에 다음을 입력합니다:
 ```
-입력: V:0,S:75
+입력: V:0,S:105
 ```
 - `V:0` = 바퀴 모터 정지 (조향만 테스트)
-- `S:75` = 목표 조향각 75° (좌회전 15°)
+- `S:105` = 목표 조향각 105° (좌회전 15°) ← **새 매핑: 좌회전=120°, 우회전=60°**
 
 **예상 동작:**
 1. 입력 직후 → 서보 모터가 **왼쪽으로 회전**하기 시작
@@ -1690,18 +1729,18 @@ Example: V:100,S:90
 출력에서 확인할 항목:
 ```
 [Steering]
-  Target Angle:  75 deg        ← 75가 맞는지 확인
-  Actual Angle:  74.2 deg      ← 75° 근처여야 함 (73~77° 범위)
+  Target Angle:  105 deg       ← 105가 맞는지 확인
+  Actual Angle:  104.2 deg     ← 105° 근처여야 함 (103~107° 범위)
   Error:         0.8 deg       ← 데드밴드(2°) 이내면 정상
 ```
 
 **판단 기준:**
 | 상황 | Actual 값 | 의미 | 대처 |
 |------|-----------|------|------|
-| 정상 | 73~77° | PID가 목표에 수렴함 | 다음 단계로 진행 |
-| 오버슈트 | 70° 이하 | Kp가 너무 크거나 Kd가 부족 | `T:P:3.0` 또는 `T:D:2.0` |
-| 미도달 | 80° 이상 | Kp가 너무 작음 | `T:P:8.0` |
-| 진동 | 계속 변함 (70↔80 반복) | Kp 과대, Kd 부족 | `T:P:3.0` 그리고 `T:D:3.0` |
+| 정상 | 103~107° | PID가 목표에 수렴함 | 다음 단계로 진행 |
+| 오버슈트 | 110° 이상 | Kp가 너무 크거나 Kd가 부족 | `T:P:3.0` 또는 `T:D:2.0` |
+| 미도달 | 100° 이하 | Kp가 너무 작음 | `T:P:8.0` |
+| 진동 | 계속 변함 (100↔110 반복) | Kp 과대, Kd 부족 | `T:P:3.0` 그리고 `T:D:3.0` |
 | 무반응 | 90° 그대로 | 모터 배선 문제 또는 PID 비활성 | 배선 확인, `T:ON` |
 
 ---
@@ -1709,9 +1748,9 @@ Example: V:100,S:90
 ##### STEP 3: 우회전 테스트
 
 ```
-입력: V:0,S:105
+입력: V:0,S:75
 ```
-- `S:105` = 목표 조향각 105° (우회전 15°)
+- `S:75` = 목표 조향각 75° (우회전 15°) ← **새 매핑: 90° 미만 = 우회전**
 
 확인:
 ```
@@ -1719,8 +1758,8 @@ Example: V:100,S:90
 ```
 ```
 [Steering]
-  Target Angle:  105 deg
-  Actual Angle:  104.5 deg     ← 103~107° 범위면 정상
+  Target Angle:  75 deg
+  Actual Angle:  74.5 deg      ← 73~77° 범위면 정상
   Error:         0.5 deg       ← 데드밴드(2°) 이내
 ```
 
@@ -1822,13 +1861,13 @@ PID 게인은 **재업로드 없이** 시리얼 명령으로 실시간 변경할
 입력: T:I:0.0       ← Ki를 0으로
 입력: T:D:0.0       ← Kd를 0으로
 입력: T:P:3.0       ← 낮은 Kp로 시작
-입력: V:0,S:75      ← 좌회전 명령
+입력: V:0,S:105     ← 좌회전 명령 (105° > 90°)
 ```
 → 바퀴가 왼쪽으로 천천히 이동하면 Kp 증가:
 ```
 입력: T:P:5.0
 입력: V:0,S:90      ← 직진 복귀
-입력: V:0,S:75      ← 다시 좌회전
+입력: V:0,S:105     ← 다시 좌회전
 ```
 → 바퀴가 빠르게 이동하지만 진동하면 Kp가 너무 큼, 줄이기
 
@@ -1837,7 +1876,7 @@ PID 게인은 **재업로드 없이** 시리얼 명령으로 실시간 변경할
 **2단계: Kd 추가 (진동 억제)**
 ```
 입력: T:D:1.0
-입력: V:0,S:75
+입력: V:0,S:105
 ```
 → 진동이 줄어들면 OK. 아직 진동하면 Kd 증가:
 ```
@@ -1850,7 +1889,7 @@ PID 게인은 **재업로드 없이** 시리얼 명령으로 실시간 변경할
 **3단계: Ki 추가 (정상상태 오차 제거)**
 ```
 입력: T:I:0.3
-입력: V:0,S:75
+입력: V:0,S:105
 ```
 → `D` 명령으로 error 확인. 0에 가까우면 OK
 → error가 여전히 1~2° 남아있으면:
@@ -1864,9 +1903,9 @@ PID 게인은 **재업로드 없이** 시리얼 명령으로 실시간 변경할
 **4단계: 최종 확인**
 다양한 각도에서 테스트:
 ```
-입력: V:0,S:60      ← 최대 좌회전
+입력: V:0,S:120     ← 최대 좌회전
 입력: D              ← 확인
-입력: V:0,S:120     ← 최대 우회전
+입력: V:0,S:60      ← 최대 우회전
 입력: D              ← 확인
 입력: V:0,S:90      ← 직진 복귀
 입력: D              ← 확인
@@ -1897,7 +1936,7 @@ ros2 launch bringup track_launch.py test_mode:=true
 # 터미널 2: 수동으로 조향 명령 보내기
 ros2 topic pub /arduino/cmd ackermann_msgs/msg/AckermannDrive \
   "{speed: 0.0, steering_angle: -0.26}" --once
-# → steering_angle: -0.26 rad ≈ -15° → Arduino가 S:75 수신 → 좌회전
+# → steering_angle: -0.26 rad ≈ -15° → Arduino가 S:75 수신 → 우회전
 
 ros2 topic pub /arduino/cmd ackermann_msgs/msg/AckermannDrive \
   "{speed: 0.0, steering_angle: 0.0}" --once
@@ -1905,7 +1944,7 @@ ros2 topic pub /arduino/cmd ackermann_msgs/msg/AckermannDrive \
 
 ros2 topic pub /arduino/cmd ackermann_msgs/msg/AckermannDrive \
   "{speed: 0.0, steering_angle: 0.26}" --once
-# → steering_angle: 0.26 rad ≈ +15° → Arduino가 S:105 수신 → 우회전
+# → steering_angle: 0.26 rad ≈ +15° → Arduino가 S:105 수신 → 좌회전
 ```
 
 **ROS2 조향각 → Arduino 서보각 변환 공식:**
@@ -1913,9 +1952,9 @@ ros2 topic pub /arduino/cmd ackermann_msgs/msg/AckermannDrive \
 서보각 = 90 + (steering_angle_rad × 180 / π)
 
 예:
-  steering_angle = -0.52 rad → 90 + (-30) = 60°  (최대 좌회전)
+  steering_angle = -0.52 rad → 90 + (-30) = 60°  (최대 우회전)
   steering_angle =  0.00 rad → 90 + ( 0 ) = 90°  (직진)
-  steering_angle = +0.52 rad → 90 + (+30) = 120° (최대 우회전)
+  steering_angle = +0.52 rad → 90 + (+30) = 120° (최대 좌회전)
 ```
 
 ---
