@@ -35,6 +35,17 @@ private:
     int gaussian_kernel_;
     int avg_window_;
 
+    double lane_width_ratio_;
+    double max_steer_delta_;
+    double prev_steering_;
+    double lookahead_ratio_;
+    int max_lost_frames_;
+
+    // Predict+Hold state
+    double prev_center_x_;
+    int lost_count_;
+    bool has_prev_center_;
+
     // Moving average buffer
     std::deque<double> offset_buffer_;
 

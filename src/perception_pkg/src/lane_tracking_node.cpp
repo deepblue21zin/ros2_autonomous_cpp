@@ -18,6 +18,10 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("use_grayscale_threshold", false);
     this->declare_parameter("gaussian_kernel", 5);
     this->declare_parameter("avg_window", 5);
+    this->declare_parameter("lane_width_ratio", 0.55);
+    this->declare_parameter("max_steer_delta", 0.15);
+    this->declare_parameter("lookahead_ratio", 0.4);
+    this->declare_parameter("max_lost_frames", 15);
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
     use_compressed_ = this->get_parameter("use_compressed").as_bool();
@@ -27,6 +31,14 @@ LaneTrackingNode::LaneTrackingNode()
     use_grayscale_threshold_ = this->get_parameter("use_grayscale_threshold").as_bool();
     gaussian_kernel_ = this->get_parameter("gaussian_kernel").as_int();
     avg_window_ = this->get_parameter("avg_window").as_int();
+    lane_width_ratio_ = this->get_parameter("lane_width_ratio").as_double();
+    max_steer_delta_ = this->get_parameter("max_steer_delta").as_double();
+    lookahead_ratio_ = this->get_parameter("lookahead_ratio").as_double();
+    max_lost_frames_ = this->get_parameter("max_lost_frames").as_int();
+    prev_steering_ = 0.0;
+    prev_center_x_ = 0.0;
+    lost_count_ = 0;
+    has_prev_center_ = false;
 
     // QoS for low latency: best_effort to skip old frames
     auto qos_sensor = rclcpp::QoS(1).best_effort();
@@ -203,10 +215,12 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     // 3. RANSAC + 2차 다항식 피팅
     int y_bottom = h - 1;
     int y_top = static_cast<int>(h * 0.3);
+    // Pure Pursuit: lookahead 지점 (ROI 높이의 lookahead_ratio_ 만큼 위)
+    int y_lookahead = y_bottom - static_cast<int>((y_bottom - y_top) * lookahead_ratio_);
 
-    std::vector<int> lane_positions;
     bool left_detected = false;
     bool right_detected = false;
+    Eigen::Vector3d left_coeffs, right_coeffs;
 
     if (left_sw.valid) {
         std::vector<double> ly(left_sw.lane_y.begin(), left_sw.lane_y.end());
@@ -214,7 +228,7 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         RansacFitResult left_fit = fitPolynomial2DRansac(ly, lx, y_bottom, y_top);
         if (left_fit.valid) {
             left_detected = true;
-            lane_positions.push_back(left_fit.x_bottom);
+            left_coeffs = left_fit.coeffs;
             cv::polylines(overlay, left_fit.curve_points, false,
                           cv::Scalar(255, 0, 0), 3);
         }
@@ -226,31 +240,52 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         RansacFitResult right_fit = fitPolynomial2DRansac(ry, rx, y_bottom, y_top);
         if (right_fit.valid) {
             right_detected = true;
-            lane_positions.push_back(right_fit.x_bottom);
+            right_coeffs = right_fit.coeffs;
             cv::polylines(overlay, right_fit.curve_points, false,
                           cv::Scalar(0, 0, 255), 3);
         }
     }
 
-    // 4. 차선 중심 계산 (단일 차선 폴백)
+    // 4. Pure Pursuit: lookahead point 기반 차선 중심 계산
     double center_x;
+    bool lane_found = false;
+    int estimated_lane_width = static_cast<int>(w * lane_width_ratio_);
+
     if (left_detected && right_detected) {
-        double sum = std::accumulate(lane_positions.begin(), lane_positions.end(), 0.0);
-        center_x = sum / lane_positions.size();
-    } else if (right_detected && !left_detected) {
-        int estimated_lane_width = static_cast<int>(w * 0.35);
-        center_x = lane_positions[0] - estimated_lane_width / 2;
-        center_x = std::max(0.0, std::min(center_x, static_cast<double>(w - 1)));
-    } else if (left_detected && !right_detected) {
-        int estimated_lane_width = static_cast<int>(w * 0.35);
-        center_x = lane_positions[0] + estimated_lane_width / 2;
-        center_x = std::max(0.0, std::min(center_x, static_cast<double>(w - 1)));
+        double left_x = evaluatePolynomial2D(left_coeffs, y_lookahead);
+        double right_x = evaluatePolynomial2D(right_coeffs, y_lookahead);
+        center_x = (left_x + right_x) / 2.0;
+        lane_found = true;
+    } else if (right_detected) {
+        double right_x = evaluatePolynomial2D(right_coeffs, y_lookahead);
+        center_x = right_x - estimated_lane_width / 2.0;
+        lane_found = true;
+    } else if (left_detected) {
+        double left_x = evaluatePolynomial2D(left_coeffs, y_lookahead);
+        center_x = left_x + estimated_lane_width / 2.0;
+        lane_found = true;
+    }
+
+    // 5. Predict+Hold: 차선 소실 시 이전 center_x 유지
+    if (lane_found) {
+        center_x = clamp(center_x, 0.0, static_cast<double>(w - 1));
+        prev_center_x_ = center_x;
+        lost_count_ = 0;
+        has_prev_center_ = true;
+    } else if (has_prev_center_ && lost_count_ < max_lost_frames_) {
+        center_x = prev_center_x_;
+        lost_count_++;
     } else {
         center_x = static_cast<double>(w) / 2.0;
     }
 
-    cv::circle(overlay, cv::Point(static_cast<int>(center_x), y_bottom),
+    // 시각화: lookahead point (노란색), 소실 중이면 빨간 테두리
+    cv::circle(overlay, cv::Point(static_cast<int>(center_x), y_lookahead),
                6, cv::Scalar(0, 255, 255), -1);
+    if (!lane_found) {
+        cv::circle(overlay, cv::Point(static_cast<int>(center_x), y_lookahead),
+                   10, cv::Scalar(0, 0, 255), 2);
+    }
 
     return {center_x, overlay};
 }
@@ -273,6 +308,15 @@ std::pair<double, double> LaneTrackingNode::computeSteering(double lane_center, 
 
     // Proportional control with sign inversion
     double steering = clamp(kp_ * (-smooth_offset), -1.0, 1.0);
+
+    // Rate limit: 프레임 간 급격한 조향 변화 방지
+    double delta = steering - prev_steering_;
+    if (delta > max_steer_delta_) {
+        steering = prev_steering_ + max_steer_delta_;
+    } else if (delta < -max_steer_delta_) {
+        steering = prev_steering_ - max_steer_delta_;
+    }
+    prev_steering_ = steering;
 
     return {steering, smooth_offset};
 }

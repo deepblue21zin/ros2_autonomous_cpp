@@ -2,7 +2,7 @@
   ros__parameters:
     # Lane Tracking Parameters (2026 경기도 대회 트랙 최적화)
     # Sliding Window + RANSAC 방식
-    kp: 10.0                 # 조향 게인 (트랙 폭 850mm)
+    kp: 7.0                 # 조향 게인 (트랙 폭 850mm)
     roi_y_ratio: 0.20       # ROI 시작 위치
 
     # 전처리 방식 선택
@@ -10,6 +10,16 @@
 
     # 전처리: 주름/텍스처 노이즈 억제
     gaussian_kernel: 7      # 가우시안 블러 커널 크기 (클수록 노이즈 제거 강함)
+
+    # 단일 차선 감지 시 가상 센터라인 계산용
+    lane_width_ratio: 0.55  # 차선 간격 = 이미지 폭 × 비율 (좁은 화각: 0.50~0.65)
+    max_steer_delta: 0.25   # 프레임 간 steering 최대 변화량 (rate limit)
+
+    # Pure Pursuit: 전방 주시 (다항식 위 lookahead point 기반 조향)
+    lookahead_ratio: 0.4    # ROI 높이의 40% 앞을 봄 (0.0=바로앞, 1.0=ROI 꼭대기)
+
+    # Predict+Hold: 차선 소실 시 이전 결과 유지
+    max_lost_frames: 15     # 최대 유지 프레임 (30Hz 기준 0.5초)
 
     # 이동 평균
     avg_window: 3          # 넓은 점선 간격 대응 (약 0.33초 유지)

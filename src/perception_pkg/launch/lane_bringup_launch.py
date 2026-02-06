@@ -44,8 +44,6 @@ def launch_setup(context, *args, **kwargs):
                 config_file.perform(context),
                 {
                     'camera_topic': LaunchConfiguration('camera_topic'),
-                    'kp': LaunchConfiguration('kp'),
-                    'debug': LaunchConfiguration('lane_debug'),
                     'use_compressed': LaunchConfiguration('use_compressed'),
                 }
             ]
@@ -60,8 +58,6 @@ def launch_setup(context, *args, **kwargs):
                 config_file.perform(context),
                 {
                     'camera_topic': LaunchConfiguration('camera_topic'),
-                    'kp': LaunchConfiguration('kp'),
-                    'debug': LaunchConfiguration('lane_debug'),
                     'use_compressed': LaunchConfiguration('use_compressed'),
                 }
             ]
@@ -214,17 +210,8 @@ def generate_launch_description():
         description='Use compressed image transport'
     )
 
-    kp_arg = DeclareLaunchArgument(
-        'kp',
-        default_value='3.0',  # yaml(lane_params.yaml)과 동일
-        description='Proportional gain for steering control'
-    )
-
-    lane_debug_arg = DeclareLaunchArgument(
-        'lane_debug',
-        default_value='true',  # false→true (lane_overlay 발행)
-        description='Enable debug output for lane tracking'
-    )
+    # kp, debug는 yaml(lane_params.yaml)에서만 관리
+    # 변경 시 yaml만 수정하면 됨
 
     default_speed_limit_arg = DeclareLaunchArgument(
         'default_speed_limit',
@@ -375,8 +362,6 @@ def generate_launch_description():
     return LaunchDescription([
         camera_topic_arg,
         use_compressed_arg,
-        kp_arg,
-        lane_debug_arg,
         default_speed_limit_arg,
         speed_sign_enabled_arg,
         speed_sign_model_arg,

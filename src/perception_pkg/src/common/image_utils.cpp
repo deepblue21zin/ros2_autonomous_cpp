@@ -76,8 +76,39 @@ cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel
     cv::Mat hsv;
     cv::cvtColor(roi_color, hsv, cv::COLOR_BGR2HSV);
 
-    // 흰색 마스크만 사용
-    cv::Mat mask = thresholdWhiteTracking(hsv);
+    // V 채널 기반 동적 임계값 계산 (통창 햇빛 대응)
+    std::vector<cv::Mat> channels;
+    cv::split(hsv, channels);
+    const cv::Mat& v_channel = channels[2];
+
+    // 80th 퍼센타일: 히스토그램으로 빠르게 계산
+    int v_hist[256] = {};
+    for (int r = 0; r < v_channel.rows; r++) {
+        const uchar* row = v_channel.ptr<uchar>(r);
+        for (int c = 0; c < v_channel.cols; c++) {
+            v_hist[row[c]]++;
+        }
+    }
+    int total = v_channel.rows * v_channel.cols;
+    int target = static_cast<int>(total * 0.80);
+    int cumulative = 0;
+    int v_p80 = 200;
+    for (int i = 0; i < 256; i++) {
+        cumulative += v_hist[i];
+        if (cumulative >= target) {
+            v_p80 = i;
+            break;
+        }
+    }
+
+    // V 하한 = 80th 퍼센타일 - 30, 범위 [80, 200]
+    int v_lower = std::max(80, std::min(200, v_p80 - 30));
+
+    cv::Mat mask;
+    cv::inRange(hsv,
+                cv::Scalar(0, 0, v_lower),
+                cv::Scalar(180, 60, 255),
+                mask);
 
     // 노이즈 제거: 가우시안 블러 → 모폴로지 닫기 (점선 gap 연결)
     cv::GaussianBlur(mask, mask, cv::Size(gaussian_kernel, gaussian_kernel), 0);
@@ -91,9 +122,15 @@ cv::Mat preprocessForSlidingWindowGrayscale(const cv::Mat& roi_color, int gaussi
     cv::Mat gray;
     cv::cvtColor(roi_color, gray, cv::COLOR_BGR2GRAY);
 
-    // Binary threshold: 밝기 threshold 이상만 흰색 차선으로 인정
+    // Otsu 자동 임계값 (햇빛/그림자 대응)
+    // threshold 파라미터는 Otsu 하한으로만 사용 (너무 낮은 임계값 방지)
     cv::Mat binary;
-    cv::threshold(gray, binary, threshold, 255, cv::THRESH_BINARY);
+    double otsu_val = cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
+    // Otsu 결과가 너무 낮으면 고정 threshold 사용 (최소 보장)
+    if (otsu_val < static_cast<double>(threshold)) {
+        cv::threshold(gray, binary, threshold, 255, cv::THRESH_BINARY);
+    }
 
     // 노이즈 제거: 가우시안 블러 → 모폴로지 닫기 (점선 gap 연결)
     cv::GaussianBlur(binary, binary, cv::Size(gaussian_kernel, gaussian_kernel), 0);
