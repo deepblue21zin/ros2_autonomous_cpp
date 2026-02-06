@@ -2,7 +2,7 @@
   ros__parameters:
     # Lane Tracking Parameters (2026 경기도 대회 트랙 최적화)
     # Sliding Window + RANSAC 방식
-    kp: 2.0                 # 조향 게인 (트랙 폭 850mm)
+    kp: 3.0                 # 조향 게인 (트랙 폭 850mm)
     roi_y_ratio: 0.30       # ROI 시작 위치
 
     # 전처리 방식 선택
@@ -12,7 +12,7 @@
     gaussian_kernel: 7      # 가우시안 블러 커널 크기 (클수록 노이즈 제거 강함)
 
     # 이동 평균
-    avg_window: 10          # 넓은 점선 간격 대응 (약 0.33초 유지)
+    avg_window: 3          # 넓은 점선 간격 대응 (약 0.33초 유지)
 
     # 디버그 (실제 주행 시 false 권장)
     debug: true
