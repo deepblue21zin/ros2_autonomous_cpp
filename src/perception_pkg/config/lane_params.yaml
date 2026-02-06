@@ -23,8 +23,8 @@
     max_lost_frames: 15     # 일반 소실 최대 유지 프레임 (30Hz 기준 0.5초)
 
     # 횡단보도 Predict+Hold
-    crosswalk_density_threshold: 0.30   # ROI 흰 픽셀 밀도 > 30% → 횡단보도 판정 (커브 오판 방지)
-    crosswalk_density_max: 0.50         # 밀도 > 50% → 과노출 bad frame (횡단보도 아님)
+    crosswalk_density_threshold: 0.31   # ROI 흰 픽셀 밀도 > 30% → 횡단보도 판정 (커브 오판 방지)
+    crosswalk_density_max: 0.35         # 밀도 > 50% → 과노출 bad frame (횡단보도 아님)
     max_crosswalk_frames: 60            # 횡단보도 hold 상한 (30Hz 기준 2초)
 
     # 이동 평균
