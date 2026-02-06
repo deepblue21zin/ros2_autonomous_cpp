@@ -216,7 +216,7 @@ def generate_launch_description():
 
     kp_arg = DeclareLaunchArgument(
         'kp',
-        default_value='0.7',  # 0.6→0.7 (대회 트랙 최적화)
+        default_value='3.0',  # yaml(lane_params.yaml)과 동일
         description='Proportional gain for steering control'
     )
 

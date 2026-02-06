@@ -67,7 +67,7 @@ def generate_launch_description():
             'camera_topic': LaunchConfiguration('camera_topic'),
             'use_compressed': 'false',
             'lane_marking_enabled': 'false',
-            'lane_debug': 'true',
+            'lane_debug': 'false',
             'traffic_light_enabled': 'false',
             'obstacle_enabled': 'false',
             'speed_sign_enabled': 'false',
@@ -92,7 +92,7 @@ def generate_launch_description():
         parameters=[{
             'stop_on_yellow': False,
             'test_mode': False,
-            'lane_timeout_sec': 2.0,  # rosbag 처리 지연 허용 (기본 0.5 → 2.0)
+            'lane_timeout_sec': 30.0,  # bag 테스트: 타임아웃 거의 비활성화
         }],
         remappings=[
             ('/decision/cmd', '/arduino/cmd'),

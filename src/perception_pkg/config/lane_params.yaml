@@ -15,4 +15,4 @@
     avg_window: 3          # 넓은 점선 간격 대응 (약 0.33초 유지)
 
     # 디버그 (실제 주행 시 false 권장)
-    debug: true
+    debug: false
