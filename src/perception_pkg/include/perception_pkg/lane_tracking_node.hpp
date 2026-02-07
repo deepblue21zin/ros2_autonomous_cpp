@@ -55,6 +55,9 @@ private:
     double vehicle_mask_top_left_x_;
     double vehicle_mask_top_right_x_;
     double vehicle_mask_top_y_;
+    int vehicle_mask_num_side_points_;  // 측면 곡선 점 개수 (클수록 부드러움)
+    int vehicle_mask_num_top_points_;   // 상단 원호 점 개수 (클수록 부드러움)
+    double vehicle_mask_curve_depth_;   // 상단 곡선 깊이 (0.0=직선, 0.3=깊은 곡선)
 
     // Predict+Hold state
     double prev_center_x_;

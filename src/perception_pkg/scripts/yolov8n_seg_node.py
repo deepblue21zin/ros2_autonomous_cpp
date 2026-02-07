@@ -44,6 +44,7 @@ class Yolov8nSegNode(Node):
         self.declare_parameter("device", "")
         self.declare_parameter("publish_overlay", True)
         self.declare_parameter("publish_drivable_mask", True)
+        self.declare_parameter("publish_lane_masks", False)  # 차선 마스크 발행 (새로 추가)
         self.declare_parameter("detect_obstacles", True)
         self.declare_parameter("traffic_light_min_ratio", 0.05)
         self.declare_parameter("rate_hz", 10.0)
@@ -57,6 +58,7 @@ class Yolov8nSegNode(Node):
         device = self.get_parameter("device").value or None
         self.publish_overlay = self.get_parameter("publish_overlay").value
         self.publish_drivable = self.get_parameter("publish_drivable_mask").value
+        self.publish_lanes = self.get_parameter("publish_lane_masks").value
         detect_obstacles = self.get_parameter("detect_obstacles").value
         tl_min_ratio = self.get_parameter("traffic_light_min_ratio").value
         rate_hz = self.get_parameter("rate_hz").value
@@ -116,6 +118,15 @@ class Yolov8nSegNode(Node):
                 Image, "/perception/drivable_mask", 1)
         else:
             self.drivable_pub = None
+
+        if self.publish_lanes:
+            self.lane_left_pub = self.create_publisher(
+                Image, "/perception/lane_left_mask", 1)
+            self.lane_right_pub = self.create_publisher(
+                Image, "/perception/lane_right_mask", 1)
+        else:
+            self.lane_left_pub = None
+            self.lane_right_pub = None
 
         # ── 서브스크라이버 ──
         self.latest_frame: Optional[np.ndarray] = None
@@ -186,6 +197,16 @@ class Yolov8nSegNode(Node):
             drivable_msg = self.bridge.cv2_to_imgmsg(drivable, "mono8")
             self.drivable_pub.publish(drivable_msg)
 
+        # 3.5. 차선 마스크 (좌/우 분리)
+        if self.lane_left_pub is not None and self.lane_right_pub is not None:
+            left_mask, right_mask = self._extract_lane_masks(frame, results)
+            if left_mask is not None:
+                left_msg = self.bridge.cv2_to_imgmsg(left_mask, "mono8")
+                self.lane_left_pub.publish(left_msg)
+            if right_mask is not None:
+                right_msg = self.bridge.cv2_to_imgmsg(right_mask, "mono8")
+                self.lane_right_pub.publish(right_msg)
+
         # 4. 디버그 오버레이
         if self.overlay_pub is not None:
             overlay = self.detector.draw_overlay(frame, results)
@@ -205,6 +226,56 @@ class Yolov8nSegNode(Node):
 
             overlay_msg = self.bridge.cv2_to_imgmsg(overlay, "bgr8")
             self.overlay_pub.publish(overlay_msg)
+
+    def _extract_lane_masks(self, frame: np.ndarray, results) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+        """YOLO segmentation 결과에서 좌/우 차선 마스크 추출.
+
+        Args:
+            frame: 원본 이미지
+            results: YOLO 추론 결과
+
+        Returns:
+            (left_mask, right_mask): 좌/우 차선 마스크 (각각 uint8, 0 or 255)
+        """
+        h, w = frame.shape[:2]
+        left_mask = np.zeros((h, w), dtype=np.uint8)
+        right_mask = np.zeros((h, w), dtype=np.uint8)
+
+        # YOLO 결과에서 segmentation 마스크가 있는지 확인
+        if results is None or not hasattr(results[0], 'masks') or results[0].masks is None:
+            return None, None
+
+        result = results[0]  # 첫 번째 결과 (배치 크기 1)
+
+        # 각 탐지된 객체에 대해
+        for i, cls_id in enumerate(result.boxes.cls):
+            cls_id = int(cls_id.item())
+
+            # 클래스 이름 확인 (YOLO 모델의 클래스 이름에 따라 조정 필요)
+            # 예: 'lane_left' = 0, 'lane_right' = 1 (모델에 따라 다름)
+            class_name = result.names.get(cls_id, "")
+
+            # Segmentation 마스크 추출
+            mask = result.masks.data[i].cpu().numpy()
+
+            # 원본 이미지 크기로 리사이즈
+            if mask.shape != (h, w):
+                mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST)
+
+            # uint8로 변환 (0 or 255)
+            mask_uint8 = (mask * 255).astype(np.uint8)
+
+            # 클래스 이름에 따라 좌/우 분류
+            if 'left' in class_name.lower() or cls_id == 0:  # 좌차선
+                left_mask = np.maximum(left_mask, mask_uint8)
+            elif 'right' in class_name.lower() or cls_id == 1:  # 우차선
+                right_mask = np.maximum(right_mask, mask_uint8)
+
+        # 마스크가 비어있으면 None 반환
+        left_mask = left_mask if np.any(left_mask) else None
+        right_mask = right_mask if np.any(right_mask) else None
+
+        return left_mask, right_mask
 
 
 def main(args=None) -> None:

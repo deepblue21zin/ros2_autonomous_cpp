@@ -56,6 +56,7 @@ install(PROGRAMS
   scripts/decision_node_unified.py
   scripts/lidar_obstacle_node.py
   scripts/yolo_lane_drive_node.py
+  scripts/yolo_lane_tracking_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

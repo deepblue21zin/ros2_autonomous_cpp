@@ -34,6 +34,9 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("vehicle_mask_top_left_x", 0.40);
     this->declare_parameter("vehicle_mask_top_right_x", 0.60);
     this->declare_parameter("vehicle_mask_top_y", 0.70);
+    this->declare_parameter("vehicle_mask_num_side_points", 3);   // 측면 점 개수
+    this->declare_parameter("vehicle_mask_num_top_points", 6);    // 상단 원호 점 개수
+    this->declare_parameter("vehicle_mask_curve_depth", 0.15);    // 상단 곡선 깊이
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
     use_compressed_ = this->get_parameter("use_compressed").as_bool();
@@ -59,6 +62,9 @@ LaneTrackingNode::LaneTrackingNode()
     vehicle_mask_top_left_x_ = this->get_parameter("vehicle_mask_top_left_x").as_double();
     vehicle_mask_top_right_x_ = this->get_parameter("vehicle_mask_top_right_x").as_double();
     vehicle_mask_top_y_ = this->get_parameter("vehicle_mask_top_y").as_double();
+    vehicle_mask_num_side_points_ = this->get_parameter("vehicle_mask_num_side_points").as_int();
+    vehicle_mask_num_top_points_ = this->get_parameter("vehicle_mask_num_top_points").as_int();
+    vehicle_mask_curve_depth_ = this->get_parameter("vehicle_mask_curve_depth").as_double();
 
     prev_steering_ = 0.0;
     prev_smooth_offset_ = 0.0;
@@ -412,6 +418,61 @@ cv::Mat LaneTrackingNode::composeOverlay(const cv::Mat& frame, const cv::Mat& ro
     cv::line(overlay, cv::Point(lane_x, roi_y), cv::Point(lane_x, frame.rows),
              cv::Scalar(0, 255, 0), 2);
 
+    // Draw vehicle mask area (debug mode) - curved shape
+    if (enable_vehicle_mask_ && debug_) {
+        int h = frame.rows;
+        int w = frame.cols;
+        std::vector<cv::Point> vehicle_poly;
+
+        // 하단 왼쪽 코너
+        vehicle_poly.push_back(cv::Point(static_cast<int>(w * vehicle_mask_bottom_left_x_), h));
+
+        // 왼쪽 측면 (하단 → 상단, 파라미터로 점 개수 조절)
+        int top_y = static_cast<int>(h * vehicle_mask_top_y_);
+        int num_side = vehicle_mask_num_side_points_;
+        for (int i = 0; i <= num_side; i++) {
+            double ratio = static_cast<double>(i) / num_side;
+            int x = static_cast<int>(w * (vehicle_mask_bottom_left_x_ +
+                                         ratio * (vehicle_mask_top_left_x_ - vehicle_mask_bottom_left_x_)));
+            int y = static_cast<int>(h - ratio * (h - top_y));
+            vehicle_poly.push_back(cv::Point(x, y));
+        }
+
+        // 상단 원호 (왼쪽 → 오른쪽, 타원 형태로 실제 곡선)
+        double center_x = w / 2.0;
+        double center_y = top_y;
+        double radius_x = (vehicle_mask_top_right_x_ - vehicle_mask_top_left_x_) * w / 2.0;
+        double radius_y = (h - top_y) * vehicle_mask_curve_depth_;  // 세로 반경 (파라미터)
+        int num_top = vehicle_mask_num_top_points_;
+        for (int i = 0; i <= num_top; i++) {
+            double angle = M_PI + M_PI * i / num_top;
+            int x = static_cast<int>(center_x + radius_x * cos(angle));
+            int y = static_cast<int>(center_y + radius_y * sin(angle));  // Y도 변함!
+            vehicle_poly.push_back(cv::Point(x, y));
+        }
+
+        // 오른쪽 측면 (상단 → 하단, 파라미터로 점 개수 조절)
+        for (int i = num_side; i >= 0; i--) {
+            double ratio = static_cast<double>(i) / num_side;
+            int x = static_cast<int>(w * (vehicle_mask_bottom_right_x_ -
+                                         ratio * (vehicle_mask_bottom_right_x_ - vehicle_mask_top_right_x_)));
+            int y = static_cast<int>(h - ratio * (h - top_y));
+            vehicle_poly.push_back(cv::Point(x, y));
+        }
+
+        // 하단 오른쪽 코너
+        vehicle_poly.push_back(cv::Point(static_cast<int>(w * vehicle_mask_bottom_right_x_), h));
+
+        // Draw vehicle mask polygon (red semi-transparent)
+        cv::polylines(overlay, std::vector<std::vector<cv::Point>>{vehicle_poly},
+                     true, cv::Scalar(0, 0, 255), 3);
+        // Fill with semi-transparent red
+        cv::Mat mask_overlay = overlay.clone();
+        cv::fillPoly(mask_overlay, std::vector<std::vector<cv::Point>>{vehicle_poly},
+                    cv::Scalar(0, 0, 255));
+        cv::addWeighted(overlay, 0.7, mask_overlay, 0.3, 0, overlay);
+    }
+
     return overlay;
 }
 
@@ -420,6 +481,7 @@ cv::Mat LaneTrackingNode::createVehicleMask(const cv::Mat& frame) {
      * 차량 본체 영역을 마스킹하는 함수
      * 카메라 각도를 아래로 내려 차량이 화면에 보일 때 사용
      * 흰색 차량 본체를 차선으로 오인식하는 것을 방지
+     * 반원 형태로 여러 점을 사용하여 곡선 근사
      */
     int h = frame.rows;
     int w = frame.cols;
@@ -427,15 +489,47 @@ cv::Mat LaneTrackingNode::createVehicleMask(const cv::Mat& frame) {
     // 전체를 흰색(255)으로 초기화 (mask=255인 영역만 처리)
     cv::Mat mask = cv::Mat::ones(h, w, CV_8UC1) * 255;
 
-    // 차량 본체 영역을 사각형으로 정의 (비율 기반)
-    std::vector<cv::Point> vehicle_poly = {
-        cv::Point(static_cast<int>(w * vehicle_mask_bottom_left_x_), h),  // 왼쪽 아래
-        cv::Point(static_cast<int>(w * vehicle_mask_top_left_x_),
-                  static_cast<int>(h * vehicle_mask_top_y_)),              // 왼쪽 위
-        cv::Point(static_cast<int>(w * vehicle_mask_top_right_x_),
-                  static_cast<int>(h * vehicle_mask_top_y_)),              // 오른쪽 위
-        cv::Point(static_cast<int>(w * vehicle_mask_bottom_right_x_), h)   // 오른쪽 아래
-    };
+    // 차량 본체 영역을 반원 형태로 정의 (여러 점으로 곡선 근사)
+    std::vector<cv::Point> vehicle_poly;
+
+    // 하단 왼쪽 코너
+    vehicle_poly.push_back(cv::Point(static_cast<int>(w * vehicle_mask_bottom_left_x_), h));
+
+    // 왼쪽 측면 (하단 → 상단, 파라미터로 점 개수 조절)
+    int top_y = static_cast<int>(h * vehicle_mask_top_y_);
+    int num_side = vehicle_mask_num_side_points_;
+    for (int i = 0; i <= num_side; i++) {
+        double ratio = static_cast<double>(i) / num_side;
+        int x = static_cast<int>(w * (vehicle_mask_bottom_left_x_ +
+                                     ratio * (vehicle_mask_top_left_x_ - vehicle_mask_bottom_left_x_)));
+        int y = static_cast<int>(h - ratio * (h - top_y));
+        vehicle_poly.push_back(cv::Point(x, y));
+    }
+
+    // 상단 원호 (왼쪽 → 오른쪽, 타원 형태로 실제 곡선)
+    double center_x = w / 2.0;
+    double center_y = top_y;
+    double radius_x = (vehicle_mask_top_right_x_ - vehicle_mask_top_left_x_) * w / 2.0;
+    double radius_y = (h - top_y) * vehicle_mask_curve_depth_;  // 세로 반경 (파라미터)
+    int num_top = vehicle_mask_num_top_points_;
+    for (int i = 0; i <= num_top; i++) {
+        double angle = M_PI + M_PI * i / num_top;  // π ~ 2π (상단 반원)
+        int x = static_cast<int>(center_x + radius_x * cos(angle));
+        int y = static_cast<int>(center_y + radius_y * sin(angle));  // Y도 변함!
+        vehicle_poly.push_back(cv::Point(x, y));
+    }
+
+    // 오른쪽 측면 (상단 → 하단, 파라미터로 점 개수 조절)
+    for (int i = num_side; i >= 0; i--) {
+        double ratio = static_cast<double>(i) / num_side;
+        int x = static_cast<int>(w * (vehicle_mask_bottom_right_x_ -
+                                     ratio * (vehicle_mask_bottom_right_x_ - vehicle_mask_top_right_x_)));
+        int y = static_cast<int>(h - ratio * (h - top_y));
+        vehicle_poly.push_back(cv::Point(x, y));
+    }
+
+    // 하단 오른쪽 코너
+    vehicle_poly.push_back(cv::Point(static_cast<int>(w * vehicle_mask_bottom_right_x_), h));
 
     // 차량 영역을 검은색(0)으로 채움 (무시할 영역)
     cv::fillPoly(mask, std::vector<std::vector<cv::Point>>{vehicle_poly}, cv::Scalar(0));

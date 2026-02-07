@@ -35,8 +35,11 @@
 
     # 차량 본체 마스킹 (카메라 각도를 아래로 내려 차량이 보일 때)
     enable_vehicle_mask: true      # true: 차량 본체 영역 마스킹 활성화
-    vehicle_mask_bottom_left_x: 0.35    # 차량 하단 왼쪽 (이미지 폭 비율 0.0~1.0)
-    vehicle_mask_bottom_right_x: 0.65   # 차량 하단 오른쪽 (이미지 폭 비율)
-    vehicle_mask_top_left_x: 0.40       # 차량 상단 왼쪽 (이미지 폭 비율)
-    vehicle_mask_top_right_x: 0.60      # 차량 상단 오른쪽 (이미지 폭 비율)
-    vehicle_mask_top_y: 0.70            # 차량 상단 높이 (이미지 높이 비율, 0.0=맨위, 1.0=맨아래)
+    vehicle_mask_bottom_left_x: 0.0    # 차량 하단 왼쪽 (이미지 폭 비율 0.0~1.0)
+    vehicle_mask_bottom_right_x: 1.0   # 차량 하단 오른쪽 (이미지 폭 비율)
+    vehicle_mask_top_left_x: 0.25       # 차량 상단 왼쪽 (이미지 폭 비율)
+    vehicle_mask_top_right_x: 0.75      # 차량 상단 오른쪽 (이미지 폭 비율)
+    vehicle_mask_top_y: 0.55            # 차량 상단 높이 (이미지 높이 비율, 0.0=맨위, 1.0=맨아래)
+    vehicle_mask_num_side_points: 5     # 좌우 측면 점 개수 (클수록 부드러운 곡선, 3~10 권장)
+    vehicle_mask_num_top_points: 10     # 상단 원호 점 개수 (클수록 부드러운 반원, 6~20 권장)
+    vehicle_mask_curve_depth: 0.15      # 상단 곡선 깊이 (0.0=직선, 0.3=깊은 곡선)
