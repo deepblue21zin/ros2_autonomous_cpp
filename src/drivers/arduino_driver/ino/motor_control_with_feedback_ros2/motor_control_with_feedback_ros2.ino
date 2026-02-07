@@ -144,8 +144,9 @@ void setup() {
   Serial.println("Arduino Ready!");
   Serial.println("ROS2 Compatible Firmware (PID Steering)");
   Serial.println("Protocol: V:PWM,S:SERVO or single char (F,B,L,R,S)");
+  Serial.println("PWM: 0=stop, 1-127=reverse, 128=stop, 129-255=forward");
   Serial.println("PID Tuning: T:P:5.0, T:I:0.5, T:D:1.0, T:B:2.0, T:ON, T:OFF");
-  Serial.println("Example: V:100,S:90");
+  Serial.println("Example: V:192,S:90 (forward), V:64,S:90 (reverse)");
 }
 
 // ==================== 메인 루프 (최적화) ====================
@@ -240,10 +241,15 @@ void parseROS2Command(String cmd) {
     current_pwm = pwm;
     command = 'V';
 
-    if (pwm > 0) {
-      motor_forward(pwm);
-    } else {
+    // PWM 범위 해석: 0=stop, 1-127=reverse, 128=stop, 129-255=forward
+    if (pwm == 0 || pwm == 128) {
       motor_stop();
+    } else if (pwm < 128) {
+      // 후진: 1-127 -> PWM 1-127
+      motor_backward(pwm);
+    } else {
+      // 전진: 129-255 -> PWM 1-127
+      motor_forward(pwm - 128);
     }
 
     setServoAngle(servo);
