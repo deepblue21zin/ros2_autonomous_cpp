@@ -1,0 +1,50 @@
+/**:
+  ros__parameters:
+    # 속도 제어
+    cruise_speed_mps: 0.3      # 정상 주행 속도 (m/s)
+    slow_speed_mps: 0.2        # 장애물 회피 시 속도 (m/s)
+    min_speed_mps: 0.15        # 최소 속도 (m/s)
+
+    # 조향 제어
+    max_steer_rad: 0.45        # 최대 조향각 (rad, 약 25도)
+    kp: 2.5                    # 비례 게인 (조향 강도)
+    kd: 0.6                    # 미분 게인 (안정성)
+    ki: 0.0                    # 적분 게인 (사용 안 함)
+
+    # 장애물 회피
+    avoid_offset: 0.4          # 회피 시 차선 변경 offset (-1.0 ~ 1.0)
+    return_threshold: 0.15     # 중앙 복귀 판단 threshold
+    obstacle_detect_threshold: 0.3  # 장애물 감지 임계값 (30%)
+
+    # 신호등
+    use_traffic_light: true    # 신호등 사용 여부
+    stop_on_yellow: false      # 노란불에서 정지 여부
+
+    # 제어 주기
+    control_hz: 20.0           # 제어 루프 주기 (Hz)
+
+    # 타임아웃
+    lane_timeout_sec: 1.0      # HSV 차선 정보 타임아웃 (초)
+    obstacle_timeout_sec: 1.0  # YOLO 장애물 정보 타임아웃 (초)
+
+# ============================================
+# 튜닝 가이드
+# ============================================
+#
+# 1. 조향이 약하면:
+#    kp: 2.5 → 3.0 → 3.5
+#
+# 2. 조향이 진동하면:
+#    kd: 0.6 → 0.8 → 1.0
+#    또는 kp를 줄이기: 3.0 → 2.5
+#
+# 3. 회피가 약하면:
+#    avoid_offset: 0.4 → 0.5 → 0.6
+#
+# 4. 속도 조정:
+#    cruise_speed_mps: 0.3 → 0.35 → 0.4
+#    slow_speed_mps: 0.2 → 0.25
+#
+# 5. 장애물 감지가 민감하면:
+#    obstacle_detect_threshold: 0.3 → 0.2 (더 민감)
+#    obstacle_detect_threshold: 0.3 → 0.4 (덜 민감)
