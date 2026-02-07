@@ -2,7 +2,7 @@
 YOLO rosbag test launch file.
 rosbag 파일을 재생하여 YOLO 세그멘테이션을 테스트하는 모드.
 카메라 대신 rosbag에서 /camera/front/image 토픽을 재생하고,
-    YOLOv26n-seg 노드 + rviz2로 시각화.
+    YOLOv8n-seg 노드 + rviz2로 시각화.
 """
 
 from launch import LaunchDescription
@@ -52,16 +52,16 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 2. YOLOv26n-seg Node
+    # 2. YOLOv8n-seg Node
     yolo_node = Node(
         package='perception_pkg',
-        executable='yolov26n_seg_node.py',
-        name='yolov26n_seg_node',
+        executable='yolov8n_seg_node.py',
+        name='yolov8n_seg_node',
         output='screen',
         parameters=[
             {
                 'camera_topic': LaunchConfiguration('camera_topic'),
-                'model_path': '/root/ros2_ws/src/perception_pkg/models/lane_trafficlight_ver2.pt',
+                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_main.pt',
                 'conf_threshold': 0.4,
                 'iou_threshold': 0.45,
                 'imgsz': 640,

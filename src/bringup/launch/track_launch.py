@@ -265,6 +265,21 @@ def generate_launch_description():
         ])
     )
 
+    # rviz2 visualization
+    rviz_config_file = PathJoinSubstitution([
+        FindPackageShare('bringup'),
+        'config',
+        'adas_default.rviz'
+    ])
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', rviz_config_file],
+        output='screen'
+    )
+
     return LaunchDescription([
         decision_mode_arg,
         camera_topic_arg,
@@ -274,5 +289,6 @@ def generate_launch_description():
         usb_cam_launch,
         lane_perception_launch,
         rplidar_launch,
+        rviz_node,
         OpaqueFunction(function=launch_setup),
     ])

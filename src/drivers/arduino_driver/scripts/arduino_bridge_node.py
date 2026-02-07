@@ -119,10 +119,29 @@ class ArduinoBridgeNode(Node):
             self.serial.write(payload.encode("utf-8"))
 
     def _speed_to_pwm(self, speed: float) -> int:
-        # Firmware expects 0~255 PWM (forward only)
-        speed = clamp(speed, 0.0, self.max_speed_mps)
-        ratio = speed / max(self.max_speed_mps, 1e-3)
-        return int(round(clamp(ratio * 255.0, 0.0, 255.0)))
+        """Convert speed (m/s) to PWM value.
+
+        Firmware protocol: 0=stop, 1-127=reverse, 128=stop, 129-255=forward
+        Maps speed range to appropriate PWM:
+          speed == 0 → PWM 0 (stop)
+          speed < 0  → PWM 1-127 (reverse, for future parking branch)
+          speed > 0  → PWM 129-255 (forward)
+        """
+        if abs(speed) < 1e-3:
+            return 0  # Stop
+
+        abs_speed = abs(speed)
+        clamped = clamp(abs_speed, 0.0, self.max_speed_mps)
+        ratio = clamped / max(self.max_speed_mps, 1e-3)
+
+        if speed < 0:
+            # Reverse: 0.0~max_speed_mps → 1~127
+            pwm = int(round(ratio * 127.0))
+            return max(1, min(pwm, 127))
+        else:
+            # Forward: 0.0~max_speed_mps → 129~255
+            pwm = int(round(ratio * 127.0)) + 128
+            return max(129, min(pwm, 255))
 
     def _steer_to_servo(self, steering_angle: float) -> int:
         steer_deg = math.degrees(steering_angle)

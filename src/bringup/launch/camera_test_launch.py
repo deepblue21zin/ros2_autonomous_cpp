@@ -5,7 +5,7 @@ Camera test launch file.
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
@@ -77,17 +77,18 @@ def generate_launch_description():
         arguments=['0.15', '0', '0.12', '0', '0', '0', 'base_link', 'camera_front']
     )
 
-    # 4. rqt_image_view: Camera Raw (큰 화면)
-    image_view_raw = ExecuteProcess(
-        cmd=['ros2', 'run', 'rqt_image_view', 'rqt_image_view',
-             '--ros-args', '-r', 'image:=/camera/front/image'],
-        output='screen'
-    )
+    # 4. rviz2 with camera test config (Camera Raw + Lane Overlay only)
+    rviz_config_file = PathJoinSubstitution([
+        FindPackageShare('bringup'),
+        'config',
+        'camera_test.rviz'
+    ])
 
-    # 5. rqt_image_view: Lane Overlay (큰 화면)
-    image_view_lane = ExecuteProcess(
-        cmd=['ros2', 'run', 'rqt_image_view', 'rqt_image_view',
-             '--ros-args', '-r', 'image:=/lane_overlay'],
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', rviz_config_file],
         output='screen'
     )
 
@@ -98,6 +99,5 @@ def generate_launch_description():
         usb_cam_launch,
         lane_perception_launch,
         static_tf_camera,
-        image_view_raw,
-        image_view_lane,
+        rviz_node,
     ])

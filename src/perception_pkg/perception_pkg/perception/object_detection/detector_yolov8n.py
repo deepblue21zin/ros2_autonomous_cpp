@@ -1,4 +1,4 @@
-"""YOLOv26n-seg 기반 통합 감지기.
+"""YOLOv8n-seg 기반 통합 감지기.
 
 목적:
   1. 신호등 감지: 빨간불 -> 정지, 초록불 -> 주행
@@ -60,8 +60,8 @@ class ObstacleInfo:
 
 
 @dataclass
-class Yolov26nSegConfig:
-    """YOLOv26n-seg 설정."""
+class Yolov8nSegConfig:
+    """YOLOv8n-seg 설정."""
     model_path: str = ""
     conf_threshold: float = 0.4
     iou_threshold: float = 0.45
@@ -75,8 +75,8 @@ class Yolov26nSegConfig:
     detect_obstacles: bool = True
 
 
-class Yolov26nSegDetector:
-    """YOLOv26n-seg 통합 감지기 (best.pt 커스텀 모델).
+class Yolov8nSegDetector:
+    """YOLOv8n-seg 통합 감지기 (best.pt 커스텀 모델).
 
     기능:
       1. 신호등 감지: green_light(0), red_light(2) 직접 감지
@@ -87,7 +87,7 @@ class Yolov26nSegDetector:
     _model_cache: Dict[str, YOLO] = {}
     _model_lock = threading.Lock()
 
-    def __init__(self, config: Yolov26nSegConfig) -> None:
+    def __init__(self, config: Yolov8nSegConfig) -> None:
         self.config = config
 
         if not config.model_path or not os.path.exists(config.model_path):
@@ -95,13 +95,13 @@ class Yolov26nSegDetector:
                 f"모델 파일을 찾을 수 없습니다: {config.model_path}"
             )
 
-        with Yolov26nSegDetector._model_lock:
-            if config.model_path not in Yolov26nSegDetector._model_cache:
+        with Yolov8nSegDetector._model_lock:
+            if config.model_path not in Yolov8nSegDetector._model_cache:
                 model = YOLO(config.model_path)
                 if config.device:
                     model.to(config.device)
-                Yolov26nSegDetector._model_cache[config.model_path] = model
-            self.model = Yolov26nSegDetector._model_cache[config.model_path]
+                Yolov8nSegDetector._model_cache[config.model_path] = model
+            self.model = Yolov8nSegDetector._model_cache[config.model_path]
 
         # 모델 클래스 이름 (자동 읽기)
         names = getattr(self.model, "names", {})

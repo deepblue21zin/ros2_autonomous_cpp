@@ -76,16 +76,16 @@ def generate_launch_description():
         ]
     )
 
-    # 2. YOLOv26n-seg Node
+    # 2. YOLOv8n-seg Node
     yolo_node = Node(
         package='perception_pkg',
-        executable='yolov26n_seg_node.py',
-        name='yolov26n_seg_node',
+        executable='yolov8n_seg_node.py',
+        name='yolov8n_seg_node',
         output='screen',
         parameters=[
             {
                 'camera_topic': LaunchConfiguration('camera_topic'),
-                'model_path': '',  # auto-detect best.pt
+                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_main.pt',  # auto-detect best.pt
                 'conf_threshold': 0.4,
                 'iou_threshold': 0.45,
                 'imgsz': 640,
