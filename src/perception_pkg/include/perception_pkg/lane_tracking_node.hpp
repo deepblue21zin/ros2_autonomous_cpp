@@ -48,6 +48,14 @@ private:
     double crosswalk_density_max_;
     int max_crosswalk_frames_;
 
+    // Vehicle body masking parameters
+    bool enable_vehicle_mask_;
+    double vehicle_mask_bottom_left_x_;
+    double vehicle_mask_bottom_right_x_;
+    double vehicle_mask_top_left_x_;
+    double vehicle_mask_top_right_x_;
+    double vehicle_mask_top_y_;
+
     // Predict+Hold state
     double prev_center_x_;
     int lost_count_;
@@ -75,6 +83,9 @@ private:
 
     // Steering computation with moving average
     std::pair<double, double> computeSteering(double lane_center, int width);
+
+    // Vehicle body masking (차량 본체 영역 제거)
+    cv::Mat createVehicleMask(const cv::Mat& frame);
 
     // Overlay composition
     cv::Mat composeOverlay(const cv::Mat& frame, const cv::Mat& roi_overlay,

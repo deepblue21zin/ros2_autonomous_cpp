@@ -27,6 +27,14 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("crosswalk_density_max", 0.50);
     this->declare_parameter("max_crosswalk_frames", 60);
 
+    // Vehicle body masking parameters
+    this->declare_parameter("enable_vehicle_mask", false);
+    this->declare_parameter("vehicle_mask_bottom_left_x", 0.35);
+    this->declare_parameter("vehicle_mask_bottom_right_x", 0.65);
+    this->declare_parameter("vehicle_mask_top_left_x", 0.40);
+    this->declare_parameter("vehicle_mask_top_right_x", 0.60);
+    this->declare_parameter("vehicle_mask_top_y", 0.70);
+
     camera_topic_ = this->get_parameter("camera_topic").as_string();
     use_compressed_ = this->get_parameter("use_compressed").as_bool();
     kp_ = this->get_parameter("kp").as_double();
@@ -43,6 +51,15 @@ LaneTrackingNode::LaneTrackingNode()
     crosswalk_density_threshold_ = this->get_parameter("crosswalk_density_threshold").as_double();
     crosswalk_density_max_ = this->get_parameter("crosswalk_density_max").as_double();
     max_crosswalk_frames_ = this->get_parameter("max_crosswalk_frames").as_int();
+
+    // Vehicle body masking parameters
+    enable_vehicle_mask_ = this->get_parameter("enable_vehicle_mask").as_bool();
+    vehicle_mask_bottom_left_x_ = this->get_parameter("vehicle_mask_bottom_left_x").as_double();
+    vehicle_mask_bottom_right_x_ = this->get_parameter("vehicle_mask_bottom_right_x").as_double();
+    vehicle_mask_top_left_x_ = this->get_parameter("vehicle_mask_top_left_x").as_double();
+    vehicle_mask_top_right_x_ = this->get_parameter("vehicle_mask_top_right_x").as_double();
+    vehicle_mask_top_y_ = this->get_parameter("vehicle_mask_top_y").as_double();
+
     prev_steering_ = 0.0;
     prev_smooth_offset_ = 0.0;
     prev_center_x_ = 0.0;
@@ -143,18 +160,25 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
     // Extract ROI
     auto [roi_color, roi_y] = extractROI(frame, roi_y_ratio_);
 
+    // Apply vehicle mask if enabled (차량 본체 제거)
+    cv::Mat masked_roi = roi_color;
+    if (enable_vehicle_mask_) {
+        cv::Mat vehicle_mask = createVehicleMask(roi_color);
+        cv::bitwise_and(roi_color, roi_color, masked_roi, vehicle_mask);
+    }
+
     // Preprocess: 전처리 방식 선택 (Sliding Window용)
     cv::Mat binary_mask;
     if (use_grayscale_threshold_) {
         // Grayscale Binary Threshold 방식
-        binary_mask = preprocessForSlidingWindowGrayscale(roi_color, gaussian_kernel_, 120);
+        binary_mask = preprocessForSlidingWindowGrayscale(masked_roi, gaussian_kernel_, 120);
     } else {
         // HSV Threshold 방식 (기본값)
-        binary_mask = preprocessForSlidingWindow(roi_color, gaussian_kernel_);
+        binary_mask = preprocessForSlidingWindow(masked_roi, gaussian_kernel_);
     }
 
     // Detect lane center (Sliding Window + RANSAC)
-    auto [lane_center, roi_overlay] = detectLaneCenter(binary_mask, roi_color, roi_y);
+    auto [lane_center, roi_overlay] = detectLaneCenter(binary_mask, masked_roi, roi_y);
 
     // Compute steering
     auto [steering, offset_norm] = computeSteering(lane_center, frame.cols);
@@ -389,6 +413,42 @@ cv::Mat LaneTrackingNode::composeOverlay(const cv::Mat& frame, const cv::Mat& ro
              cv::Scalar(0, 255, 0), 2);
 
     return overlay;
+}
+
+cv::Mat LaneTrackingNode::createVehicleMask(const cv::Mat& frame) {
+    /**
+     * 차량 본체 영역을 마스킹하는 함수
+     * 카메라 각도를 아래로 내려 차량이 화면에 보일 때 사용
+     * 흰색 차량 본체를 차선으로 오인식하는 것을 방지
+     */
+    int h = frame.rows;
+    int w = frame.cols;
+
+    // 전체를 흰색(255)으로 초기화 (mask=255인 영역만 처리)
+    cv::Mat mask = cv::Mat::ones(h, w, CV_8UC1) * 255;
+
+    // 차량 본체 영역을 사각형으로 정의 (비율 기반)
+    std::vector<cv::Point> vehicle_poly = {
+        cv::Point(static_cast<int>(w * vehicle_mask_bottom_left_x_), h),  // 왼쪽 아래
+        cv::Point(static_cast<int>(w * vehicle_mask_top_left_x_),
+                  static_cast<int>(h * vehicle_mask_top_y_)),              // 왼쪽 위
+        cv::Point(static_cast<int>(w * vehicle_mask_top_right_x_),
+                  static_cast<int>(h * vehicle_mask_top_y_)),              // 오른쪽 위
+        cv::Point(static_cast<int>(w * vehicle_mask_bottom_right_x_), h)   // 오른쪽 아래
+    };
+
+    // 차량 영역을 검은색(0)으로 채움 (무시할 영역)
+    cv::fillPoly(mask, std::vector<std::vector<cv::Point>>{vehicle_poly}, cv::Scalar(0));
+
+    if (debug_) {
+        // 디버그 모드: 마스크된 영역을 빨간색으로 표시
+        RCLCPP_INFO_ONCE(this->get_logger(),
+                         "Vehicle mask enabled: BL(%.2f), BR(%.2f), TL(%.2f), TR(%.2f), TY(%.2f)",
+                         vehicle_mask_bottom_left_x_, vehicle_mask_bottom_right_x_,
+                         vehicle_mask_top_left_x_, vehicle_mask_top_right_x_, vehicle_mask_top_y_);
+    }
+
+    return mask;
 }
 
 }  // namespace perception_pkg

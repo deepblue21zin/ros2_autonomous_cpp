@@ -32,3 +32,11 @@
 
     # 디버그 (실제 주행 시 false 권장)
     debug: true
+
+    # 차량 본체 마스킹 (카메라 각도를 아래로 내려 차량이 보일 때)
+    enable_vehicle_mask: true      # true: 차량 본체 영역 마스킹 활성화
+    vehicle_mask_bottom_left_x: 0.35    # 차량 하단 왼쪽 (이미지 폭 비율 0.0~1.0)
+    vehicle_mask_bottom_right_x: 0.65   # 차량 하단 오른쪽 (이미지 폭 비율)
+    vehicle_mask_top_left_x: 0.40       # 차량 상단 왼쪽 (이미지 폭 비율)
+    vehicle_mask_top_right_x: 0.60      # 차량 상단 오른쪽 (이미지 폭 비율)
+    vehicle_mask_top_y: 0.70            # 차량 상단 높이 (이미지 높이 비율, 0.0=맨위, 1.0=맨아래)
