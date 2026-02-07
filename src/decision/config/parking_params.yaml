@@ -42,11 +42,9 @@
     exit_steer_rad: -0.4          # 탈출 조향각 (진입 반대)
     exit_duration_sec: 2.5        # 탈출 기동 시간
 
-    # ── SEEK_OUT: 주차 공간 탈출 완료 판정 ──
-    seek_speed_mps: 0.3                  # 탈출 전진 속도
-    seek_out_wall_threshold_m: 2.0       # 이 거리 이상 = 벽 감지 안 됨 (인접 차량 없음)
-    seek_out_position_error_m: 0.15      # 좌우 위치 차이 허용값 (m)
-                                         # 둘 다 감지 안 되면 0.0, 둘 다 감지되면 차이가 작아야 함
+    # ── SEEK_OUT: 탈출 후 직진 → 타임아웃으로 DONE ──
+    seek_speed_mps: 0.3           # 탈출 전진 속도
+    seek_out_timeout_sec: 5.0     # 직진 타임아웃 (초) → DONE
 
     # ── 안전 ──
     emergency_stop_distance_m: 0.10   # 긴급 정지 거리

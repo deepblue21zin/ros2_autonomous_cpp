@@ -12,8 +12,6 @@ endif()
 
 # Find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(sensor_msgs REQUIRED)
 
 # Install launch files
 install(DIRECTORY launch
@@ -26,13 +24,6 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/config)
     DESTINATION share/${PROJECT_NAME}/
   )
 endif()
-
-# Executable
-add_executable(rplidar_node src/rplidar_node.cpp)
-ament_target_dependencies(rplidar_node rclcpp sensor_msgs)
-
-install(TARGETS rplidar_node
-  DESTINATION lib/${PROJECT_NAME})
 
 # Linting (optional)
 if(BUILD_TESTING)

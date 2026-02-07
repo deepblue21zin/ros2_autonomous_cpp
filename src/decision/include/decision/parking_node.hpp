@@ -4,7 +4,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <ackermann_msgs/msg/ackermann_drive.hpp>
-#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <cmath>
 
@@ -29,7 +28,6 @@ public:
 private:
     // Subscriptions
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
-    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr line_sub_;
 
     // Publishers
     rclcpp::Publisher<ackermann_msgs::msg::AckermannDrive>::SharedPtr cmd_pub_;
@@ -41,7 +39,6 @@ private:
     // ── State ──
     ParkingState state_;
     rclcpp::Time state_enter_time_;
-    bool out_line_detected_;
 
     // Latest LiDAR scan cache
     sensor_msgs::msg::LaserScan::SharedPtr latest_scan_;
@@ -95,15 +92,13 @@ private:
 
     // SEEK_OUT
     double seek_speed_;
-    double seek_out_wall_threshold_;      // 이 거리 이상이면 벽 감지 안 됨
-    double seek_out_position_error_;     // 좌우 위치 차이 허용값 (m)
+    double seek_out_timeout_;            // 탈출 후 직진 타임아웃 (초) → DONE
 
     // Safety
     double emergency_stop_dist_;
 
     // ── Callbacks ──
     void scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg);
-    void lineCallback(const std_msgs::msg::Bool::SharedPtr msg);
     void timerCallback();
 
     // ── State handlers ──

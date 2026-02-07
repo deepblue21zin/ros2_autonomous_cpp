@@ -44,7 +44,7 @@ def generate_launch_description():
 
     # RPLiDAR node
     rplidar_node = Node(
-        package='rplidar_driver',
+        package='rplidar_ros',
         executable='rplidar_node',
         name='rplidarNode',
         output='screen',

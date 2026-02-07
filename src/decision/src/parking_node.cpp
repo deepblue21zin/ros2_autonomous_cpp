@@ -8,7 +8,6 @@ namespace decision {
 ParkingNode::ParkingNode()
     : Node("parking_node"),
       state_(ParkingState::IDLE),
-      out_line_detected_(false),
       wall_seen_(false),
       gap_point_count_(0),
       align_stopped_(false) {
@@ -54,8 +53,7 @@ ParkingNode::ParkingNode()
 
     // SEEK_OUT
     this->declare_parameter("seek_speed_mps", 0.3);
-    this->declare_parameter("seek_out_wall_threshold_m", 2.0);  // 이 거리 이상이면 벽 감지 안 됨
-    this->declare_parameter("seek_out_position_error_m", 0.15); // 좌우 위치 차이 허용값
+    this->declare_parameter("seek_out_timeout_sec", 5.0);  // 탈출 후 직진 타임아웃 → DONE
 
     // Safety
     this->declare_parameter("emergency_stop_distance_m", 0.10);
@@ -94,8 +92,7 @@ ParkingNode::ParkingNode()
     exit_duration_ = this->get_parameter("exit_duration_sec").as_double();
 
     seek_speed_ = this->get_parameter("seek_speed_mps").as_double();
-    seek_out_wall_threshold_ = this->get_parameter("seek_out_wall_threshold_m").as_double();
-    seek_out_position_error_ = this->get_parameter("seek_out_position_error_m").as_double();
+    seek_out_timeout_ = this->get_parameter("seek_out_timeout_sec").as_double();
 
     emergency_stop_dist_ = this->get_parameter("emergency_stop_distance_m").as_double();
 
@@ -104,9 +101,8 @@ ParkingNode::ParkingNode()
         "/scan", 10,
         std::bind(&ParkingNode::scanCallback, this, std::placeholders::_1));
 
-    line_sub_ = this->create_subscription<std_msgs::msg::Bool>(
-        "/parking/line_detected", 10,
-        std::bind(&ParkingNode::lineCallback, this, std::placeholders::_1));
+    // 후방 카메라 OUT 라인 구독 제거 (규정: 타임아웃 기반 탈출로 변경)
+    // 향후 전방 카메라 정지선 연동 시 여기에 구독 추가 가능
 
     // ── Publishers ──
     cmd_pub_ = this->create_publisher<ackermann_msgs::msg::AckermannDrive>(
@@ -140,10 +136,6 @@ ParkingNode::ParkingNode()
 
 void ParkingNode::scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
     latest_scan_ = msg;
-}
-
-void ParkingNode::lineCallback(const std_msgs::msg::Bool::SharedPtr msg) {
-    out_line_detected_ = msg->data;
 }
 
 void ParkingNode::timerCallback() {
@@ -231,18 +223,18 @@ void ParkingNode::handleReverseEnter() {
     // 후진 + 조향으로 주차 공간 진입
     double back_dist = getMinDistanceInWindow(back_scan_min_deg_, back_scan_max_deg_);
 
-    if (back_dist > 0.0 && back_dist < back_wall_target_) {
-        // 뒤 벽에 충분히 가까워짐 → 정렬 단계
-        RCLCPP_INFO(this->get_logger(),
-            "Back wall reached: %.2f m (target: %.2f)", back_dist, back_wall_target_);
-        changeState(ParkingState::STRAIGHTEN);
-        return;
-    }
-
-    // 비상 정지 체크
+    // 비상 정지 체크 (최우선)
     if (back_dist > 0.0 && back_dist < emergency_stop_dist_) {
         RCLCPP_WARN(this->get_logger(), "Emergency stop! back_dist=%.2f", back_dist);
         publishStop();
+        changeState(ParkingState::HOLD);
+        return;
+    }
+
+    // 뒤 벽에 충분히 가까워짐 → 정렬 단계
+    if (back_dist > 0.0 && back_dist < back_wall_target_) {
+        RCLCPP_INFO(this->get_logger(),
+            "Back wall reached: %.2f m (target: %.2f)", back_dist, back_wall_target_);
         changeState(ParkingState::STRAIGHTEN);
         return;
     }
@@ -256,17 +248,17 @@ void ParkingNode::handleStraighten() {
     double left_dist = getMeanDistanceInWindow(left_scan_min_deg_, left_scan_max_deg_);
     double right_dist = getMeanDistanceInWindow(right_scan_min_deg_, right_scan_max_deg_);
 
-    // 뒤 벽 도달 → HOLD
-    if (back_dist > 0.0 && back_dist < park_depth_) {
-        RCLCPP_INFO(this->get_logger(),
-            "Parked! back=%.2f, left=%.2f, right=%.2f", back_dist, left_dist, right_dist);
+    // 비상 정지 (최우선)
+    if (back_dist > 0.0 && back_dist < emergency_stop_dist_) {
+        RCLCPP_WARN(this->get_logger(), "Emergency stop in straighten! back=%.2f", back_dist);
         changeState(ParkingState::HOLD);
         return;
     }
 
-    // 비상 정지
-    if (back_dist > 0.0 && back_dist < emergency_stop_dist_) {
-        RCLCPP_WARN(this->get_logger(), "Emergency stop in straighten!");
+    // 뒤 벽 도달 → HOLD
+    if (back_dist > 0.0 && back_dist < park_depth_) {
+        RCLCPP_INFO(this->get_logger(),
+            "Parked! back=%.2f, left=%.2f, right=%.2f", back_dist, left_dist, right_dist);
         changeState(ParkingState::HOLD);
         return;
     }
@@ -305,29 +297,25 @@ void ParkingNode::handleExitForward() {
 }
 
 void ParkingNode::handleSeekOut() {
-    // LiDAR 기반: 좌우 벽 감지 끊김 + 좌우 위치 비슷함
-    double left_dist = getMeanDistanceInWindow(left_scan_min_deg_, left_scan_max_deg_);
-    double right_dist = getMeanDistanceInWindow(right_scan_min_deg_, right_scan_max_deg_);
+    // 탈출 후 직진 → 타임아웃으로 DONE (규정: OUT 라인 통과)
+    // LiDAR 벽 감지는 디버그 로그용 보조지표로만 사용
+    double elapsed = (this->now() - state_enter_time_).seconds();
 
-    // 좌우 벽 모두 감지 안 됨 (또는 매우 먼 것) → 주차 공간 벗어남
-    bool left_no_wall = (left_dist < 0.0 || left_dist > seek_out_wall_threshold_);
-    bool right_no_wall = (right_dist < 0.0 || right_dist > seek_out_wall_threshold_);
+    // 보조 로그: 좌우 벽 상태 (튜닝 참고용, 판정에 사용 안 함)
+    if (static_cast<int>(elapsed * 20) % 20 == 0) {  // 1초마다 로그
+        double left_dist = getMeanDistanceInWindow(left_scan_min_deg_, left_scan_max_deg_);
+        double right_dist = getMeanDistanceInWindow(right_scan_min_deg_, right_scan_max_deg_);
+        RCLCPP_INFO(this->get_logger(),
+            "SEEK_OUT: elapsed=%.1f/%.1f sec, left=%.2f, right=%.2f",
+            elapsed, seek_out_timeout_, left_dist, right_dist);
+    }
 
-    if (left_no_wall && right_no_wall) {
-        // 좌우 위치 차이 확인 (모두 감지 안 되면 무시, 둘 다 감지되면 차이 체크)
-        double position_error = 0.0;
-        if (left_dist > 0.0 && right_dist > 0.0) {
-            position_error = std::abs(left_dist - right_dist);
-        }
-
-        if (position_error < seek_out_position_error_) {
-            RCLCPP_INFO(this->get_logger(),
-                "Parking complete! Adjacent vehicles out of range. "
-                "left=%.2f, right=%.2f, error=%.2f",
-                left_dist, right_dist, position_error);
-            changeState(ParkingState::DONE);
-            return;
-        }
+    // 타임아웃 → DONE
+    if (elapsed >= seek_out_timeout_) {
+        RCLCPP_INFO(this->get_logger(),
+            "SEEK_OUT timeout (%.1f sec) → DONE", seek_out_timeout_);
+        changeState(ParkingState::DONE);
+        return;
     }
 
     publishCmd(seek_speed_, 0.0);
@@ -442,8 +430,6 @@ void ParkingNode::changeState(ParkingState new_state) {
         gap_point_count_ = 0;
     } else if (new_state == ParkingState::ALIGN) {
         align_stopped_ = false;
-    } else if (new_state == ParkingState::SEEK_OUT) {
-        out_line_detected_ = false;
     }
 }
 
