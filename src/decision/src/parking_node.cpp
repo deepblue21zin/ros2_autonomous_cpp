@@ -54,6 +54,8 @@ ParkingNode::ParkingNode()
 
     // SEEK_OUT
     this->declare_parameter("seek_speed_mps", 0.3);
+    this->declare_parameter("seek_out_wall_threshold_m", 2.0);  // 이 거리 이상이면 벽 감지 안 됨
+    this->declare_parameter("seek_out_position_error_m", 0.15); // 좌우 위치 차이 허용값
 
     // Safety
     this->declare_parameter("emergency_stop_distance_m", 0.10);
@@ -92,6 +94,8 @@ ParkingNode::ParkingNode()
     exit_duration_ = this->get_parameter("exit_duration_sec").as_double();
 
     seek_speed_ = this->get_parameter("seek_speed_mps").as_double();
+    seek_out_wall_threshold_ = this->get_parameter("seek_out_wall_threshold_m").as_double();
+    seek_out_position_error_ = this->get_parameter("seek_out_position_error_m").as_double();
 
     emergency_stop_dist_ = this->get_parameter("emergency_stop_distance_m").as_double();
 
@@ -301,11 +305,29 @@ void ParkingNode::handleExitForward() {
 }
 
 void ParkingNode::handleSeekOut() {
-    // OUT 라인 감지까지 직진
-    if (out_line_detected_) {
-        RCLCPP_INFO(this->get_logger(), "OUT line detected! Parking mission complete.");
-        changeState(ParkingState::DONE);
-        return;
+    // LiDAR 기반: 좌우 벽 감지 끊김 + 좌우 위치 비슷함
+    double left_dist = getMeanDistanceInWindow(left_scan_min_deg_, left_scan_max_deg_);
+    double right_dist = getMeanDistanceInWindow(right_scan_min_deg_, right_scan_max_deg_);
+
+    // 좌우 벽 모두 감지 안 됨 (또는 매우 먼 것) → 주차 공간 벗어남
+    bool left_no_wall = (left_dist < 0.0 || left_dist > seek_out_wall_threshold_);
+    bool right_no_wall = (right_dist < 0.0 || right_dist > seek_out_wall_threshold_);
+
+    if (left_no_wall && right_no_wall) {
+        // 좌우 위치 차이 확인 (모두 감지 안 되면 무시, 둘 다 감지되면 차이 체크)
+        double position_error = 0.0;
+        if (left_dist > 0.0 && right_dist > 0.0) {
+            position_error = std::abs(left_dist - right_dist);
+        }
+
+        if (position_error < seek_out_position_error_) {
+            RCLCPP_INFO(this->get_logger(),
+                "Parking complete! Adjacent vehicles out of range. "
+                "left=%.2f, right=%.2f, error=%.2f",
+                left_dist, right_dist, position_error);
+            changeState(ParkingState::DONE);
+            return;
+        }
     }
 
     publishCmd(seek_speed_, 0.0);

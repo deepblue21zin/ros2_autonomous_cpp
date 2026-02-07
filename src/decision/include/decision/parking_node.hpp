@@ -95,6 +95,8 @@ private:
 
     // SEEK_OUT
     double seek_speed_;
+    double seek_out_wall_threshold_;      // 이 거리 이상이면 벽 감지 안 됨
+    double seek_out_position_error_;     // 좌우 위치 차이 허용값 (m)
 
     // Safety
     double emergency_stop_dist_;
