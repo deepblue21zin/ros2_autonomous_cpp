@@ -7,9 +7,12 @@
     auto_start: true              # true: 시작 즉시 SEARCH, false: IDLE 대기
 
     # ── SEARCH: 주차 공간 탐색 ──
+    # 주의: LiDAR 거꾸로 장착 → 스캔 방향 반전
+    # 보고 각도 260°~280° = 물리적 차량 우측
+    # 보고 각도 80°~100°  = 물리적 차량 좌측
     search_speed_mps: 0.3         # 탐색 시 전진 속도
-    side_scan_angle_min_deg: 80.0 # 측면 스캔 시작 (LiDAR 기준, 차량 우측)
-    side_scan_angle_max_deg: 100.0
+    side_scan_angle_min_deg: 260.0 # 측면 스캔 (차량 우측, LiDAR 뒤집힘 보정)
+    side_scan_angle_max_deg: 280.0
     side_near_threshold_m: 0.6    # 이 거리 이내 = 벽/장애물 있음
     side_far_threshold_m: 1.5     # 이 거리 이상 = 빈 공간
     min_gap_points: 5             # 연속 원거리 포인트 최소 개수 → 공간 확정
@@ -20,7 +23,7 @@
 
     # ── REVERSE_ENTER: 후진 진입 ──
     reverse_speed_mps: -0.25      # 후진 속도 (음수)
-    entry_steer_rad: 0.4          # 진입 조향각 (양수=좌측 공간, 음수=우측 공간)
+    entry_steer_rad: 0.4          # 진입 조향각 (양수=좌회전→후방 우측진입, 음수=우회전→후방 좌측진입)
     back_scan_angle_min_deg: 350.0  # 후방 LiDAR 각도 범위
     back_scan_angle_max_deg: 10.0
     back_wall_target_m: 0.5       # 뒤 벽까지 목표 거리 → STRAIGHTEN 전이
@@ -29,10 +32,10 @@
     straighten_speed_mps: -0.15   # 저속 후진
     straighten_steer_kp: 2.0      # 좌우 벽 거리 차이 P 게인
     park_depth_m: 0.25            # 뒤 벽까지 최종 거리 → HOLD 전이
-    left_scan_angle_min_deg: 260.0    # 좌측 벽 스캔 범위
-    left_scan_angle_max_deg: 280.0
-    right_scan_angle_min_deg: 80.0    # 우측 벽 스캔 범위
-    right_scan_angle_max_deg: 100.0
+    left_scan_angle_min_deg: 80.0     # 좌측 벽 스캔 (LiDAR 뒤집힘: 80°~100° = 물리적 좌측)
+    left_scan_angle_max_deg: 100.0
+    right_scan_angle_min_deg: 260.0   # 우측 벽 스캔 (LiDAR 뒤집힘: 260°~280° = 물리적 우측)
+    right_scan_angle_max_deg: 280.0
 
     # ── HOLD: 정차 ──
     hold_duration_sec: 3.0        # 정차 시간 (규정 2초 + 여유 1초)

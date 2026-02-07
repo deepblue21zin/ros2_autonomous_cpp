@@ -52,13 +52,15 @@ def launch_setup(context, *args, **kwargs):
     )
     nodes_to_launch.append(parking_node)
 
-    # Static TF: base_link -> laser (후방 장착)
+    # Static TF: base_link -> laser (후방 장착 + 거꾸로 장착)
+    # args: x y z yaw pitch roll parent child
+    # yaw=π: LiDAR 전방 → 차량 후방 (전후 보정)
+    # roll=π: LiDAR 뒤집힘 보정 (좌우 반전 보정)
     static_tf_laser = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         name='static_tf_laser',
-        arguments=['-0.15', '0', '0.05', '0', '0', '3.14159', 'base_link', 'laser']
-        # 후방 15cm, 높이 5cm, 180도 회전 (LiDAR 전면이 차량 후방을 향함)
+        arguments=['-0.15', '0', '0.05', '3.14159', '0', '3.14159', 'base_link', 'laser']
     )
     nodes_to_launch.append(static_tf_laser)
 
@@ -79,7 +81,7 @@ def generate_launch_description():
 
     front_video_device_arg = DeclareLaunchArgument(
         'front_video_device',
-        default_value='/dev/video6',
+        default_value='/dev/video4',
         description='Front camera video device'
     )
 
