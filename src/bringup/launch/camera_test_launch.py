@@ -77,11 +77,11 @@ def generate_launch_description():
         arguments=['0.15', '0', '0.12', '0', '0', '0', 'base_link', 'camera_front']
     )
 
-    # 4. rviz2 with auto config
+    # 4. rviz2 with camera test config (Camera Raw + Lane Overlay only)
     rviz_config_file = PathJoinSubstitution([
         FindPackageShare('bringup'),
         'config',
-        'adas_default.rviz'
+        'camera_test.rviz'
     ])
 
     rviz_node = Node(
