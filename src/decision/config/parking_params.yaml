@@ -1,0 +1,49 @@
+/**:
+  ros__parameters:
+    # 후방 LiDAR 기반 수직 주차 파라미터
+    # 2026 경기도 대회: 주차 공간 950mm(W) x 1500mm(L)
+
+    # 상태머신
+    auto_start: true              # true: 시작 즉시 SEARCH, false: IDLE 대기
+
+    # ── SEARCH: 주차 공간 탐색 ──
+    search_speed_mps: 0.3         # 탐색 시 전진 속도
+    side_scan_angle_min_deg: 80.0 # 측면 스캔 시작 (LiDAR 기준, 차량 우측)
+    side_scan_angle_max_deg: 100.0
+    side_near_threshold_m: 0.6    # 이 거리 이내 = 벽/장애물 있음
+    side_far_threshold_m: 1.5     # 이 거리 이상 = 빈 공간
+    min_gap_points: 5             # 연속 원거리 포인트 최소 개수 → 공간 확정
+
+    # ── ALIGN: 오버슈트 후 정렬 ──
+    overshoot_distance_m: 0.3     # (미사용, align_duration으로 대체)
+    align_duration_sec: 1.5       # 공간 감지 후 추가 전진 시간 (초)
+
+    # ── REVERSE_ENTER: 후진 진입 ──
+    reverse_speed_mps: -0.25      # 후진 속도 (음수)
+    entry_steer_rad: 0.4          # 진입 조향각 (양수=좌측 공간, 음수=우측 공간)
+    back_scan_angle_min_deg: 350.0  # 후방 LiDAR 각도 범위
+    back_scan_angle_max_deg: 10.0
+    back_wall_target_m: 0.5       # 뒤 벽까지 목표 거리 → STRAIGHTEN 전이
+
+    # ── STRAIGHTEN: 차체 정렬 ──
+    straighten_speed_mps: -0.15   # 저속 후진
+    straighten_steer_kp: 2.0      # 좌우 벽 거리 차이 P 게인
+    park_depth_m: 0.25            # 뒤 벽까지 최종 거리 → HOLD 전이
+    left_scan_angle_min_deg: 260.0    # 좌측 벽 스캔 범위
+    left_scan_angle_max_deg: 280.0
+    right_scan_angle_min_deg: 80.0    # 우측 벽 스캔 범위
+    right_scan_angle_max_deg: 100.0
+
+    # ── HOLD: 정차 ──
+    hold_duration_sec: 3.0        # 정차 시간 (규정 2초 + 여유 1초)
+
+    # ── EXIT_FORWARD: 탈출 ──
+    exit_speed_mps: 0.3           # 탈출 전진 속도
+    exit_steer_rad: -0.4          # 탈출 조향각 (진입 반대)
+    exit_duration_sec: 2.5        # 탈출 기동 시간
+
+    # ── SEEK_OUT: OUT 라인 탐색 ──
+    seek_speed_mps: 0.3           # OUT 라인 탐색 전진 속도
+
+    # ── 안전 ──
+    emergency_stop_distance_m: 0.10   # 긴급 정지 거리

@@ -43,8 +43,20 @@ target_include_directories(lidar_obstacle_node PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 
+add_executable(parking_node src/parking_node.cpp)
+ament_target_dependencies(parking_node
+  rclcpp
+  std_msgs
+  sensor_msgs
+  ackermann_msgs
+)
+target_include_directories(parking_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
 # Install C++ executables
-install(TARGETS decision_node lidar_obstacle_node
+install(TARGETS decision_node lidar_obstacle_node parking_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -63,6 +75,13 @@ install(PROGRAMS
 install(DIRECTORY include/
   DESTINATION include
 )
+
+# Install config files
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/config)
+  install(DIRECTORY config
+    DESTINATION share/${PROJECT_NAME}/
+  )
+endif()
 
 # Linting (optional)
 if(BUILD_TESTING)
