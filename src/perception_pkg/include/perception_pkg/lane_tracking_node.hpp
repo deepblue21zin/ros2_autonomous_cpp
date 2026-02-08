@@ -54,6 +54,12 @@ private:
     bool has_prev_center_;
     int crosswalk_hold_count_;
 
+    // Adaptive lane width tracking (EMA)
+    double tracked_lane_width_;
+    bool has_tracked_width_;
+    int single_lane_hold_count_;
+    int max_single_lane_hold_;  // 단일 차선 시 이전 center 유지 프레임 수
+
     // Moving average buffer
     std::deque<double> offset_buffer_;
 

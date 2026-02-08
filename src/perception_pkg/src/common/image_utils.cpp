@@ -106,7 +106,7 @@ cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel
 
     cv::Mat mask;
     cv::inRange(hsv,
-                cv::Scalar(0, 0, v_lower),
+                cv::Scalar(0, 10, v_lower),
                 cv::Scalar(180, 60, 255),
                 mask);
 

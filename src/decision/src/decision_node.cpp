@@ -17,7 +17,7 @@ DecisionNode::DecisionNode()
       prev_steer_rad_(0.0),
       lane_lost_count_(0) {
     // Declare and load parameters
-    this->declare_parameter("cruise_speed_mps", 7.0);
+    this->declare_parameter("cruise_speed_mps", 5.0);
     this->declare_parameter("max_steer_rad", 0.6);
     this->declare_parameter("soft_steer_rad", 0.3);
     this->declare_parameter("soft_steer_threshold", 0.35);
@@ -31,8 +31,8 @@ DecisionNode::DecisionNode()
     this->declare_parameter("test_mode", false);  // 테스트 모드: 센서 없이 모터 구동
 
     // Speed control parameters
-    this->declare_parameter("min_speed_mps", 3.0);
-    this->declare_parameter("curve_factor", 0.4);
+    this->declare_parameter("min_speed_mps", 1.0);
+    this->declare_parameter("curve_factor", 0.6);
     this->declare_parameter("accel_rate_mps2", 0.5);
     this->declare_parameter("decel_rate_mps2", 1.0);
     this->declare_parameter("obstacle_d_stop_m", 0.5);

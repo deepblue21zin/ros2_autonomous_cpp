@@ -23,6 +23,7 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("max_steer_delta", 0.15);
     this->declare_parameter("lookahead_ratio", 0.4);
     this->declare_parameter("max_lost_frames", 15);
+    this->declare_parameter("max_single_lane_hold", 10);
     this->declare_parameter("crosswalk_density_threshold", 0.30);
     this->declare_parameter("crosswalk_density_max", 0.50);
     this->declare_parameter("max_crosswalk_frames", 60);
@@ -40,6 +41,7 @@ LaneTrackingNode::LaneTrackingNode()
     max_steer_delta_ = this->get_parameter("max_steer_delta").as_double();
     lookahead_ratio_ = this->get_parameter("lookahead_ratio").as_double();
     max_lost_frames_ = this->get_parameter("max_lost_frames").as_int();
+    max_single_lane_hold_ = this->get_parameter("max_single_lane_hold").as_int();
     crosswalk_density_threshold_ = this->get_parameter("crosswalk_density_threshold").as_double();
     crosswalk_density_max_ = this->get_parameter("crosswalk_density_max").as_double();
     max_crosswalk_frames_ = this->get_parameter("max_crosswalk_frames").as_int();
@@ -49,6 +51,9 @@ LaneTrackingNode::LaneTrackingNode()
     lost_count_ = 0;
     has_prev_center_ = false;
     crosswalk_hold_count_ = 0;
+    tracked_lane_width_ = 0.0;
+    has_tracked_width_ = false;
+    single_lane_hold_count_ = 0;
 
     // QoS for low latency: best_effort to skip old frames
     auto qos_sensor = rclcpp::QoS(1).best_effort();
@@ -296,24 +301,51 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     // 4. Pure Pursuit: lookahead point 기반 차선 중심 계산
     double center_x;
     bool lane_found = false;
-    int estimated_lane_width = static_cast<int>(w * lane_width_ratio_);
+    int fallback_lane_width = static_cast<int>(w * lane_width_ratio_);
 
     if (left_detected && right_detected) {
         double left_x = evaluatePolynomial2D(left_coeffs, y_lookahead);
         double right_x = evaluatePolynomial2D(right_coeffs, y_lookahead);
         center_x = (left_x + right_x) / 2.0;
         lane_found = true;
-    } else if (right_detected) {
-        double right_x = evaluatePolynomial2D(right_coeffs, y_lookahead);
-        center_x = right_x - estimated_lane_width / 2.0;
-        lane_found = true;
-    } else if (left_detected) {
-        double left_x = evaluatePolynomial2D(left_coeffs, y_lookahead);
-        center_x = left_x + estimated_lane_width / 2.0;
-        lane_found = true;
+        single_lane_hold_count_ = 0;
+
+        // EMA로 실측 차선 폭 추적 (양쪽 보일 때만 갱신)
+        double measured_width = std::abs(right_x - left_x);
+        if (measured_width > w * 0.2 && measured_width < w * 0.9) {
+            // 유효 범위 내일 때만 갱신 (이상치 방지)
+            if (has_tracked_width_) {
+                tracked_lane_width_ = 0.8 * tracked_lane_width_ + 0.2 * measured_width;
+            } else {
+                tracked_lane_width_ = measured_width;
+                has_tracked_width_ = true;
+            }
+        }
+    } else if (right_detected || left_detected) {
+        // 단일 차선 감지: 먼저 이전 center Hold, 이후 가상 센터 전환
+        if (has_prev_center_ && single_lane_hold_count_ < max_single_lane_hold_) {
+            // Hold: 이전 center 유지 (곡선 진입 시 급변 방지)
+            center_x = prev_center_x_;
+            single_lane_hold_count_++;
+            lane_found = true;
+        } else {
+            // Hold 만료 → 실측 폭 또는 고정 폭으로 가상 센터 계산
+            double est_width = has_tracked_width_
+                ? tracked_lane_width_
+                : static_cast<double>(fallback_lane_width);
+
+            if (right_detected) {
+                double right_x = evaluatePolynomial2D(right_coeffs, y_lookahead);
+                center_x = right_x - est_width / 2.0;
+            } else {
+                double left_x = evaluatePolynomial2D(left_coeffs, y_lookahead);
+                center_x = left_x + est_width / 2.0;
+            }
+            lane_found = true;
+        }
     }
 
-    // 5. Predict+Hold: 차선 소실 시 이전 center_x 유지
+    // 5. Predict+Hold: 양쪽 차선 모두 소실 시 이전 center_x 유지
     if (lane_found) {
         center_x = clamp(center_x, 0.0, static_cast<double>(w - 1));
         prev_center_x_ = center_x;
