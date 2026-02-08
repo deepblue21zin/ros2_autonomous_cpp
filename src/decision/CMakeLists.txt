@@ -62,8 +62,6 @@ install(TARGETS decision_node lidar_obstacle_node parking_node
 
 # Install Python executables
 install(PROGRAMS
-  scripts/decision_node.py
-  scripts/decision_node_2026.py
   scripts/decision_node_ai.py
   scripts/decision_node_unified.py
   scripts/lidar_obstacle_node.py

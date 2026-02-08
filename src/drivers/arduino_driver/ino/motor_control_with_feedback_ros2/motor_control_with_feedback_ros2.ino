@@ -83,7 +83,7 @@ int SPEED_TURN = 100;         // 회전 속도
 // 서보 조향 각도 (새 매핑: 좌회전=120°, 우회전=60°)
 int SERVO_CENTER = 90;        // 중앙 (직진)
 int SERVO_LEFT_MAX = 120;     // 최대 좌회전 각도
-int SERVO_RIGHT_MAX = 69;     // 최대 우회전 각도
+int SERVO_RIGHT_MAX = 60;     // 최대 우회전 각도 (bridge max_steer_deg=30 일치: 90-30=60)
 int SERVO_LEFT_SOFT = (SERVO_CENTER + SERVO_LEFT_MAX)/2;    // 약한 좌회전
 int SERVO_RIGHT_SOFT = (SERVO_CENTER + SERVO_RIGHT_MAX)/2;    // 약한 우회전
 

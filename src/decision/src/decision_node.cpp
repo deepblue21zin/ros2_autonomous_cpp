@@ -1,5 +1,8 @@
 #include "decision/decision_node.hpp"
 
+#include <thread>
+#include <chrono>
+
 namespace decision {
 
 DecisionNode::DecisionNode()
@@ -11,6 +14,7 @@ DecisionNode::DecisionNode()
       traffic_state_("unknown"),
       stop_line_distance_(-1.0),
       current_cmd_speed_(0.0),
+      prev_steer_rad_(0.0),
       lane_lost_count_(0) {
     // Declare and load parameters
     this->declare_parameter("cruise_speed_mps", 1.0);
@@ -37,6 +41,14 @@ DecisionNode::DecisionNode()
     this->declare_parameter("obstacle_max_speed_mps", 0.6);
     this->declare_parameter("lane_lost_hold_frames", 45);
     this->declare_parameter("lost_lane_speed_mps", 0.3);
+    this->declare_parameter("steer_rate_limit_rad_per_sec", 2.0);
+
+    // Sensor timeout parameters
+    this->declare_parameter("obstacle_timeout_sec", 0.5);
+    this->declare_parameter("obstacle_bias_timeout_sec", 0.5);
+    this->declare_parameter("ultra_timeout_sec", 1.0);
+    this->declare_parameter("traffic_timeout_sec", 2.0);
+    this->declare_parameter("stop_line_timeout_sec", 1.0);
 
     cruise_speed_ = this->get_parameter("cruise_speed_mps").as_double();
     max_steer_rad_ = this->get_parameter("max_steer_rad").as_double();
@@ -62,6 +74,14 @@ DecisionNode::DecisionNode()
     obstacle_max_speed_ = this->get_parameter("obstacle_max_speed_mps").as_double();
     lane_lost_hold_frames_ = this->get_parameter("lane_lost_hold_frames").as_int();
     lost_lane_speed_ = this->get_parameter("lost_lane_speed_mps").as_double();
+    steer_rate_limit_ = this->get_parameter("steer_rate_limit_rad_per_sec").as_double();
+
+    // Sensor timeouts
+    obstacle_timeout_ = this->get_parameter("obstacle_timeout_sec").as_double();
+    obstacle_bias_timeout_ = this->get_parameter("obstacle_bias_timeout_sec").as_double();
+    ultra_timeout_ = this->get_parameter("ultra_timeout_sec").as_double();
+    traffic_timeout_ = this->get_parameter("traffic_timeout_sec").as_double();
+    stop_line_timeout_ = this->get_parameter("stop_line_timeout_sec").as_double();
 
     last_timer_time_ = this->now();
 
@@ -90,22 +110,43 @@ DecisionNode::DecisionNode()
         "/perception/stop_line", 1,
         std::bind(&DecisionNode::stopLineCallback, this, std::placeholders::_1));
 
-    // Setup publisher
+    // Setup publishers
     cmd_pub_ = this->create_publisher<ackermann_msgs::msg::AckermannDrive>(
         "/decision/cmd", 1);
+    status_pub_ = this->create_publisher<std_msgs::msg::String>(
+        "/decision/status", 1);
 
     // Setup timer (20Hz = 50ms)
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(50),
         std::bind(&DecisionNode::timerCallback, this));
 
-    RCLCPP_INFO(this->get_logger(), "[decision_unified] node started (test_mode=%s)",
+    // Setup dynamic parameter callback (안전한 파라미터만 동적 변경 허용)
+    param_cb_handle_ = this->add_on_set_parameters_callback(
+        std::bind(&DecisionNode::onParameterChange, this, std::placeholders::_1));
+
+    RCLCPP_INFO(this->get_logger(), "[decision] node started (test_mode=%s)",
                 test_mode_ ? "true" : "false");
-    RCLCPP_INFO(this->get_logger(), "[decision_unified] obstacle_avoidance=%s bias_weight=%.2f",
+    RCLCPP_INFO(this->get_logger(), "[decision] obstacle_avoidance=%s bias_weight=%.2f",
                 use_obstacle_avoidance_ ? "true" : "false", obstacle_bias_weight_);
-    RCLCPP_INFO(this->get_logger(), "[decision_unified] control_hz=20.0");
-    RCLCPP_INFO(this->get_logger(), "[decision_unified] traffic_light=%s stop_line_distance=%.2fm",
+    RCLCPP_INFO(this->get_logger(), "[decision] steer_rate_limit=%.1f rad/s", steer_rate_limit_);
+    RCLCPP_INFO(this->get_logger(), "[decision] sensor_timeouts: obstacle=%.1fs ultra=%.1fs traffic=%.1fs",
+                obstacle_timeout_, ultra_timeout_, traffic_timeout_);
+    RCLCPP_INFO(this->get_logger(), "[decision] traffic_light=%s stop_line_distance=%.2fm",
                 use_traffic_light_ ? "true" : "false", stop_line_stop_distance_);
+}
+
+void DecisionNode::shutdown() {
+    RCLCPP_WARN(this->get_logger(), "[decision] SHUTDOWN: Sending stop commands...");
+    ackermann_msgs::msg::AckermannDrive stop_cmd;
+    stop_cmd.speed = 0.0;
+    stop_cmd.steering_angle = 0.0;
+    for (int i = 0; i < 5; i++) {
+        cmd_pub_->publish(stop_cmd);
+        RCLCPP_INFO(this->get_logger(), "[decision] Stop command %d/5 sent", i + 1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    RCLCPP_WARN(this->get_logger(), "[decision] SHUTDOWN: Stop commands completed.");
 }
 
 void DecisionNode::laneCallback(const std_msgs::msg::Float32::SharedPtr msg) {
@@ -115,18 +156,22 @@ void DecisionNode::laneCallback(const std_msgs::msg::Float32::SharedPtr msg) {
 
 void DecisionNode::obstacleCallback(const std_msgs::msg::Bool::SharedPtr msg) {
     obstacle_ = msg->data;
+    obstacle_stamp_ = this->now();
 }
 
 void DecisionNode::obstacleBiasCallback(const std_msgs::msg::Float32::SharedPtr msg) {
     obstacle_bias_ = msg->data;
+    obstacle_bias_stamp_ = this->now();
 }
 
 void DecisionNode::ultraCallback(const std_msgs::msg::Float32::SharedPtr msg) {
     ultra_min_ = msg->data;
+    ultra_stamp_ = this->now();
 }
 
 void DecisionNode::trafficCallback(const std_msgs::msg::String::SharedPtr msg) {
     traffic_state_ = msg->data;
+    traffic_stamp_ = this->now();
 }
 
 void DecisionNode::stopLineCallback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
@@ -136,6 +181,7 @@ void DecisionNode::stopLineCallback(const std_msgs::msg::Float32MultiArray::Shar
     } else {
         stop_line_distance_ = -1.0;  // 정지선 없음
     }
+    stop_line_stamp_ = this->now();
 }
 
 double DecisionNode::mapSteer(double steer_norm) const {
@@ -157,6 +203,99 @@ double DecisionNode::mapSteer(double steer_norm) const {
     return steer_norm * max_steer_rad_;
 }
 
+void DecisionNode::checkSensorFreshness() {
+    rclcpp::Time now = this->now();
+
+    // Obstacle: stale → false (주행 계속)
+    if (obstacle_stamp_.has_value()) {
+        double age = (now - obstacle_stamp_.value()).seconds();
+        if (age > obstacle_timeout_) {
+            if (obstacle_) {
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                    "[decision] obstacle data stale (%.1fs) → reset to false", age);
+            }
+            obstacle_ = false;
+        }
+    }
+
+    // Obstacle bias: stale → 0.0 (회피 비활성)
+    if (obstacle_bias_stamp_.has_value()) {
+        double age = (now - obstacle_bias_stamp_.value()).seconds();
+        if (age > obstacle_bias_timeout_) {
+            obstacle_bias_ = 0.0;
+        }
+    }
+
+    // Ultrasonic: stale → 0.0 (무시됨, ultra_min_ > 0.0 조건에 의해)
+    if (ultra_stamp_.has_value()) {
+        double age = (now - ultra_stamp_.value()).seconds();
+        if (age > ultra_timeout_) {
+            ultra_min_ = 0.0;
+        }
+    }
+
+    // Traffic light: stale → "unknown" (정지 안 함)
+    if (traffic_stamp_.has_value()) {
+        double age = (now - traffic_stamp_.value()).seconds();
+        if (age > traffic_timeout_) {
+            traffic_state_ = "unknown";
+        }
+    }
+
+    // Stop line: stale → -1.0 (정지선 없음)
+    if (stop_line_stamp_.has_value()) {
+        double age = (now - stop_line_stamp_.value()).seconds();
+        if (age > stop_line_timeout_) {
+            stop_line_distance_ = -1.0;
+        }
+    }
+}
+
+rcl_interfaces::msg::SetParametersResult DecisionNode::onParameterChange(
+    const std::vector<rclcpp::Parameter>& params) {
+    rcl_interfaces::msg::SetParametersResult result;
+    result.successful = true;
+
+    for (const auto& param : params) {
+        const auto& name = param.get_name();
+
+        if (name == "cruise_speed_mps") {
+            cruise_speed_ = param.as_double();
+            RCLCPP_INFO(this->get_logger(), "[decision] param update: cruise_speed=%.2f", cruise_speed_);
+        } else if (name == "min_speed_mps") {
+            min_speed_ = param.as_double();
+            RCLCPP_INFO(this->get_logger(), "[decision] param update: min_speed=%.2f", min_speed_);
+        } else if (name == "curve_factor") {
+            curve_factor_ = param.as_double();
+            RCLCPP_INFO(this->get_logger(), "[decision] param update: curve_factor=%.2f", curve_factor_);
+        } else if (name == "obstacle_bias_weight") {
+            obstacle_bias_weight_ = param.as_double();
+            RCLCPP_INFO(this->get_logger(), "[decision] param update: obstacle_bias_weight=%.2f", obstacle_bias_weight_);
+        } else if (name == "steer_rate_limit_rad_per_sec") {
+            steer_rate_limit_ = param.as_double();
+            RCLCPP_INFO(this->get_logger(), "[decision] param update: steer_rate_limit=%.2f", steer_rate_limit_);
+        } else if (name == "accel_rate_mps2") {
+            accel_rate_ = param.as_double();
+            RCLCPP_INFO(this->get_logger(), "[decision] param update: accel_rate=%.2f", accel_rate_);
+        } else if (name == "decel_rate_mps2") {
+            decel_rate_ = param.as_double();
+            RCLCPP_INFO(this->get_logger(), "[decision] param update: decel_rate=%.2f", decel_rate_);
+        } else if (name == "lost_lane_speed_mps") {
+            lost_lane_speed_ = param.as_double();
+            RCLCPP_INFO(this->get_logger(), "[decision] param update: lost_lane_speed=%.2f", lost_lane_speed_);
+        }
+        // 안전 관련 파라미터는 동적 변경 거부
+        else if (name == "max_steer_rad" || name == "ultra_safe_distance_m" ||
+                 name == "use_traffic_light" || name == "test_mode") {
+            result.successful = false;
+            result.reason = "Safety parameter '" + name + "' cannot be changed at runtime";
+            RCLCPP_WARN(this->get_logger(), "[decision] REJECTED param change: %s (safety)", name.c_str());
+            return result;
+        }
+    }
+    return result;
+}
+
 void DecisionNode::timerCallback() {
     // dt 계산 (실제 시간 기반)
     rclcpp::Time now = this->now();
@@ -164,9 +303,13 @@ void DecisionNode::timerCallback() {
     last_timer_time_ = now;
     dt = clamp(dt, 0.001, 0.2);  // 이상치 방어 (1ms ~ 200ms)
 
+    // === 센서 유효성 검사 (stale 데이터 리셋) ===
+    checkSensorFreshness();
+
     ackermann_msgs::msg::AckermannDrive cmd;
     bool e_stop = false;
     std::string reason = "";
+    std::string status = "";
 
     // === 긴급 정지 판정 (e-stop: 램핑 무시, 즉시 0) ===
 
@@ -202,9 +345,19 @@ void DecisionNode::timerCallback() {
         cmd.speed = 0.0;
         cmd.steering_angle = 0.0;
         current_cmd_speed_ = 0.0;
+        prev_steer_rad_ = 0.0;
+        status = "E_STOP reason=" + reason;
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
                              "[decision] E-STOP: %s", reason.c_str());
         cmd_pub_->publish(cmd);
+
+        // 상태 퍼블리시 (변경 시에만)
+        if (status != last_status_) {
+            std_msgs::msg::String status_msg;
+            status_msg.data = status;
+            status_pub_->publish(status_msg);
+            last_status_ = status;
+        }
         return;
     }
 
@@ -225,9 +378,19 @@ void DecisionNode::timerCallback() {
             cmd.speed = 0.0;
             cmd.steering_angle = 0.0;
             current_cmd_speed_ = 0.0;
+            prev_steer_rad_ = 0.0;
+            status = "LANE_LOST count=" + std::to_string(lane_lost_count_) +
+                     "/" + std::to_string(lane_lost_hold_frames_);
             RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
                                  "[decision] STOP: lane_lost(%d frames)", lane_lost_count_);
             cmd_pub_->publish(cmd);
+
+            if (status != last_status_) {
+                std_msgs::msg::String status_msg;
+                status_msg.data = status;
+                status_pub_->publish(status_msg);
+                last_status_ = status;
+            }
             return;
         }
     }
@@ -278,10 +441,38 @@ void DecisionNode::timerCallback() {
     current_cmd_speed_ += clamp(delta, -dv_dn, dv_up);
     current_cmd_speed_ = clamp(current_cmd_speed_, 0.0, cruise_speed_);
 
+    // === 조향 변화율 제한 ===
+    double target_steer_rad = mapSteer(steer);
+    if (steer_rate_limit_ > 0.0) {
+        double max_steer_delta = steer_rate_limit_ * dt;
+        double steer_delta = target_steer_rad - prev_steer_rad_;
+        target_steer_rad = prev_steer_rad_ + clamp(steer_delta, -max_steer_delta, max_steer_delta);
+    }
+    prev_steer_rad_ = target_steer_rad;
+
     // === 출력 ===
     cmd.speed = current_cmd_speed_;
-    cmd.steering_angle = mapSteer(steer);
+    cmd.steering_angle = target_steer_rad;
     cmd_pub_->publish(cmd);
+
+    // === 상태 퍼블리시 (변경 시에만) ===
+    char status_buf[256];
+    if (!lane_valid && !test_mode_) {
+        snprintf(status_buf, sizeof(status_buf),
+                 "LANE_SLOW speed=%.2f steer=%.2f count=%d/%d",
+                 current_cmd_speed_, target_steer_rad, lane_lost_count_, lane_lost_hold_frames_);
+    } else {
+        snprintf(status_buf, sizeof(status_buf),
+                 "DRIVING speed=%.2f steer=%.2f",
+                 current_cmd_speed_, target_steer_rad);
+    }
+    status = status_buf;
+    if (status != last_status_) {
+        std_msgs::msg::String status_msg;
+        status_msg.data = status;
+        status_pub_->publish(status_msg);
+        last_status_ = status;
+    }
 }
 
 }  // namespace decision
@@ -289,14 +480,18 @@ void DecisionNode::timerCallback() {
 int main(int argc, char** argv) {
     rclcpp::init(argc, argv);
 
+    std::shared_ptr<decision::DecisionNode> node;
     try {
-        auto node = std::make_shared<decision::DecisionNode>();
+        node = std::make_shared<decision::DecisionNode>();
         rclcpp::spin(node);
     } catch (const std::exception& e) {
         RCLCPP_ERROR(rclcpp::get_logger("decision_node"),
                      "Exception in decision_node: %s", e.what());
-        rclcpp::shutdown();
-        return 1;
+    }
+
+    // 종료 시 안전 정지 명령 전송
+    if (node) {
+        node->shutdown();
     }
 
     rclcpp::shutdown();

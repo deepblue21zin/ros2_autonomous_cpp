@@ -15,15 +15,27 @@ class DecisionNode : public rclcpp::Node {
 public:
     DecisionNode();
 
+    // 종료 시 안전 정지 명령 전송
+    void shutdown();
+
 private:
+    // Subscribers
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr lane_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr obstacle_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_bias_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr ultra_sub_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr traffic_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr stop_line_sub_;
+
+    // Publishers
     rclcpp::Publisher<ackermann_msgs::msg::AckermannDrive>::SharedPtr cmd_pub_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr status_pub_;
+
+    // Timer
     rclcpp::TimerBase::SharedPtr timer_;
+
+    // Dynamic parameter callback
+    rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_cb_handle_;
 
     // Parameters
     double cruise_speed_;
@@ -50,20 +62,35 @@ private:
     double obstacle_max_speed_;  // 장애물 감속 시 최대 속도
     int lane_lost_hold_frames_;  // 차선 소실 hold 프레임
     double lost_lane_speed_;     // 차선 소실 시 감속 속도
+    double steer_rate_limit_;    // 조향 변화율 제한 (rad/s)
+
+    // Sensor timeout parameters
+    double obstacle_timeout_;
+    double obstacle_bias_timeout_;
+    double ultra_timeout_;
+    double traffic_timeout_;
+    double stop_line_timeout_;
 
     // State
     double lane_steer_norm_;
     std::optional<rclcpp::Time> lane_stamp_;
     bool obstacle_;
+    std::optional<rclcpp::Time> obstacle_stamp_;
     double obstacle_bias_;
+    std::optional<rclcpp::Time> obstacle_bias_stamp_;
     double ultra_min_;
+    std::optional<rclcpp::Time> ultra_stamp_;
     std::string traffic_state_;
+    std::optional<rclcpp::Time> traffic_stamp_;
     double stop_line_distance_;  // 정지선까지 거리 (m), -1=없음
+    std::optional<rclcpp::Time> stop_line_stamp_;
 
-    // Speed control state
+    // Speed/steering control state
     double current_cmd_speed_;   // 현재 출력 속도 (램핑용)
+    double prev_steer_rad_;      // 이전 조향값 (변화율 제한용)
     rclcpp::Time last_timer_time_;
     int lane_lost_count_;        // 차선 소실 연속 프레임 수
+    std::string last_status_;    // 이전 상태 문자열 (변경 시에만 publish)
 
     // Callbacks
     void laneCallback(const std_msgs::msg::Float32::SharedPtr msg);
@@ -74,8 +101,15 @@ private:
     void stopLineCallback(const std_msgs::msg::Float32MultiArray::SharedPtr msg);
     void timerCallback();
 
+    // Sensor freshness check
+    void checkSensorFreshness();
+
     // Steering mapping
     double mapSteer(double steer_norm) const;
+
+    // Dynamic parameter callback
+    rcl_interfaces::msg::SetParametersResult onParameterChange(
+        const std::vector<rclcpp::Parameter>& params);
 
     // Clamp utility
     template<typename T>
