@@ -34,7 +34,7 @@ def generate_launch_description():
 
     pixel_format_arg = DeclareLaunchArgument(
         'pixel_format',
-        default_value='yuyv',
+        default_value='mjpeg',
         description='Pixel format (yuyv, mjpeg, etc.)'
     )
 
