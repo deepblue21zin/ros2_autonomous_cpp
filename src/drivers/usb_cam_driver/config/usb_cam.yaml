@@ -3,7 +3,7 @@
     # USB Front Camera Configuration (차선 인식용)
     video_device: "/dev/video4"
     image_width: 640
-    image_height: 480
+    image_height: 360
     pixel_format: "yuyv"
     framerate: 30.0
     exposure_auto: 1       # Manual mode
