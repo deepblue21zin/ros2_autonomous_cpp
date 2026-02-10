@@ -4,7 +4,7 @@
     video_device: "/dev/video4"
     image_width: 640
     image_height: 480
-    pixel_format: "mjpeg"
+    pixel_format: "mjpeg2rgb"
     framerate: 30.0
     frame_id: "camera_rear"
     camera_topic: "/camera/rear/image"

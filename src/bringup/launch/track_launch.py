@@ -214,12 +214,6 @@ def generate_launch_description():
         description='Camera topic name'
     )
 
-    use_compressed_arg = DeclareLaunchArgument(
-        'use_compressed',
-        default_value='false',
-        description='Use compressed image transport'
-    )
-
     use_cpp_arg = DeclareLaunchArgument(
         'use_cpp',
         default_value='true',
@@ -264,7 +258,6 @@ def generate_launch_description():
         ]),
         launch_arguments={
             'camera_topic': LaunchConfiguration('camera_topic'),
-            'use_compressed': LaunchConfiguration('use_compressed'),
             'lane_marking_enabled': 'false',
             'allowed_stop_states': "red",
             'speed_sign_enabled': 'false',
@@ -304,7 +297,6 @@ def generate_launch_description():
     return LaunchDescription([
         decision_mode_arg,
         camera_topic_arg,
-        use_compressed_arg,
         use_cpp_arg,
         test_mode_arg,
         use_rviz_arg,

@@ -74,8 +74,7 @@ def launch_setup(context, *args, **kwargs):
                     config_file.perform(context),
                     {
                         'camera_topic': LaunchConfiguration('camera_topic'),
-                        'use_compressed': LaunchConfiguration('use_compressed'),
-                        'allowed_stop_states': LaunchConfiguration('allowed_stop_states'),
+                            'allowed_stop_states': LaunchConfiguration('allowed_stop_states'),
                     }
                 ]
             )
@@ -89,8 +88,7 @@ def launch_setup(context, *args, **kwargs):
                     config_file.perform(context),
                     {
                         'camera_topic': LaunchConfiguration('camera_topic'),
-                        'use_compressed': LaunchConfiguration('use_compressed'),
-                        'allowed_stop_states': LaunchConfiguration('allowed_stop_states'),
+                            'allowed_stop_states': LaunchConfiguration('allowed_stop_states'),
                     }
                 ]
             )
