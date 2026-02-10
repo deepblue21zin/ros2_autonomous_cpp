@@ -101,8 +101,9 @@ cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel
         }
     }
 
-    // V 하한 = 80th 퍼센타일 - 30, 범위 [80, 200]
-    int v_lower = std::max(80, std::min(200, v_p80 - 30));
+    // V 하한 = 80th 퍼센타일 - 30, 범위 [120, 200]
+    // 80→120: 바퀴자국 등 어두운 자국이 흰색으로 오인되는 것 방지
+    int v_lower = std::max(180, std::min(200, v_p80 - 30));
 
     cv::Mat mask;
     cv::inRange(hsv,

@@ -122,7 +122,9 @@ RansacFitResult fitPolynomial2DRansac(
         }
     }
 
-    if (best_inlier_count < min_samples) return result;
+    // inlier가 전체의 30% 미만이면 노이즈 피팅으로 판단 → reject
+    int min_inliers = std::max(min_samples, n * 3 / 10);
+    if (best_inlier_count < min_inliers) return result;
 
     // 인라이어만으로 재피팅
     std::vector<double> inlier_y, inlier_x;
@@ -134,7 +136,13 @@ RansacFitResult fitPolynomial2DRansac(
         }
     }
 
-    if (static_cast<int>(inlier_y.size()) < min_samples) return result;
+    if (static_cast<int>(inlier_y.size()) < min_inliers) return result;
+
+    // 수직 커버리지 체크: inlier가 ROI 높이의 40% 이상을 커버해야 유효
+    double y_min_inlier = *std::min_element(inlier_y.begin(), inlier_y.end());
+    double y_max_inlier = *std::max_element(inlier_y.begin(), inlier_y.end());
+    double roi_height = static_cast<double>(y_bottom - y_top);
+    if (roi_height > 0 && (y_max_inlier - y_min_inlier) < roi_height * 0.4) return result;
 
     Eigen::Vector3d final_coef = fitPolynomial2D(inlier_y, inlier_x);
 
