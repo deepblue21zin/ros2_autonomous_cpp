@@ -1,4 +1,5 @@
 """차선 중심 탐지 모듈 (RANSAC + 2차 다항식 피팅)."""
+import warnings
 from typing import List, Optional, Tuple
 import cv2
 import numpy as np
@@ -45,10 +46,12 @@ def _fit_lane_ransac(points: np.ndarray, y_bottom: int, y_top: int,
 
     for _ in range(ransac_iters):
         idx = np.random.choice(len(x), min_samples, replace=False)
-        try:
-            coef = np.polyfit(y[idx], x[idx], degree)
-        except (np.linalg.LinAlgError, np.RankWarning):
-            continue
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', np.RankWarning)
+            try:
+                coef = np.polyfit(y[idx], x[idx], degree)
+            except np.linalg.LinAlgError:
+                continue
 
         x_pred = np.polyval(coef, y)
         errors = np.abs(x - x_pred)
@@ -82,13 +85,15 @@ def _fit_lane_ransac(points: np.ndarray, y_bottom: int, y_top: int,
 
 
 def detect_lane_center(edges: np.ndarray, roi_color: np.ndarray,
-                        debug: bool = False) -> Tuple[float, np.ndarray]:
+                        debug: bool = False,
+                        use_bev: bool = False) -> Tuple[float, np.ndarray]:
     """허프 변환 + RANSAC 피팅으로 차선 중심을 추정.
 
     Args:
         edges: Canny 엣지 이미지.
         roi_color: ROI BGR 이미지.
         debug: True일 때 검출 선 오버레이.
+        use_bev: BEV 모드 (위치 기반 좌/우 분류).
     Returns:
         center_x: 추정된 차선 중심 x좌표.
         overlay: 디버그용 BGR 이미지.
@@ -96,7 +101,6 @@ def detect_lane_center(edges: np.ndarray, roi_color: np.ndarray,
     h, w = edges.shape[:2]
     mid_x = w // 2
 
-    # 2026 경기도 대회 트랙 최적화 (도로폭 850mm, 차선폭 50mm)
     lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=25,
                             minLineLength=10, maxLineGap=150)
     overlay = roi_color.copy()
@@ -106,23 +110,36 @@ def detect_lane_center(edges: np.ndarray, roi_color: np.ndarray,
 
     if lines is not None:
         for x1, y1, x2, y2 in lines[:, 0]:
-            if x2 == x1:
-                continue
-            slope = float(y2 - y1) / float(x2 - x1)
-            if abs(slope) < 0.12:
-                continue
-
             avg_x = (x1 + x2) / 2.0
-            # 기울기 + 위치 기반 좌/우 분류
-            # slope < 0 이고 이미지 좌측에 있으면 왼쪽 차선
-            # slope > 0 이고 이미지 우측에 있으면 오른쪽 차선
-            # 10% 마진으로 중앙 근처 세그먼트도 허용
-            sampled = _sample_line_points(x1, y1, x2, y2)
 
-            if slope < 0 and avg_x < mid_x + w * 0.1:
-                left_points.append(sampled)
-            elif slope > 0 and avg_x > mid_x - w * 0.1:
-                right_points.append(sampled)
+            if use_bev:
+                # BEV: 차선이 거의 수직 → 위치(x좌표)만으로 좌/우 분류
+                # 수평선(abs(slope) < 0.3) 필터링, 수직선 허용
+                if x2 != x1:
+                    slope = float(y2 - y1) / float(x2 - x1)
+                    if abs(slope) < 0.3:
+                        continue
+
+                sampled = _sample_line_points(x1, y1, x2, y2)
+
+                if avg_x < mid_x:
+                    left_points.append(sampled)
+                else:
+                    right_points.append(sampled)
+            else:
+                # 원근 시점: 기울기 + 위치 기반 좌/우 분류
+                if x2 == x1:
+                    continue
+                slope = float(y2 - y1) / float(x2 - x1)
+                if abs(slope) < 0.12:
+                    continue
+
+                sampled = _sample_line_points(x1, y1, x2, y2)
+
+                if slope < 0 and avg_x < mid_x + w * 0.1:
+                    left_points.append(sampled)
+                elif slope > 0 and avg_x > mid_x - w * 0.1:
+                    right_points.append(sampled)
 
             if debug:
                 cv2.line(overlay, (x1, y1), (x2, y2), (0, 255, 0), 2)

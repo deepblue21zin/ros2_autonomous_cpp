@@ -67,6 +67,12 @@ class LaneTrackingNode(Node):
         self.declare_parameter('canny_high', 80)
         self.declare_parameter('gaussian_kernel', 5)
         self.declare_parameter('avg_window', 2)
+        self.declare_parameter('use_bev', False)
+        self.declare_parameter('bev_src_tl_x', 0.30)
+        self.declare_parameter('bev_src_tr_x', 0.70)
+        self.declare_parameter('bev_src_bl_x', 0.0)
+        self.declare_parameter('bev_src_br_x', 1.0)
+        self.declare_parameter('bev_draw_trapezoid', False)
 
         # 파라미터 로드
         self.camera_topic = self.get_parameter('camera_topic').value
@@ -78,6 +84,12 @@ class LaneTrackingNode(Node):
         self.canny_high = self.get_parameter('canny_high').value
         self.gaussian_kernel = self.get_parameter('gaussian_kernel').value
         self.avg_window = self.get_parameter('avg_window').value
+        self.use_bev = self.get_parameter('use_bev').value
+        self.bev_src_tl_x = self.get_parameter('bev_src_tl_x').value
+        self.bev_src_tr_x = self.get_parameter('bev_src_tr_x').value
+        self.bev_src_bl_x = self.get_parameter('bev_src_bl_x').value
+        self.bev_src_br_x = self.get_parameter('bev_src_br_x').value
+        self.bev_draw_trapezoid = self.get_parameter('bev_draw_trapezoid').value
 
         # QoS: 이미지는 Best Effort, 큐 1
         image_qos = QoSProfile(
@@ -103,9 +115,12 @@ class LaneTrackingNode(Node):
                 Image, self.camera_topic,
                 self.image_cb, image_qos)
 
+        bev_str = (f', BEV=ON src=[TL={self.bev_src_tl_x}, TR={self.bev_src_tr_x}, '
+                   f'BL={self.bev_src_bl_x}, BR={self.bev_src_br_x}]'
+                   if self.use_bev else ', BEV=OFF')
         self.get_logger().info(
             f'[lane_tracking] subscribe: {self.camera_topic} '
-            f'(compressed={self.use_compressed})')
+            f'(compressed={self.use_compressed}{bev_str})')
 
     def update_params(self) -> None:
         """파라미터 값 갱신 (동적 튜닝)."""
@@ -135,13 +150,20 @@ class LaneTrackingNode(Node):
         """공통 프레임 처리 로직."""
         self.update_params()
 
-        # 전처리: ROI 추출 및 엣지 생성
+        # 전처리: ROI 추출 및 엣지 생성 (BEV 옵션 포함)
         edges, roi_color, roi_y = preprocess_image(
             frame, self.roi_y_ratio, self.canny_low, self.canny_high,
-            self.gaussian_kernel)
+            self.gaussian_kernel,
+            use_bev=self.use_bev,
+            bev_src_tl_x=self.bev_src_tl_x,
+            bev_src_tr_x=self.bev_src_tr_x,
+            bev_src_bl_x=self.bev_src_bl_x,
+            bev_src_br_x=self.bev_src_br_x,
+            bev_draw_trapezoid=self.bev_draw_trapezoid)
 
         # 차선 검출: 허프 변환 기반 중심 추정
-        lane_center, roi_overlay = detect_lane_center(edges, roi_color, self.debug)
+        lane_center, roi_overlay = detect_lane_center(
+            edges, roi_color, self.debug, use_bev=self.use_bev)
 
         # 원본 영상 위에 ROI와 차선 합성
         overlay_frame = self.compose_overlay(frame, roi_overlay, roi_y, lane_center)
@@ -166,6 +188,11 @@ class LaneTrackingNode(Node):
                  (0, 255, 255), 2)
         cv2.line(overlay, (int(lane_center), roi_y),
                  (int(lane_center), frame.shape[0] - 1), (0, 255, 0), 2)
+
+        if self.use_bev:
+            cv2.putText(overlay, 'BEV', (10, 25),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+
         return overlay
 
     def compute_steering(self, lane_center: float, width: int) -> Tuple[float, float]:

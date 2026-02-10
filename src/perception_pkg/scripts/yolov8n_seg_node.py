@@ -48,6 +48,7 @@ class Yolov8nSegNode(Node):
         self.declare_parameter("detect_obstacles", True)
         self.declare_parameter("traffic_light_min_ratio", 0.05)
         self.declare_parameter("rate_hz", 10.0)
+        self.declare_parameter("detect_lane_line_types", True)
 
         # ── 파라미터 로드 ──
         model_path = self.get_parameter("model_path").value
@@ -62,6 +63,7 @@ class Yolov8nSegNode(Node):
         detect_obstacles = self.get_parameter("detect_obstacles").value
         tl_min_ratio = self.get_parameter("traffic_light_min_ratio").value
         rate_hz = self.get_parameter("rate_hz").value
+        self.detect_line_types = self.get_parameter("detect_lane_line_types").value
 
         # 모델 경로 자동 탐색 (lane_traffic_light_1st.pt 우선)
         if not model_path or not os.path.exists(model_path):
@@ -128,6 +130,12 @@ class Yolov8nSegNode(Node):
             self.lane_left_pub = None
             self.lane_right_pub = None
 
+        if self.detect_line_types:
+            self.line_type_pub = self.create_publisher(
+                String, "/perception/lane_line_type", 1)
+        else:
+            self.line_type_pub = None
+
         # ── 서브스크라이버 ──
         self.latest_frame: Optional[np.ndarray] = None
         self.create_subscription(
@@ -191,6 +199,17 @@ class Yolov8nSegNode(Node):
                 ])
             self.obstacle_pub.publish(obs_msg)
 
+        # 2.5. 실선/점선 차선 타입 감지
+        self._last_left_line = "none"
+        self._last_right_line = "none"
+        if self.line_type_pub is not None:
+            left_type, right_type = self._detect_lane_line_types(frame, results)
+            self._last_left_line = left_type
+            self._last_right_line = right_type
+            line_msg = String()
+            line_msg.data = f"left:{left_type},right:{right_type}"
+            self.line_type_pub.publish(line_msg)
+
         # 3. 주행 가능 영역 마스크
         if self.drivable_pub is not None:
             drivable = self.detector.get_drivable_mask(frame, results)
@@ -224,8 +243,63 @@ class Yolov8nSegNode(Node):
                             cv2.FONT_HERSHEY_SIMPLEX, 1.0,
                             text_color, 2, cv2.LINE_AA)
 
+            # 차선 타입 오버레이 표시
+            if self.line_type_pub is not None:
+                lt = f"L:{self._last_left_line} R:{self._last_right_line}"
+                cv2.putText(overlay, lt, (10, 60),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                            (255, 255, 0), 2, cv2.LINE_AA)
+
             overlay_msg = self.bridge.cv2_to_imgmsg(overlay, "bgr8")
             self.overlay_pub.publish(overlay_msg)
+
+    def _detect_lane_line_types(
+        self, frame: np.ndarray, results
+    ) -> tuple[str, str]:
+        """YOLO 결과에서 실선/점선 차선 타입 감지.
+
+        모델에 'solid_line', 'dashed_line' 클래스가 있어야 함.
+        bbox 중심 x좌표로 좌/우 판별.
+
+        Returns:
+            (left_type, right_type): 각각 "solid", "dashed", "none"
+        """
+        h, w = frame.shape[:2]
+        mid_x = w // 2
+        left_type = "none"
+        right_type = "none"
+
+        if results is None or len(results) == 0:
+            return left_type, right_type
+
+        result = results[0]
+        if result.boxes is None or len(result.boxes) == 0:
+            return left_type, right_type
+
+        for i, cls_id in enumerate(result.boxes.cls):
+            cls_id = int(cls_id.item())
+            class_name = result.names.get(cls_id, "").lower()
+
+            if class_name not in ("solid_line", "dashed_line"):
+                continue
+
+            # bbox 중심 x좌표로 좌/우 판별
+            box = result.boxes.xyxy[i]
+            cx = (box[0].item() + box[2].item()) / 2.0
+            conf = result.boxes.conf[i].item()
+
+            line_type = "solid" if class_name == "solid_line" else "dashed"
+
+            if cx < mid_x:
+                left_type = line_type
+                self.get_logger().debug(
+                    f"좌측 차선: {line_type} (conf={conf:.2f})")
+            else:
+                right_type = line_type
+                self.get_logger().debug(
+                    f"우측 차선: {line_type} (conf={conf:.2f})")
+
+        return left_type, right_type
 
     def _extract_lane_masks(self, frame: np.ndarray, results) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         """YOLO segmentation 결과에서 좌/우 차선 마스크 추출.

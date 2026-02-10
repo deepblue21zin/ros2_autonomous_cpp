@@ -32,8 +32,8 @@ def generate_launch_description():
 
     use_cpp_arg = DeclareLaunchArgument(
         'use_cpp',
-        default_value='true',
-        description='Use C++ nodes (true=C++, false=Python)'
+        default_value='false',
+        description='Use C++ nodes (true=C++, false=Python) - false=BEV 지원'
     )
 
     rate_arg = DeclareLaunchArgument(
@@ -128,6 +128,20 @@ def generate_launch_description():
         arguments=['0', '0', '0.1', '0', '0', '0', 'base_link', 'laser']
     )
 
+    # 7. rviz2 (시각화)
+    rviz_config = PathJoinSubstitution([
+        FindPackageShare('bringup'),
+        'config',
+        'adas_default.rviz'
+    ])
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', rviz_config],
+        output='screen'
+    )
+
     return LaunchDescription([
         bag_path_arg,
         camera_topic_arg,
@@ -140,4 +154,5 @@ def generate_launch_description():
         arduino_node,
         static_tf_camera,
         static_tf_laser,
+        rviz_node,
     ])

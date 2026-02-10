@@ -1,9 +1,9 @@
 """
-HSV + YOLO 결합 Rosbag 테스트 launch file.
+HSV + YOLO 결합 Rosbag 테스트 launch file (듀얼 카메라 대응).
 
 rosbag 파일을 재생하여 hybrid lane drive (HSV+YOLO)를 테스트하는 모드.
-카메라 대신 rosbag에서 /camera/front/image 토픽을 재생하고,
-HSV 차선 검출 + YOLO 세그멘테이션 + Hybrid Drive로 모터 제어 테스트.
+기존 rosbag (카메라 1개)은 두 노드가 같은 토픽을 구독.
+듀얼 카메라 rosbag 녹화 시 front/upper 토픽 분리 가능.
 """
 
 from launch import LaunchDescription
@@ -19,14 +19,20 @@ def generate_launch_description():
     # Launch arguments
     bag_path_arg = DeclareLaunchArgument(
         'bag_path',
-        default_value='/root/ros2_ws/rosbag2_2026_01_30-03_20_53',
+        default_value='/root/ros2_ws/rosbag2_2026_02_08-04_45_24',
         description='Path to rosbag2 directory'
     )
 
-    camera_topic_arg = DeclareLaunchArgument(
-        'camera_topic',
+    front_camera_topic_arg = DeclareLaunchArgument(
+        'front_camera_topic',
         default_value='/camera/front/image',
-        description='Camera topic name'
+        description='Front camera topic (lane tracking)'
+    )
+
+    upper_camera_topic_arg = DeclareLaunchArgument(
+        'upper_camera_topic',
+        default_value='/camera/front/image',
+        description='Upper camera topic (YOLO). 듀얼 rosbag이면 /camera/upper/image로 변경'
     )
 
     loop_arg = DeclareLaunchArgument(
@@ -71,19 +77,18 @@ def generate_launch_description():
         description='Derivative gain for steering control'
     )
 
-    # 1. Rosbag play (카메라 토픽만 재생)
+    # 1. Rosbag play
     rosbag_play = ExecuteProcess(
         cmd=[
             'ros2', 'bag', 'play',
             LaunchConfiguration('bag_path'),
             '--loop',
             '--rate', LaunchConfiguration('rate'),
-            '--topics', '/camera/front/image',
         ],
         output='screen'
     )
 
-    # 2. HSV Lane Tracking Node
+    # 2. HSV Lane Tracking Node → Front Camera
     lane_tracking_node = Node(
         package='perception_pkg',
         executable='lane_tracking_node.py',
@@ -91,7 +96,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {
-                'camera_topic': LaunchConfiguration('camera_topic'),
+                'camera_topic': LaunchConfiguration('front_camera_topic'),
                 'kp': 0.7,
                 'debug': True,
                 'roi_y_ratio': 0.55,
@@ -99,11 +104,17 @@ def generate_launch_description():
                 'canny_high': 80,
                 'gaussian_kernel': 5,
                 'avg_window': 2,
+                'use_bev': True,
+                'bev_src_tl_x': 0.30,
+                'bev_src_tr_x': 0.70,
+                'bev_src_bl_x': 0.0,
+                'bev_src_br_x': 1.0,
+                'bev_draw_trapezoid': True,
             }
         ]
     )
 
-    # 3. YOLOv8n-seg Node
+    # 3. YOLOv8n-seg Node → Upper Camera
     yolo_node = Node(
         package='perception_pkg',
         executable='yolov8n_seg_node.py',
@@ -111,8 +122,8 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {
-                'camera_topic': LaunchConfiguration('camera_topic'),
-                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_main.pt',
+                'camera_topic': LaunchConfiguration('upper_camera_topic'),
+                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_0209',
                 'conf_threshold': 0.4,
                 'iou_threshold': 0.45,
                 'imgsz': 640,
@@ -142,7 +153,7 @@ def generate_launch_description():
                 'max_steer_rad': LaunchConfiguration('max_steer'),
                 'kp': LaunchConfiguration('kp'),
                 'kd': LaunchConfiguration('kd'),
-                'use_traffic_light': False,  # rosbag 테스트 시 신호등 비활성화
+                'use_traffic_light': False,
             }
         ],
         remappings=[
@@ -165,32 +176,38 @@ def generate_launch_description():
         ]
     )
 
-    # 6. Static TF: base_link -> camera_front
-    static_tf_camera = Node(
+    # 6. Static TF
+    static_tf_front = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         name='static_tf_camera_front',
         arguments=['0.15', '0', '0.12', '0', '0', '0', 'base_link', 'camera_front']
     )
 
-    # 7. rviz2 시각화 (adas_default.rviz: YOLO overlay + HSV overlay 포함)
-    rviz_config = PathJoinSubstitution([
-        FindPackageShare('bringup'),
-        'config',
-        'adas_default.rviz'
-    ])
+    static_tf_upper = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_tf_camera_upper',
+        arguments=['0.15', '0', '0.18', '0', '0', '0', 'base_link', 'camera_upper']
+    )
 
-    rviz2 = Node(
+    # 7. RViz2
+    rviz_node = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
-        arguments=['-d', rviz_config],
+        arguments=['-d', PathJoinSubstitution([
+            FindPackageShare('bringup'),
+            'config',
+            'adas_default.rviz'
+        ])],
         output='screen'
     )
 
     return LaunchDescription([
         bag_path_arg,
-        camera_topic_arg,
+        front_camera_topic_arg,
+        upper_camera_topic_arg,
         loop_arg,
         rate_arg,
         cruise_speed_arg,
@@ -203,6 +220,7 @@ def generate_launch_description():
         yolo_node,
         hybrid_drive_node,
         arduino_node,
-        static_tf_camera,
-        rviz2,
+        static_tf_front,
+        static_tf_upper,
+        rviz_node,
     ])
