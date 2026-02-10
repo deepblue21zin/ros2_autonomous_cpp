@@ -41,15 +41,15 @@
     #   2. rviz2 Lane Overlay에서 노란색 사다리꼴이 차선과 일치하는지 확인
     #   3. 사다리꼴 꼭짓점(tl/tr/bl/br) x비율을 차선에 맞게 조정
     #   4. 캘리브레이션 완료 후 bev_draw_trapezoid: false
-    use_bev: true                  # BEV 활성화
+    use_bev: false                  # BEV 활성화
     bev_src_tl_x: 0.30            # 상단-좌 x비율 (ROI 맨 위, 먼 쪽 왼쪽 차선 위치)
     bev_src_tr_x: 0.70            # 상단-우 x비율 (ROI 맨 위, 먼 쪽 오른쪽 차선 위치)
     bev_src_bl_x: 0.0             # 하단-좌 x비율 (ROI 맨 아래, 가까운 쪽 왼쪽 차선)
     bev_src_br_x: 1.0             # 하단-우 x비율 (ROI 맨 아래, 가까운 쪽 오른쪽 차선)
-    bev_draw_trapezoid: true       # 캘리브레이션 모드: 사다리꼴 오버레이 표시
+    bev_draw_trapezoid: false       # 캘리브레이션 모드: 사다리꼴 오버레이 표시
 
     # 디버그 (실제 주행 시 false 권장, false 시 overlay 생성 스킵)
-    debug: false                    # 디버그 모드 활성화
+    debug: true                    # 디버그 모드 활성화
 
     # RViz2 시각화
     # 컨테이너 내부에서 실행 시 false (호스트에서 ./rviz.sh 별도 실행)
