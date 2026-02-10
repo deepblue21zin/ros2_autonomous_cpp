@@ -3,6 +3,7 @@
 #include "perception_pkg/common/lane_geometry.hpp"
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <algorithm>
 #include <numeric>
 
 namespace perception_pkg {
@@ -20,7 +21,10 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("avg_window", 5);
     this->declare_parameter("lane_width_ratio", 0.55);
     this->declare_parameter("max_steer_delta", 0.15);
-    this->declare_parameter("lookahead_ratio", 0.4);
+    this->declare_parameter("lookahead_min_ratio", 0.15);
+    this->declare_parameter("lookahead_max_ratio", 0.50);
+    this->declare_parameter("lookahead_curvature_k", 50.0);
+    this->declare_parameter("coeff_ema_alpha", 0.4);
     this->declare_parameter("max_lost_frames", 15);
     this->declare_parameter("max_single_lane_hold", 10);
     this->declare_parameter("crosswalk_density_threshold", 0.30);
@@ -28,7 +32,6 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("max_crosswalk_frames", 60);
     this->declare_parameter("search_around_margin", 60);
     this->declare_parameter("search_around_fallback", 3);
-
     camera_topic_ = this->get_parameter("camera_topic").as_string();
     kp_ = this->get_parameter("kp").as_double();
     kd_ = this->get_parameter("kd").as_double();
@@ -39,7 +42,10 @@ LaneTrackingNode::LaneTrackingNode()
     avg_window_ = this->get_parameter("avg_window").as_int();
     lane_width_ratio_ = this->get_parameter("lane_width_ratio").as_double();
     max_steer_delta_ = this->get_parameter("max_steer_delta").as_double();
-    lookahead_ratio_ = this->get_parameter("lookahead_ratio").as_double();
+    lookahead_min_ratio_ = this->get_parameter("lookahead_min_ratio").as_double();
+    lookahead_max_ratio_ = this->get_parameter("lookahead_max_ratio").as_double();
+    lookahead_curvature_k_ = this->get_parameter("lookahead_curvature_k").as_double();
+    coeff_ema_alpha_ = this->get_parameter("coeff_ema_alpha").as_double();
     max_lost_frames_ = this->get_parameter("max_lost_frames").as_int();
     max_single_lane_hold_ = this->get_parameter("max_single_lane_hold").as_int();
     crosswalk_density_threshold_ = this->get_parameter("crosswalk_density_threshold").as_double();
@@ -182,6 +188,11 @@ void LaneTrackingNode::updateParams() {
     roi_y_ratio_ = this->get_parameter("roi_y_ratio").as_double();
     search_around_margin_ = static_cast<int>(std::max(1L, this->get_parameter("search_around_margin").as_int()));
     search_around_fallback_ = static_cast<int>(std::max(1L, this->get_parameter("search_around_fallback").as_int()));
+    lookahead_min_ratio_ = std::clamp(this->get_parameter("lookahead_min_ratio").as_double(), 0.05, 0.5);
+    lookahead_max_ratio_ = std::clamp(this->get_parameter("lookahead_max_ratio").as_double(), 0.1, 1.0);
+    lookahead_min_ratio_ = std::min(lookahead_min_ratio_, lookahead_max_ratio_);  // min ≤ max 보장
+    lookahead_curvature_k_ = std::max(0.0, this->get_parameter("lookahead_curvature_k").as_double());
+    coeff_ema_alpha_ = std::clamp(this->get_parameter("coeff_ema_alpha").as_double(), 0.0, 1.0);
 }
 
 std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
@@ -293,8 +304,18 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     // 3. RANSAC + 2차 다항식 피팅
     int y_bottom = h - 1;
     int y_top = static_cast<int>(h * 0.3);
-    // Pure Pursuit: lookahead 지점 (ROI 높이의 lookahead_ratio_ 만큼 위)
-    int y_lookahead = y_bottom - static_cast<int>((y_bottom - y_top) * lookahead_ratio_);
+
+    // 동적 lookahead: 곡률이 크면 가까이(반응성), 작으면 멀리(안정성)
+    double curvature = 0.0;
+    if (prev_left_coeffs_.has_value())
+        curvature = std::max(curvature, std::abs(2.0 * prev_left_coeffs_.value()(0)));
+    if (prev_right_coeffs_.has_value())
+        curvature = std::max(curvature, std::abs(2.0 * prev_right_coeffs_.value()(0)));
+
+    double effective_ratio = lookahead_max_ratio_ / (1.0 + lookahead_curvature_k_ * curvature);
+    effective_ratio = std::clamp(effective_ratio, lookahead_min_ratio_, lookahead_max_ratio_);
+
+    int y_lookahead = y_bottom - static_cast<int>((y_bottom - y_top) * effective_ratio);
 
     bool left_detected = false;
     bool right_detected = false;
@@ -375,9 +396,44 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         }
     }
 
+    // 교차 게이트: 양쪽 polynomial이 교차/근접하면 신뢰도 낮은 쪽 폐기
+    if (left_detected && right_detected) {
+        double lx_bot  = evaluatePolynomial2D(left_coeffs, y_bottom);
+        double rx_bot  = evaluatePolynomial2D(right_coeffs, y_bottom);
+        double lx_look = evaluatePolynomial2D(left_coeffs, y_lookahead);
+        double rx_look = evaluatePolynomial2D(right_coeffs, y_lookahead);
+        double lx_top  = evaluatePolynomial2D(left_coeffs, y_top);
+        double rx_top  = evaluatePolynomial2D(right_coeffs, y_top);
+
+        double min_gap = w * 0.10;  // 최소 간격 (이미지 폭의 10%)
+        if ((rx_bot - lx_bot) < min_gap ||
+            (rx_look - lx_look) < min_gap ||
+            (rx_top - lx_top) < min_gap) {
+            // 이전 프레임 추적 이력이 있는 쪽 유지, 없는 쪽 폐기
+            bool left_has_prev = prev_left_coeffs_.has_value();
+            bool right_has_prev = prev_right_coeffs_.has_value();
+
+            if (left_has_prev && !right_has_prev) {
+                right_detected = false;
+            } else if (right_has_prev && !left_has_prev) {
+                left_detected = false;
+            } else {
+                // 둘 다 추적 중이거나 둘 다 새로운 경우: 양쪽 폐기 → HOLD
+                left_detected = false;
+                right_detected = false;
+            }
+        }
+    }
+
     // search-around-poly 상태 갱신: 검출 성공 시 polynomial 저장, 실패 시 miss count 증가
     if (left_detected) {
-        prev_left_coeffs_ = left_coeffs;
+        // EMA 평활: search-around-poly 기준점 안정화 (다음 프레임 탐색 영역 평활화)
+        if (prev_left_coeffs_.has_value()) {
+            prev_left_coeffs_ = coeff_ema_alpha_ * left_coeffs
+                              + (1.0 - coeff_ema_alpha_) * prev_left_coeffs_.value();
+        } else {
+            prev_left_coeffs_ = left_coeffs;
+        }
         left_poly_miss_count_ = 0;
     } else {
         left_poly_miss_count_++;
@@ -386,7 +442,12 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         }
     }
     if (right_detected) {
-        prev_right_coeffs_ = right_coeffs;
+        if (prev_right_coeffs_.has_value()) {
+            prev_right_coeffs_ = coeff_ema_alpha_ * right_coeffs
+                               + (1.0 - coeff_ema_alpha_) * prev_right_coeffs_.value();
+        } else {
+            prev_right_coeffs_ = right_coeffs;
+        }
         right_poly_miss_count_ = 0;
     } else {
         right_poly_miss_count_++;
@@ -410,7 +471,6 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         // EMA로 실측 차선 폭 추적 (양쪽 보일 때만 갱신)
         double measured_width = std::abs(right_x - left_x);
         if (measured_width > w * 0.2 && measured_width < w * 0.9) {
-            // 유효 범위 내일 때만 갱신 (이상치 방지)
             if (has_tracked_width_) {
                 tracked_lane_width_ = 0.8 * tracked_lane_width_ + 0.2 * measured_width;
             } else {
@@ -419,14 +479,13 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
             }
         }
     } else if (right_detected || left_detected) {
-        // 단일 차선 감지: 먼저 이전 center Hold, 이후 가상 센터 전환
-        if (has_prev_center_ && single_lane_hold_count_ < max_single_lane_hold_) {
-            // Hold: 이전 center 유지 (곡선 진입 시 급변 방지)
+        single_lane_hold_count_++;
+        // 단일 차선 감지: 이전 center가 있고 hold 제한 이내이면 Hold
+        if (has_prev_center_ && single_lane_hold_count_ <= max_single_lane_hold_) {
             center_x = prev_center_x_;
-            single_lane_hold_count_++;
             lane_found = true;
         } else {
-            // Hold 만료 → 실측 폭 또는 고정 폭으로 가상 센터 계산
+            // hold 초과 또는 이전 center 없음: 가상 센터 재계산
             double est_width = has_tracked_width_
                 ? tracked_lane_width_
                 : static_cast<double>(fallback_lane_width);

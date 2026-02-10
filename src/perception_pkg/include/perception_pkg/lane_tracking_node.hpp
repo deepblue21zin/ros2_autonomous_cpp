@@ -39,7 +39,10 @@ private:
     double max_steer_delta_;
     double prev_steering_;
     double prev_smooth_offset_;
-    double lookahead_ratio_;
+    double lookahead_min_ratio_;
+    double lookahead_max_ratio_;
+    double lookahead_curvature_k_;
+    double coeff_ema_alpha_;
     int max_lost_frames_;
 
     // Crosswalk Predict+Hold parameters

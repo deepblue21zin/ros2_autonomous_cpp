@@ -2,9 +2,9 @@
   ros__parameters:
     # Lane Tracking Parameters (2026 경기도 대회 트랙 최적화)
     # Sliding Window + RANSAC 방식
-    kp: 3.5                 # P 게인 (선형 범위 ±40%, 7.0은 ±14%만 선형 → 진동 원인)
-    kd: 1.5                 # D 게인 (offset 변화율 감쇠, 오버슈트 방지)
-    roi_y_ratio: 0.45       # ROI 시작 위치 (BEV시 0.40~0.55 권장, 0.20은 왜곡 과다)
+    kp: 5.5                 # P 게인 (선형 범위 ±40%, 7.0은 ±14%만 선형 → 진동 원인)
+    kd: 3.0                 # D 게인 (offset 변화율 감쇠, 오버슈트 방지)
+    roi_y_ratio: 0.25       # ROI 시작 위치 (BEV시 0.40~0.55 권장, 0.20은 왜곡 과다)
 
     # 전처리 방식 선택
     use_grayscale_threshold: false  # true: Grayscale Binary Threshold, false: HSV Threshold
@@ -16,8 +16,13 @@
     lane_width_ratio: 0.55  # 차선 간격 = 이미지 폭 × 비율 (좁은 화각: 0.50~0.65)
     max_steer_delta: 0.20   # 프레임 간 steering 최대 변화량 (rate limit)
 
-    # Pure Pursuit: 전방 주시 (다항식 위 lookahead point 기반 조향)
-    lookahead_ratio: 0.3    # ROI 높이의 40% 앞을 봄 (0.0=바로앞, 1.0=ROI 꼭대기)
+    # 동적 lookahead: 곡률 기반 전방 주시거리 자동 조절
+    lookahead_min_ratio: 0.15   # 커브 시 최소 lookahead (가까이 → 반응성)
+    lookahead_max_ratio: 0.50   # 직선 시 최대 lookahead (멀리 → 안정성)
+    lookahead_curvature_k: 50.0 # 곡률 감도 (클수록 커브에서 빨리 줄어듦)
+
+    # Polynomial 계수 EMA 평활 (search-around-poly 안정화, 현재 프레임 조향에는 직접 영향 없음)
+    coeff_ema_alpha: 0.4        # 0.3=강한평활(지연↑), 0.7=약한평활(반응↑)
 
     # Predict+Hold: 차선 소실 시 이전 결과 유지
     max_lost_frames: 30     # 양쪽 소실 최대 유지 프레임 (30Hz 기준 ~2.7초)

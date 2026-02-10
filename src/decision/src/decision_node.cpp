@@ -186,21 +186,22 @@ void DecisionNode::stopLineCallback(const std_msgs::msg::Float32MultiArray::Shar
 
 double DecisionNode::mapSteer(double steer_norm) const {
     // Linear mapping if soft_steer_threshold disabled
-    if (soft_steer_threshold_ <= 0.0) {
+    if (soft_steer_threshold_ <= 0.0 || soft_steer_threshold_ >= 1.0) {
         return steer_norm * max_steer_rad_;
     }
 
     double abs_steer = std::abs(steer_norm);
     double sign = (steer_norm >= 0.0) ? 1.0 : -1.0;
 
-    // Soft steering zone
+    // Soft zone: 0~threshold → 0~soft_steer_rad (센터 근처 민감)
     if (abs_steer <= soft_steer_threshold_) {
         double scale = abs_steer / soft_steer_threshold_;
         return sign * scale * soft_steer_rad_;
     }
 
-    // Full steering range
-    return steer_norm * max_steer_rad_;
+    // Beyond threshold: threshold~1.0 → soft_steer_rad~max_steer_rad (연속 보장)
+    double t = (abs_steer - soft_steer_threshold_) / (1.0 - soft_steer_threshold_);
+    return sign * (soft_steer_rad_ + t * (max_steer_rad_ - soft_steer_rad_));
 }
 
 void DecisionNode::checkSensorFreshness() {
@@ -425,12 +426,13 @@ void DecisionNode::timerCallback() {
     }
 
     // 3) 차선 소실 감속
-    if (!lane_valid && !test_mode_ && lane_lost_count_ <= lane_lost_hold_frames_) {
+    bool lane_lost_decel = (!lane_valid && !test_mode_ && lane_lost_count_ <= lane_lost_hold_frames_);
+    if (lane_lost_decel) {
         target_speed = std::min(target_speed, lost_lane_speed_);
     }
 
-    // min_speed 적용 (NORMAL 상태에서만 - 위의 조건들에서 0으로 설정된 경우는 0 유지)
-    if (target_speed > 0.0) {
+    // min_speed 적용 (차선 소실 감속 중이 아닐 때만 — lost_lane_speed를 덮어쓰지 않도록)
+    if (target_speed > 0.0 && !lane_lost_decel) {
         target_speed = std::max(target_speed, min_speed_);
     }
 
