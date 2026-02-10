@@ -71,25 +71,19 @@ cv::Mat preprocessForLaneDetection(const cv::Mat& roi_color,
     return edges;
 }
 
-cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel) {
-    // HSV 변환
+int computeAdaptiveVLower(const cv::Mat& roi_color) {
     cv::Mat hsv;
     cv::cvtColor(roi_color, hsv, cv::COLOR_BGR2HSV);
 
-    // V 채널 기반 동적 임계값 계산 (통창 햇빛 대응)
-    std::vector<cv::Mat> channels;
-    cv::split(hsv, channels);
-    const cv::Mat& v_channel = channels[2];
-
-    // 80th 퍼센타일: 히스토그램으로 빠르게 계산
+    // V 채널 히스토그램: split 없이 직접 3ch 접근
+    int total = hsv.rows * hsv.cols;
     int v_hist[256] = {};
-    for (int r = 0; r < v_channel.rows; r++) {
-        const uchar* row = v_channel.ptr<uchar>(r);
-        for (int c = 0; c < v_channel.cols; c++) {
-            v_hist[row[c]]++;
+    for (int r = 0; r < hsv.rows; r++) {
+        const uchar* row_ptr = hsv.ptr<uchar>(r);
+        for (int c = 0; c < hsv.cols; c++) {
+            v_hist[row_ptr[c * 3 + 2]]++;  // V = HSV offset 2
         }
     }
-    int total = v_channel.rows * v_channel.cols;
     int target = static_cast<int>(total * 0.80);
     int cumulative = 0;
     int v_p80 = 200;
@@ -100,10 +94,12 @@ cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel
             break;
         }
     }
+    return std::max(180, std::min(200, v_p80 - 30));
+}
 
-    // V 하한 = 80th 퍼센타일 - 30, 범위 [120, 200]
-    // 80→120: 바퀴자국 등 어두운 자국이 흰색으로 오인되는 것 방지
-    int v_lower = std::max(180, std::min(200, v_p80 - 30));
+cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel, int v_lower) {
+    cv::Mat hsv;
+    cv::cvtColor(roi_color, hsv, cv::COLOR_BGR2HSV);
 
     cv::Mat mask;
     cv::inRange(hsv,
@@ -116,6 +112,11 @@ cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel
     mask = morphClose(mask, 5, 2);
 
     return mask;
+}
+
+cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel) {
+    int v_lower = computeAdaptiveVLower(roi_color);
+    return preprocessForSlidingWindow(roi_color, gaussian_kernel, v_lower);
 }
 
 cv::Mat preprocessForSlidingWindowGrayscale(const cv::Mat& roi_color, int gaussian_kernel, int threshold) {

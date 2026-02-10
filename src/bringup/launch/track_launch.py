@@ -14,6 +14,8 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node, LoadComposableNodes, SetParameter
 from launch.conditions import IfCondition, UnlessCondition
+import yaml
+import os
 
 
 def launch_setup(context, *args, **kwargs):
@@ -90,14 +92,18 @@ def launch_setup(context, *args, **kwargs):
     nodes_to_launch.append(lidar_obstacle_node)
 
     # Decision node based on mode
-    if decision_mode == '2026':
+    if decision_mode == 'cpp':
         # C++ decision node (기본값: 낮은 레이턴시)
+        decision_config = PathJoinSubstitution([
+            FindPackageShare('decision'), 'config', 'decision_params.yaml'
+        ])
         decision_node = Node(
             package='decision',
             executable='decision_node',
             name='decision_node',
             output='screen',
             parameters=[
+                decision_config,
                 {
                     'stop_on_yellow': False,
                     'test_mode': test_mode,
@@ -188,11 +194,18 @@ def launch_setup(context, *args, **kwargs):
 def generate_launch_description():
     """Generate launch description for track mode."""
 
+    # Load use_rviz from lane_params.yaml
+    perception_pkg_share = FindPackageShare('perception_pkg').find('perception_pkg')
+    lane_params_file = os.path.join(perception_pkg_share, 'config', 'lane_params.yaml')
+    with open(lane_params_file, 'r') as f:
+        lane_params = yaml.safe_load(f)
+    use_rviz_default = str(lane_params['/**']['ros__parameters'].get('use_rviz', False)).lower()
+
     # Declare launch arguments
     decision_mode_arg = DeclareLaunchArgument(
         'decision_mode',
-        default_value='2026',
-        description='Decision mode: 2026 or ai'
+        default_value='cpp',
+        description='Decision mode: cpp, unified, or ai'
     )
 
     camera_topic_arg = DeclareLaunchArgument(
@@ -218,6 +231,13 @@ def generate_launch_description():
         default_value='false',
         description='Test mode: bypass sensor checks for motor testing'
     )
+
+    use_rviz_arg = DeclareLaunchArgument(
+        'use_rviz',
+        default_value=use_rviz_default,
+        description='Launch rviz2 for visualization (from lane_params.yaml)'
+    )
+
 
     # Include USB camera launch
     usb_cam_launch = IncludeLaunchDescription(
@@ -277,7 +297,8 @@ def generate_launch_description():
         executable='rviz2',
         name='rviz2',
         arguments=['-d', rviz_config_file],
-        output='screen'
+        output='screen',
+        condition=IfCondition(LaunchConfiguration('use_rviz'))
     )
 
     return LaunchDescription([
@@ -286,6 +307,7 @@ def generate_launch_description():
         use_compressed_arg,
         use_cpp_arg,
         test_mode_arg,
+        use_rviz_arg,
         usb_cam_launch,
         lane_perception_launch,
         rplidar_launch,

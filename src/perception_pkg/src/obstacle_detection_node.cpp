@@ -8,7 +8,6 @@ ObstacleDetectionNode::ObstacleDetectionNode()
     : Node("obstacle_detection_node") {
     // Declare and load parameters
     this->declare_parameter("camera_topic", "/camera/image_raw");
-    this->declare_parameter("use_compressed", false);
     this->declare_parameter("roi_y_ratio", 0.55);
     this->declare_parameter("band_ratio", 0.6);
     this->declare_parameter("obstacle_center_ratio", 0.2);
@@ -26,7 +25,6 @@ ObstacleDetectionNode::ObstacleDetectionNode()
     this->declare_parameter("publish_overlay", true);
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
-    use_compressed_ = this->get_parameter("use_compressed").as_bool();
     roi_y_ratio_ = this->get_parameter("roi_y_ratio").as_double();
     band_ratio_ = this->get_parameter("band_ratio").as_double();
     center_ratio_ = this->get_parameter("obstacle_center_ratio").as_double();
@@ -46,16 +44,10 @@ ObstacleDetectionNode::ObstacleDetectionNode()
     // QoS for low latency
     auto qos_sensor = rclcpp::QoS(1).best_effort();
 
-    // Setup subscribers
-    if (use_compressed_) {
-        compressed_sub_ = this->create_subscription<sensor_msgs::msg::CompressedImage>(
-            camera_topic_ + "/compressed", qos_sensor,
-            std::bind(&ObstacleDetectionNode::compressedCallback, this, std::placeholders::_1));
-    } else {
-        image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-            camera_topic_, qos_sensor,
-            std::bind(&ObstacleDetectionNode::imageCallback, this, std::placeholders::_1));
-    }
+    // Setup subscribers (raw image only)
+    image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+        camera_topic_, qos_sensor,
+        std::bind(&ObstacleDetectionNode::imageCallback, this, std::placeholders::_1));
 
     // Setup publishers
     detection_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("/perception/obstacles_2d", 10);
@@ -64,7 +56,6 @@ ObstacleDetectionNode::ObstacleDetectionNode()
 
     RCLCPP_INFO(this->get_logger(), "ObstacleDetectionNode initialized");
     RCLCPP_INFO(this->get_logger(), "  camera_topic: %s", camera_topic_.c_str());
-    RCLCPP_INFO(this->get_logger(), "  use_compressed: %s", use_compressed_ ? "true" : "false");
 }
 
 void ObstacleDetectionNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr msg) {
@@ -73,17 +64,6 @@ void ObstacleDetectionNode::imageCallback(const sensor_msgs::msg::Image::SharedP
         processFrame(cv_ptr->image, msg->header.stamp);
     } catch (const cv_bridge::Exception& e) {
         RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
-    }
-}
-
-void ObstacleDetectionNode::compressedCallback(const sensor_msgs::msg::CompressedImage::SharedPtr msg) {
-    try {
-        cv::Mat frame = cv::imdecode(cv::Mat(msg->data), cv::IMREAD_COLOR);
-        if (!frame.empty()) {
-            processFrame(frame, msg->header.stamp);
-        }
-    } catch (const std::exception& e) {
-        RCLCPP_ERROR(this->get_logger(), "Image decode error: %s", e.what());
     }
 }
 

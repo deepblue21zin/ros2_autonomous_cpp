@@ -11,7 +11,6 @@ LaneTrackingNode::LaneTrackingNode()
     : Node("lane_tracking_node") {
     // Declare and load parameters
     this->declare_parameter("camera_topic", "/camera/image_raw");
-    this->declare_parameter("use_compressed", false);
     this->declare_parameter("kp", 0.6);
     this->declare_parameter("kd", 0.0);
     this->declare_parameter("debug", false);
@@ -27,9 +26,10 @@ LaneTrackingNode::LaneTrackingNode()
     this->declare_parameter("crosswalk_density_threshold", 0.30);
     this->declare_parameter("crosswalk_density_max", 0.50);
     this->declare_parameter("max_crosswalk_frames", 60);
+    this->declare_parameter("search_around_margin", 60);
+    this->declare_parameter("search_around_fallback", 3);
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
-    use_compressed_ = this->get_parameter("use_compressed").as_bool();
     kp_ = this->get_parameter("kp").as_double();
     kd_ = this->get_parameter("kd").as_double();
     debug_ = this->get_parameter("debug").as_bool();
@@ -45,6 +45,8 @@ LaneTrackingNode::LaneTrackingNode()
     crosswalk_density_threshold_ = this->get_parameter("crosswalk_density_threshold").as_double();
     crosswalk_density_max_ = this->get_parameter("crosswalk_density_max").as_double();
     max_crosswalk_frames_ = this->get_parameter("max_crosswalk_frames").as_int();
+    search_around_margin_ = this->get_parameter("search_around_margin").as_int();
+    search_around_fallback_ = this->get_parameter("search_around_fallback").as_int();
     prev_steering_ = 0.0;
     prev_smooth_offset_ = 0.0;
     prev_center_x_ = 0.0;
@@ -54,20 +56,19 @@ LaneTrackingNode::LaneTrackingNode()
     tracked_lane_width_ = 0.0;
     has_tracked_width_ = false;
     single_lane_hold_count_ = 0;
+    left_poly_miss_count_ = 0;
+    right_poly_miss_count_ = 0;
+    cached_v_lower_ = 180;  // 초기값: 기본 하한
+    v_lower_update_counter_ = 0;
+    overlay_frame_count_ = 0;
 
     // QoS for low latency: best_effort to skip old frames
     auto qos_sensor = rclcpp::QoS(1).best_effort();
 
-    // Setup subscribers
-    if (use_compressed_) {
-        compressed_sub_ = this->create_subscription<sensor_msgs::msg::CompressedImage>(
-            camera_topic_ + "/compressed", qos_sensor,
-            std::bind(&LaneTrackingNode::compressedCallback, this, std::placeholders::_1));
-    } else {
-        image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-            camera_topic_, qos_sensor,
-            std::bind(&LaneTrackingNode::imageCallback, this, std::placeholders::_1));
-    }
+    // Setup subscribers (raw image only)
+    image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+        camera_topic_, qos_sensor,
+        std::bind(&LaneTrackingNode::imageCallback, this, std::placeholders::_1));
 
     // Subscribe to stop line for crosswalk filtering
     stop_line_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
@@ -77,7 +78,7 @@ LaneTrackingNode::LaneTrackingNode()
     // Setup publishers
     offset_pub_ = this->create_publisher<std_msgs::msg::Float32>("/lane/center_offset", 10);
     steer_pub_ = this->create_publisher<std_msgs::msg::Float32>("/lane/steering_angle", 10);
-    overlay_pub_ = this->create_publisher<sensor_msgs::msg::Image>("/lane_overlay", 1);
+    overlay_pub_ = this->create_publisher<sensor_msgs::msg::Image>("/lane_overlay", qos_sensor);
 
     RCLCPP_INFO(this->get_logger(), "LaneTrackingNode initialized");
     RCLCPP_INFO(this->get_logger(), "  camera_topic: %s", camera_topic_.c_str());
@@ -113,20 +114,6 @@ void LaneTrackingNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr ms
     }
 }
 
-void LaneTrackingNode::compressedCallback(const sensor_msgs::msg::CompressedImage::SharedPtr msg) {
-    try {
-        cv::Mat frame = cv::imdecode(cv::Mat(msg->data), cv::IMREAD_COLOR);
-        if (!frame.empty()) {
-            std_msgs::msg::Header header;
-            header.stamp = msg->header.stamp;
-            header.frame_id = msg->header.frame_id;
-            handleFrame(frame, header);
-        }
-    } catch (const std::exception& e) {
-        RCLCPP_ERROR(this->get_logger(), "Image decode error: %s", e.what());
-    }
-}
-
 void LaneTrackingNode::stopLineCallback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
     // Parse stop line message: [x1, y1, x2, y2, distance_m]
     if (msg->data.size() >= 5) {
@@ -154,12 +141,19 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
         // Grayscale Binary Threshold 방식
         binary_mask = preprocessForSlidingWindowGrayscale(roi_color, gaussian_kernel_, 120);
     } else {
-        // HSV Threshold 방식 (기본값)
-        binary_mask = preprocessForSlidingWindow(roi_color, gaussian_kernel_);
+        // HSV Threshold 방식 (기본값) - v_lower 5프레임마다 갱신
+        if (v_lower_update_counter_ % 5 == 0) {
+            cached_v_lower_ = computeAdaptiveVLower(roi_color);
+        }
+        v_lower_update_counter_++;
+        binary_mask = preprocessForSlidingWindow(roi_color, gaussian_kernel_, cached_v_lower_);
     }
 
     // Detect lane center (Sliding Window + RANSAC)
-    auto [lane_center, roi_overlay] = detectLaneCenter(binary_mask, roi_color, roi_y);
+    // debug=false 시 overlay 생성 스킵, 10Hz throttle
+    bool should_draw_overlay = debug_ && (overlay_frame_count_ % 1 == 0);
+    auto [lane_center, roi_overlay] = detectLaneCenter(binary_mask, roi_color, roi_y, should_draw_overlay);
+    overlay_frame_count_++;
 
     // Compute steering
     auto [steering, offset_norm] = computeSteering(lane_center, frame.cols);
@@ -173,8 +167,8 @@ void LaneTrackingNode::handleFrame(const cv::Mat& frame, const std_msgs::msg::He
     steer_msg.data = static_cast<float>(steering);
     steer_pub_->publish(steer_msg);
 
-    // Publish overlay
-    if (debug_) {
+    // Publish overlay (debug=true && throttled)
+    if (should_draw_overlay) {
         cv::Mat overlay = composeOverlay(frame, roi_overlay, roi_y, lane_center);
         sensor_msgs::msg::Image::SharedPtr overlay_msg =
             cv_bridge::CvImage(header, "bgr8", overlay).toImageMsg();
@@ -186,12 +180,18 @@ void LaneTrackingNode::updateParams() {
     kp_ = this->get_parameter("kp").as_double();
     kd_ = this->get_parameter("kd").as_double();
     roi_y_ratio_ = this->get_parameter("roi_y_ratio").as_double();
+    search_around_margin_ = static_cast<int>(std::max(1L, this->get_parameter("search_around_margin").as_int()));
+    search_around_fallback_ = static_cast<int>(std::max(1L, this->get_parameter("search_around_fallback").as_int()));
 }
 
 std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
-    const cv::Mat& binary_mask, const cv::Mat& roi_color, int roi_y) {
+    const cv::Mat& binary_mask, const cv::Mat& roi_color, int roi_y,
+    bool draw_overlay) {
 
-    cv::Mat overlay = roi_color.clone();
+    cv::Mat overlay;
+    if (draw_overlay) {
+        overlay = roi_color.clone();
+    }
     int h = binary_mask.rows;
     int w = binary_mask.cols;
 
@@ -210,7 +210,7 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
                       cv::Point(static_cast<int>(cx2 - mx), static_cast<int>(cy2 - my)),
                       cv::Scalar(0), -1);
 
-        if (debug_) {
+        if (draw_overlay) {
             cv::rectangle(overlay,
                          cv::Point(static_cast<int>(cx1), static_cast<int>(cy1)),
                          cv::Point(static_cast<int>(cx2), static_cast<int>(cy2)),
@@ -218,11 +218,13 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         }
     }
 
-    // 횡단보도 Predict+Hold: 흰 픽셀 밀도로 횡단보도 감지
-    double white_density = static_cast<double>(cv::countNonZero(mask)) / (h * w);
+    // findNonZero 1회 호출 — 이후 모든 검색 + 밀도 계산에서 재사용
+    std::vector<cv::Point> nonzero;
+    cv::findNonZero(mask, nonzero);
+    double white_density = static_cast<double>(nonzero.size()) / (h * w);
 
     // 디버그: 밀도 값 항상 표시 (임계값 튜닝용)
-    if (debug_) {
+    if (draw_overlay) {
         char density_buf[64];
         snprintf(density_buf, sizeof(density_buf), "density: %.1f%%", white_density * 100.0);
         cv::putText(overlay, density_buf,
@@ -240,7 +242,7 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
             center_x = static_cast<double>(w) / 2.0;
         }
 
-        if (debug_) {
+        if (draw_overlay) {
             cv::putText(overlay,
                         "CROSSWALK HOLD (" + std::to_string(crosswalk_hold_count_) + ")",
                         cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6,
@@ -254,15 +256,39 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     // 횡단보도 종료 → hold 카운터 리셋, 정상 sliding window 재획득
     crosswalk_hold_count_ = 0;
 
-    // 1. 히스토그램: 하단 50%에서 좌/우 차선 시작점 찾기
-    std::vector<int> histogram = computeHistogram(mask, h / 2);
-    int midpoint = w / 2;
-    int left_base = findHistogramPeak(histogram, 0, midpoint);
-    int right_base = findHistogramPeak(histogram, midpoint, w);
+    // 1. Search-around-poly 우선, 실패 시 히스토그램 기반 full search
+    SlidingWindowResult left_sw, right_sw;
+    bool left_used_search_around = false;
+    bool right_used_search_around = false;
 
-    // 2. Sliding Window 탐색
-    SlidingWindowResult left_sw = slidingWindowSearch(mask, left_base, 9, 50, 50);
-    SlidingWindowResult right_sw = slidingWindowSearch(mask, right_base, 9, 50, 50);
+    // 좌측 차선: 이전 polynomial이 있고 연속 실패가 적으면 search-around-poly
+    if (prev_left_coeffs_.has_value() && left_poly_miss_count_ < search_around_fallback_) {
+        left_sw = searchAroundPoly(nonzero, prev_left_coeffs_.value(), search_around_margin_);
+        left_used_search_around = true;
+    }
+    // 우측 차선
+    if (prev_right_coeffs_.has_value() && right_poly_miss_count_ < search_around_fallback_) {
+        right_sw = searchAroundPoly(nonzero, prev_right_coeffs_.value(), search_around_margin_);
+        right_used_search_around = true;
+    }
+
+    // Fallback: search-around-poly 실패 시 히스토그램 기반 full search
+    // 히스토그램 1회만 계산 후 캐시 (좌/우 모두 사용 가능)
+    std::vector<int> histogram;
+    if (!left_sw.valid || !right_sw.valid) {
+        histogram = computeHistogramFromPoints(nonzero, w, h / 2);
+        int midpoint = w / 2;
+        if (!left_sw.valid) {
+            int left_base = findHistogramPeak(histogram, 0, midpoint);
+            left_sw = slidingWindowSearch(h, w, nonzero, left_base, 9, 50, 50);
+            left_used_search_around = false;
+        }
+        if (!right_sw.valid) {
+            int right_base = findHistogramPeak(histogram, midpoint, w);
+            right_sw = slidingWindowSearch(h, w, nonzero, right_base, 9, 50, 50);
+            right_used_search_around = false;
+        }
+    }
 
     // 3. RANSAC + 2차 다항식 피팅
     int y_bottom = h - 1;
@@ -281,8 +307,10 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         if (left_fit.valid) {
             left_detected = true;
             left_coeffs = left_fit.coeffs;
-            cv::polylines(overlay, left_fit.curve_points, false,
-                          cv::Scalar(255, 0, 0), 3);
+            if (draw_overlay) {
+                cv::polylines(overlay, left_fit.curve_points, false,
+                              cv::Scalar(255, 0, 0), 3);
+            }
         }
     }
 
@@ -293,8 +321,77 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
         if (right_fit.valid) {
             right_detected = true;
             right_coeffs = right_fit.coeffs;
-            cv::polylines(overlay, right_fit.curve_points, false,
-                          cv::Scalar(0, 0, 255), 3);
+            if (draw_overlay) {
+                cv::polylines(overlay, right_fit.curve_points, false,
+                              cv::Scalar(0, 0, 255), 3);
+            }
+        }
+    }
+
+    // RANSAC 실패 + search-around-poly 출처일 때만 histogram full search 재시도
+    bool left_need_retry = !left_detected && left_used_search_around;
+    bool right_need_retry = !right_detected && right_used_search_around;
+
+    if (left_need_retry || right_need_retry) {
+        // 히스토그램 재사용: 이미 계산되어 있으면 재활용
+        if (histogram.empty()) {
+            histogram = computeHistogramFromPoints(nonzero, w, h / 2);
+        }
+        int midpoint = w / 2;
+
+        if (left_need_retry) {
+            int left_base = findHistogramPeak(histogram, 0, midpoint);
+            SlidingWindowResult left_retry = slidingWindowSearch(h, w, nonzero, left_base, 9, 50, 50);
+            if (left_retry.valid) {
+                std::vector<double> ly(left_retry.lane_y.begin(), left_retry.lane_y.end());
+                std::vector<double> lx(left_retry.lane_x.begin(), left_retry.lane_x.end());
+                RansacFitResult left_fit = fitPolynomial2DRansac(ly, lx, y_bottom, y_top);
+                if (left_fit.valid) {
+                    left_detected = true;
+                    left_coeffs = left_fit.coeffs;
+                    if (draw_overlay) {
+                        cv::polylines(overlay, left_fit.curve_points, false,
+                                      cv::Scalar(255, 0, 0), 3);
+                    }
+                }
+            }
+        }
+        if (right_need_retry) {
+            int right_base = findHistogramPeak(histogram, midpoint, w);
+            SlidingWindowResult right_retry = slidingWindowSearch(h, w, nonzero, right_base, 9, 50, 50);
+            if (right_retry.valid) {
+                std::vector<double> ry(right_retry.lane_y.begin(), right_retry.lane_y.end());
+                std::vector<double> rx(right_retry.lane_x.begin(), right_retry.lane_x.end());
+                RansacFitResult right_fit = fitPolynomial2DRansac(ry, rx, y_bottom, y_top);
+                if (right_fit.valid) {
+                    right_detected = true;
+                    right_coeffs = right_fit.coeffs;
+                    if (draw_overlay) {
+                        cv::polylines(overlay, right_fit.curve_points, false,
+                                      cv::Scalar(0, 0, 255), 3);
+                    }
+                }
+            }
+        }
+    }
+
+    // search-around-poly 상태 갱신: 검출 성공 시 polynomial 저장, 실패 시 miss count 증가
+    if (left_detected) {
+        prev_left_coeffs_ = left_coeffs;
+        left_poly_miss_count_ = 0;
+    } else {
+        left_poly_miss_count_++;
+        if (left_poly_miss_count_ >= search_around_fallback_) {
+            prev_left_coeffs_.reset();  // 연속 실패 → polynomial 초기화
+        }
+    }
+    if (right_detected) {
+        prev_right_coeffs_ = right_coeffs;
+        right_poly_miss_count_ = 0;
+    } else {
+        right_poly_miss_count_++;
+        if (right_poly_miss_count_ >= search_around_fallback_) {
+            prev_right_coeffs_.reset();
         }
     }
 
@@ -359,11 +456,13 @@ std::pair<double, cv::Mat> LaneTrackingNode::detectLaneCenter(
     }
 
     // 시각화: lookahead point (노란색), 소실 중이면 빨간 테두리
-    cv::circle(overlay, cv::Point(static_cast<int>(center_x), y_lookahead),
-               6, cv::Scalar(0, 255, 255), -1);
-    if (!lane_found) {
+    if (draw_overlay) {
         cv::circle(overlay, cv::Point(static_cast<int>(center_x), y_lookahead),
-                   10, cv::Scalar(0, 0, 255), 2);
+                   6, cv::Scalar(0, 255, 255), -1);
+        if (!lane_found) {
+            cv::circle(overlay, cv::Point(static_cast<int>(center_x), y_lookahead),
+                       10, cv::Scalar(0, 0, 255), 2);
+        }
     }
 
     return {center_x, overlay};

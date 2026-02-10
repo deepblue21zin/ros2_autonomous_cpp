@@ -12,15 +12,25 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
+from launch.conditions import IfCondition
+import yaml
+import os
 
 
 def generate_launch_description():
     """Generate launch description for bag motor test mode."""
 
+    # Load use_rviz from lane_params.yaml
+    perception_pkg_share = FindPackageShare('perception_pkg').find('perception_pkg')
+    lane_params_file = os.path.join(perception_pkg_share, 'config', 'lane_params.yaml')
+    with open(lane_params_file, 'r') as f:
+        lane_params = yaml.safe_load(f)
+    use_rviz_default = str(lane_params['/**']['ros__parameters'].get('use_rviz', False)).lower()
+
     # Launch arguments
     bag_path_arg = DeclareLaunchArgument(
         'bag_path',
-        default_value='/root/ros2_ws/rosbag2_2026_01_30-03_08_19',
+        default_value='/root/ros2_ws/rosbag2_2026_02_08-04_58_12',
         description='Path to rosbag2 directory'
     )
 
@@ -32,14 +42,20 @@ def generate_launch_description():
 
     use_cpp_arg = DeclareLaunchArgument(
         'use_cpp',
-        default_value='false',
-        description='Use C++ nodes (true=C++, false=Python) - false=BEV 지원'
+        default_value='true',
+        description='Use C++ nodes (true=C++, false=Python)'
     )
 
     rate_arg = DeclareLaunchArgument(
         'rate',
         default_value='1.0',
         description='Rosbag playback rate (0.5=half speed, 2.0=double speed)'
+    )
+
+    use_rviz_arg = DeclareLaunchArgument(
+        'use_rviz',
+        default_value=use_rviz_default,
+        description='Launch rviz2 for visualization (from lane_params.yaml)'
     )
 
     # 1. Rosbag play (카메라 + 라이다 토픽만 재생, 제어 토픽 제외)
@@ -139,7 +155,8 @@ def generate_launch_description():
         executable='rviz2',
         name='rviz2',
         arguments=['-d', rviz_config],
-        output='screen'
+        output='screen',
+        condition=IfCondition(LaunchConfiguration('use_rviz'))
     )
 
     return LaunchDescription([
@@ -147,6 +164,7 @@ def generate_launch_description():
         camera_topic_arg,
         use_cpp_arg,
         rate_arg,
+        use_rviz_arg,
         rosbag_play,
         lane_perception_launch,
         lidar_obstacle_node,

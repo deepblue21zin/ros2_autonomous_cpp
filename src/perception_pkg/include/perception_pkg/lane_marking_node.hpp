@@ -3,7 +3,6 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
-#include <sensor_msgs/msg/compressed_image.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <cv_bridge/cv_bridge.h>
@@ -22,14 +21,12 @@ public:
 
 private:
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
-    rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr compressed_sub_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr traffic_light_sub_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr lane_pub_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr stop_pub_;
 
     // Parameters
     std::string camera_topic_;
-    bool use_compressed_;
     double roi_y_ratio_;
     double stop_roi_ratio_;
     int nwindows_;
@@ -44,7 +41,6 @@ private:
 
     // Callbacks
     void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg);
-    void compressedCallback(const sensor_msgs::msg::CompressedImage::SharedPtr msg);
     void trafficLightCallback(const std_msgs::msg::String::SharedPtr msg);
 
     // Core processing

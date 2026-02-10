@@ -44,7 +44,6 @@ def launch_setup(context, *args, **kwargs):
                 config_file.perform(context),
                 {
                     'camera_topic': LaunchConfiguration('camera_topic'),
-                    'use_compressed': LaunchConfiguration('use_compressed'),
                 }
             ]
         )
@@ -58,7 +57,6 @@ def launch_setup(context, *args, **kwargs):
                 config_file.perform(context),
                 {
                     'camera_topic': LaunchConfiguration('camera_topic'),
-                    'use_compressed': LaunchConfiguration('use_compressed'),
                 }
             ]
         )
@@ -108,7 +106,6 @@ def launch_setup(context, *args, **kwargs):
             parameters=[
                 {
                     'camera_topic': LaunchConfiguration('camera_topic'),
-                    'use_compressed': LaunchConfiguration('use_compressed'),
                     'default_speed_limit': LaunchConfiguration('default_speed_limit'),
                     'detector_model_path': LaunchConfiguration('speed_sign_model'),
                     'publish_overlay': LaunchConfiguration('speed_sign_publish_overlay'),
@@ -127,7 +124,6 @@ def launch_setup(context, *args, **kwargs):
             parameters=[
                 {
                     'camera_topic': LaunchConfiguration('camera_topic'),
-                    'use_compressed': LaunchConfiguration('use_compressed'),
                     'detector_model_path': LaunchConfiguration('traffic_light_model'),
                     'publish_overlay': LaunchConfiguration('traffic_light_publish_overlay'),
                 }
@@ -147,7 +143,6 @@ def launch_setup(context, *args, **kwargs):
                     config_file.perform(context),
                     {
                         'camera_topic': LaunchConfiguration('camera_topic'),
-                        'use_compressed': LaunchConfiguration('use_compressed'),
                         'roi_y_ratio': LaunchConfiguration('obstacle_roi_y_ratio'),
                         'band_ratio': LaunchConfiguration('obstacle_band_ratio'),
                         'obstacle_center_ratio': LaunchConfiguration('obstacle_center_ratio'),
@@ -173,7 +168,6 @@ def launch_setup(context, *args, **kwargs):
                     config_file.perform(context),
                     {
                         'camera_topic': LaunchConfiguration('camera_topic'),
-                        'use_compressed': LaunchConfiguration('use_compressed'),
                         'roi_y_ratio': LaunchConfiguration('obstacle_roi_y_ratio'),
                         'band_ratio': LaunchConfiguration('obstacle_band_ratio'),
                         'obstacle_center_ratio': LaunchConfiguration('obstacle_center_ratio'),
@@ -200,14 +194,8 @@ def generate_launch_description():
     # Declare all launch arguments
     camera_topic_arg = DeclareLaunchArgument(
         'camera_topic',
-        default_value='/image_jpeg/compressed',
-        description='Camera topic name'
-    )
-
-    use_compressed_arg = DeclareLaunchArgument(
-        'use_compressed',
-        default_value='true',
-        description='Use compressed image transport'
+        default_value='/camera/front/image',
+        description='Camera topic name (raw image)'
     )
 
     # kp, debug는 yaml(lane_params.yaml)에서만 관리
@@ -361,7 +349,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         camera_topic_arg,
-        use_compressed_arg,
         default_speed_limit_arg,
         speed_sign_enabled_arg,
         speed_sign_model_arg,

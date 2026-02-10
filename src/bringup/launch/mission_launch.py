@@ -103,7 +103,7 @@ def launch_setup(context, *args, **kwargs):
     nodes_to_launch.append(lidar_obstacle_node)
 
     # Decision node based on mode
-    if decision_mode == '2026':
+    if decision_mode == 'cpp':
         if use_cpp:
             decision_node = Node(
                 package='decision',
@@ -157,7 +157,7 @@ def launch_setup(context, *args, **kwargs):
             ]
         )
     else:
-        # Default to 2026 C++ node
+        # Default to C++ node
         decision_node = Node(
             package='decision',
             executable='decision_node',
@@ -219,8 +219,8 @@ def generate_launch_description():
     # Declare launch arguments
     decision_mode_arg = DeclareLaunchArgument(
         'decision_mode',
-        default_value='2026',
-        description='Decision mode: 2026 or ai'
+        default_value='cpp',
+        description='Decision mode: cpp, unified, or ai'
     )
 
     camera_topic_arg = DeclareLaunchArgument(

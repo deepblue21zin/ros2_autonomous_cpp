@@ -182,6 +182,17 @@ std::vector<int> computeHistogram(const cv::Mat& binary_mask, int start_row) {
     return histogram;
 }
 
+std::vector<int> computeHistogramFromPoints(const std::vector<cv::Point>& nonzero,
+                                             int width, int start_row) {
+    std::vector<int> histogram(width, 0);
+    for (const auto& pt : nonzero) {
+        if (pt.y >= start_row && pt.x >= 0 && pt.x < width) {
+            histogram[pt.x]++;
+        }
+    }
+    return histogram;
+}
+
 int findHistogramPeak(const std::vector<int>& histogram, int start_col, int end_col) {
     if (histogram.empty()) return 0;
 
@@ -202,39 +213,48 @@ int findHistogramPeak(const std::vector<int>& histogram, int start_col, int end_
     return max_idx;
 }
 
-SlidingWindowResult slidingWindowSearch(const cv::Mat& binary_mask,
+SlidingWindowResult slidingWindowSearch(int h, int w,
+                                        const std::vector<cv::Point>& nonzero,
                                         int start_x,
                                         int nwindows,
                                         int window_margin,
                                         int minpix) {
     SlidingWindowResult result;
-    result.valid = false;
 
-    int h = binary_mask.rows;
-    int w = binary_mask.cols;
-    int window_height = h / std::max(nwindows, 1);
+    if (nonzero.empty()) return result;
 
-    // Get nonzero points
-    std::vector<cv::Point> nonzero;
-    cv::findNonZero(binary_mask, nonzero);
-
-    if (nonzero.empty()) {
-        return result;
+    // y-row 인덱스 구축: row_start[y] = nonzero에서 pt.y >= y인 첫 인덱스
+    // cv::findNonZero 출력은 래스터 순서(y 오름차순)이므로 정렬 불필요
+    const int n = static_cast<int>(nonzero.size());
+    std::vector<int> row_start(h + 1, n);
+    for (int i = n - 1; i >= 0; --i) {
+        int y = nonzero[i].y;
+        if (y >= 0 && y < h) {
+            row_start[y] = i;
+        }
+    }
+    // 역방향 전파: row_start[y] = min(row_start[y], row_start[y+1])
+    for (int r = h - 1; r >= 0; --r) {
+        row_start[r] = std::min(row_start[r], row_start[r + 1]);
     }
 
+    int window_height = h / std::max(nwindows, 1);
     int x_current = start_x;
 
     for (int window = 0; window < nwindows; ++window) {
-        int win_y_low = h - (window + 1) * window_height;
-        int win_y_high = h - window * window_height;
+        int win_y_low = std::max(0, h - (window + 1) * window_height);
+        int win_y_high = std::min(h, h - window * window_height);
         int win_x_low = std::max(0, x_current - window_margin);
         int win_x_high = std::min(w, x_current + window_margin);
 
         std::vector<int> good_x;
 
-        for (const auto& pt : nonzero) {
-            if (pt.y >= win_y_low && pt.y < win_y_high &&
-                pt.x >= win_x_low && pt.x < win_x_high) {
+        // 해당 y-범위 버킷만 순회 (전체 nonzero 대신)
+        int start_idx = row_start[win_y_low];
+        int end_idx = row_start[win_y_high];
+        for (int i = start_idx; i < end_idx; ++i) {
+            const auto& pt = nonzero[i];
+            if (pt.x >= win_x_low && pt.x < win_x_high) {
                 result.lane_x.push_back(pt.x);
                 result.lane_y.push_back(pt.y);
                 good_x.push_back(pt.x);
@@ -244,6 +264,25 @@ SlidingWindowResult slidingWindowSearch(const cv::Mat& binary_mask,
         if (static_cast<int>(good_x.size()) > minpix) {
             double sum = std::accumulate(good_x.begin(), good_x.end(), 0.0);
             x_current = static_cast<int>(sum / good_x.size());
+        }
+    }
+
+    result.valid = result.lane_x.size() >= 50;
+    return result;
+}
+
+SlidingWindowResult searchAroundPoly(const std::vector<cv::Point>& nonzero,
+                                     const Eigen::Vector3d& prev_coeffs,
+                                     int margin) {
+    SlidingWindowResult result;
+
+    if (nonzero.empty()) return result;
+
+    for (const auto& pt : nonzero) {
+        double x_pred = evaluatePolynomial2D(prev_coeffs, static_cast<double>(pt.y));
+        if (std::abs(pt.x - x_pred) < margin) {
+            result.lane_x.push_back(pt.x);
+            result.lane_y.push_back(pt.y);
         }
     }
 

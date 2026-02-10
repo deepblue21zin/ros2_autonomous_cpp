@@ -31,6 +31,12 @@ cv::Mat preprocessForLaneDetection(const cv::Mat& roi_color,
 // Preprocess for sliding window - HSV version (HSV mask → blur → morphClose)
 cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel);
 
+// Preprocess with pre-computed v_lower (N프레임 캐시 사용 시)
+cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel, int v_lower);
+
+// V-channel 80th 퍼센타일 기반 적응형 v_lower 계산 (N프레임마다 호출)
+int computeAdaptiveVLower(const cv::Mat& roi_color);
+
 // Preprocess for sliding window - Grayscale version (grayscale → binary threshold → blur → morphClose)
 cv::Mat preprocessForSlidingWindowGrayscale(const cv::Mat& roi_color, int gaussian_kernel, int threshold = 200);
 

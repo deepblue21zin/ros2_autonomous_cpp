@@ -12,7 +12,6 @@ LaneMarkingNode::LaneMarkingNode()
     : Node("lane_marking_node"), current_light_state_("unknown") {
     // Declare and load parameters
     this->declare_parameter("camera_topic", "/camera/image_raw");
-    this->declare_parameter("use_compressed", false);
     this->declare_parameter("roi_y_ratio", 0.55);
     this->declare_parameter("stop_roi_ratio", 0.25);
     this->declare_parameter("nwindows", 9);
@@ -25,7 +24,6 @@ LaneMarkingNode::LaneMarkingNode()
     this->declare_parameter("allowed_stop_states", "red,yellow");
 
     camera_topic_ = this->get_parameter("camera_topic").as_string();
-    use_compressed_ = this->get_parameter("use_compressed").as_bool();
     roi_y_ratio_ = this->get_parameter("roi_y_ratio").as_double();
     stop_roi_ratio_ = this->get_parameter("stop_roi_ratio").as_double();
     nwindows_ = this->get_parameter("nwindows").as_int();
@@ -52,16 +50,10 @@ LaneMarkingNode::LaneMarkingNode()
     // QoS for low latency
     auto qos_sensor = rclcpp::QoS(1).best_effort();
 
-    // Setup subscribers
-    if (use_compressed_) {
-        compressed_sub_ = this->create_subscription<sensor_msgs::msg::CompressedImage>(
-            camera_topic_ + "/compressed", qos_sensor,
-            std::bind(&LaneMarkingNode::compressedCallback, this, std::placeholders::_1));
-    } else {
-        image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-            camera_topic_, qos_sensor,
-            std::bind(&LaneMarkingNode::imageCallback, this, std::placeholders::_1));
-    }
+    // Setup subscribers (raw image only)
+    image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+        camera_topic_, qos_sensor,
+        std::bind(&LaneMarkingNode::imageCallback, this, std::placeholders::_1));
 
     traffic_light_sub_ = this->create_subscription<std_msgs::msg::String>(
         "/perception/traffic_light_state", 10,
@@ -83,17 +75,6 @@ void LaneMarkingNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr msg
         handleFrame(cv_ptr->image);
     } catch (const cv_bridge::Exception& e) {
         RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
-    }
-}
-
-void LaneMarkingNode::compressedCallback(const sensor_msgs::msg::CompressedImage::SharedPtr msg) {
-    try {
-        cv::Mat frame = cv::imdecode(cv::Mat(msg->data), cv::IMREAD_COLOR);
-        if (!frame.empty()) {
-            handleFrame(frame);
-        }
-    } catch (const std::exception& e) {
-        RCLCPP_ERROR(this->get_logger(), "Image decode error: %s", e.what());
     }
 }
 
