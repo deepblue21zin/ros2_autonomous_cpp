@@ -2,7 +2,7 @@
   ros__parameters:
     # Lane Tracking Parameters (2026 경기도 대회 트랙 최적화)
     # Sliding Window + RANSAC 방식
-    kp: 5.5                 # P 게인 (선형 범위 ±40%, 7.0은 ±14%만 선형 → 진동 원인)
+    kp: 6.0                 # P 게인 (선형 범위 ±40%, 7.0은 ±14%만 선형 → 진동 원인)
     kd: 3.0                 # D 게인 (offset 변화율 감쇠, 오버슈트 방지)
     roi_y_ratio: 0.25       # ROI 시작 위치 (BEV시 0.40~0.55 권장, 0.20은 왜곡 과다)
 

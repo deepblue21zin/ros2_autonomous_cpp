@@ -8,8 +8,8 @@
 
     # === 속도 제어 ===
     cruise_speed_mps: 2.0           # 순항 속도 (m/s)
-    min_speed_mps: 0.8              # 최소 속도 (m/s)
-    curve_factor: 0.4               # 커브 감속 계수 (클수록 감속 강함)
+    min_speed_mps: 1.2              # 최소 속도 (m/s)
+    curve_factor: 0.5               # 커브 감속 계수 (클수록 감속 강함)
     accel_rate_mps2: 1.5            # 가속률 (m/s²)
     decel_rate_mps2: 2.0            # 감속률 (m/s²)
 
