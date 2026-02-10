@@ -1,6 +1,7 @@
 """
 USB Camera ROS2 launch file.
 Launches the USB camera node with configuration.
+Hardware settings (pixel_format, resolution, framerate 등)는 usb_cam.yaml에서 관리.
 """
 
 from launch import LaunchDescription
@@ -13,41 +14,11 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     """Generate launch description for USB camera driver."""
 
-    # Declare launch arguments
+    # Launch arguments: 부모 launch에서 실제로 override하는 것만 선언
     video_device_arg = DeclareLaunchArgument(
         'video_device',
         default_value='/dev/video4',
         description='Video device path (default: front camera)'
-    )
-
-    image_width_arg = DeclareLaunchArgument(
-        'image_width',
-        default_value='640',
-        description='Image width in pixels'
-    )
-
-    image_height_arg = DeclareLaunchArgument(
-        'image_height',
-        default_value='480',
-        description='Image height in pixels'
-    )
-
-    pixel_format_arg = DeclareLaunchArgument(
-        'pixel_format',
-        default_value='mjpeg2rgb',
-        description='Pixel format (mjpeg2rgb, yuyv, etc.)'
-    )
-
-    framerate_arg = DeclareLaunchArgument(
-        'framerate',
-        default_value='30.0',
-        description='Camera framerate in Hz'
-    )
-
-    frame_id_arg = DeclareLaunchArgument(
-        'frame_id',
-        default_value='camera_front',
-        description='Frame ID for camera'
     )
 
     camera_topic_arg = DeclareLaunchArgument(
@@ -56,17 +27,14 @@ def generate_launch_description():
         description='Topic name for camera images'
     )
 
-    # Get package share directory
-    pkg_share = FindPackageShare('usb_cam_driver')
-
-    # Path to config file
+    # Config file (pixel_format, resolution, framerate 등 하드웨어 설정의 source of truth)
     config_file = PathJoinSubstitution([
-        pkg_share,
+        FindPackageShare('usb_cam_driver'),
         'config',
         'usb_cam.yaml'
     ])
 
-    # USB camera node (using usb_cam package)
+    # USB camera node
     usb_cam_node = Node(
         package='usb_cam',
         executable='usb_cam_node_exe',
@@ -76,11 +44,6 @@ def generate_launch_description():
             config_file,
             {
                 'video_device': LaunchConfiguration('video_device'),
-                'image_width': LaunchConfiguration('image_width'),
-                'image_height': LaunchConfiguration('image_height'),
-                'pixel_format': LaunchConfiguration('pixel_format'),
-                'framerate': LaunchConfiguration('framerate'),
-                'frame_id': LaunchConfiguration('frame_id'),
                 'camera_name': 'front_camera',
             }
         ],
@@ -91,11 +54,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         video_device_arg,
-        image_width_arg,
-        image_height_arg,
-        pixel_format_arg,
-        framerate_arg,
-        frame_id_arg,
         camera_topic_arg,
         usb_cam_node,
     ])
