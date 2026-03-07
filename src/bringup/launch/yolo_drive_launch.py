@@ -12,7 +12,8 @@ Architecture:
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
@@ -58,22 +59,56 @@ def generate_launch_description():
         description='Enable traffic light detection'
     )
 
-    # 1. USB Camera
-    usb_cam_node = Node(
-        package='usb_cam_driver',
-        executable='usb_cam_node.py',
-        name='usb_cam_front',
-        output='screen',
-        parameters=[
+    yolo_imgsz_arg = DeclareLaunchArgument(
+        'yolo_imgsz',
+        default_value='512',
+        description='YOLO input size (smaller = faster)'
+    )
+
+    yolo_rate_hz_arg = DeclareLaunchArgument(
+        'yolo_rate_hz',
+        default_value='8.0',
+        description='YOLO inference timer rate (Hz)'
+    )
+
+    yolo_publish_overlay_arg = DeclareLaunchArgument(
+        'yolo_publish_overlay',
+        default_value='false',
+        description='Publish YOLO overlay image'
+    )
+
+    yolo_detect_lane_line_types_arg = DeclareLaunchArgument(
+        'yolo_detect_lane_line_types',
+        default_value='false',
+        description='Detect dashed/solid line type in YOLO node'
+    )
+
+    yolo_device_arg = DeclareLaunchArgument(
+        'yolo_device',
+        default_value='',
+        description='YOLO device (e.g., cuda:0, cpu). Empty=auto'
+    )
+
+    enable_mjpeg_decoder_arg = DeclareLaunchArgument(
+        'enable_mjpeg_decoder',
+        default_value='true',
+        description='Use raw image stream + decoder relay for camera'
+    )
+
+    # 1. USB Camera (delegate to usb_cam_driver launch)
+    usb_cam_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
             PathJoinSubstitution([
                 FindPackageShare('usb_cam_driver'),
-                'config',
-                'usb_cam.yaml'
+                'launch',
+                'usb_cam_launch.py'
             ])
-        ],
-        remappings=[
-            ('/camera/image', LaunchConfiguration('camera_topic')),
-        ]
+        ]),
+        launch_arguments={
+            'camera_topic': LaunchConfiguration('camera_topic'),
+            'enable_mjpeg_decoder': LaunchConfiguration('enable_mjpeg_decoder'),
+            'raw_camera_topic': '/camera/front/image_raw',
+        }.items()
     )
 
     # 2. YOLOv8n-seg Node
@@ -85,14 +120,16 @@ def generate_launch_description():
         parameters=[
             {
                 'camera_topic': LaunchConfiguration('camera_topic'),
-                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_main.pt',  # auto-detect best.pt
+                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_line.pt',  # auto-detect best.pt
                 'conf_threshold': 0.4,
                 'iou_threshold': 0.45,
-                'imgsz': 640,
-                'publish_overlay': True,
+                'imgsz': LaunchConfiguration('yolo_imgsz'),
+                'device': LaunchConfiguration('yolo_device'),
+                'publish_overlay': LaunchConfiguration('yolo_publish_overlay'),
                 'publish_drivable_mask': True,
                 'detect_obstacles': True,
-                'rate_hz': 10.0,
+                'detect_lane_line_types': LaunchConfiguration('yolo_detect_lane_line_types'),
+                'rate_hz': LaunchConfiguration('yolo_rate_hz'),
             }
         ]
     )
@@ -190,9 +227,15 @@ def generate_launch_description():
         kp_arg,
         kd_arg,
         use_traffic_light_arg,
+        yolo_imgsz_arg,
+        yolo_rate_hz_arg,
+        yolo_publish_overlay_arg,
+        yolo_detect_lane_line_types_arg,
+        yolo_device_arg,
+        enable_mjpeg_decoder_arg,
 
         # Nodes
-        usb_cam_node,
+        usb_cam_launch,
         yolo_node,
         yolo_drive_node,
         arduino_node,

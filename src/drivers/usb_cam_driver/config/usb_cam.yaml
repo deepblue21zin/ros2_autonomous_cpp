@@ -1,6 +1,7 @@
 /**:
   ros__parameters:
     # USB Front Camera Configuration (차선 인식용)
+    # 참고: camera_test/hybrid launch에서 /dev/videoX를 /dev/v4l/by-* 경로로 자동 치환 가능
     video_device: "/dev/video4"
     image_width: 640
     image_height: 360

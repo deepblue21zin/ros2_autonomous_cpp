@@ -278,8 +278,14 @@ class Yolov8nSegDetector:
                 m_resized = cv2.resize(
                     m, (w, h), interpolation=cv2.INTER_NEAREST
                 )
+                # 끊긴 세그멘테이션 경계를 메우기 위해 작은 closing 적용
+                mask_bin = (m_resized > 0.5).astype(np.uint8) * 255
+                kernel = np.ones((3, 3), np.uint8)
+                mask_bin = cv2.morphologyEx(
+                    mask_bin, cv2.MORPH_CLOSE, kernel, iterations=1
+                )
                 # 장애물 영역을 0으로
-                drivable[m_resized > 0.5] = 0
+                drivable[mask_bin > 0] = 0
 
         return drivable
 

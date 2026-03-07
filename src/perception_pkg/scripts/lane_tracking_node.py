@@ -73,6 +73,7 @@ class LaneTrackingNode(Node):
         self.declare_parameter('bev_src_bl_x', 0.0)
         self.declare_parameter('bev_src_br_x', 1.0)
         self.declare_parameter('bev_draw_trapezoid', False)
+        self.declare_parameter('rate_hz', 30.0)
 
         # 파라미터 로드
         self.camera_topic = self.get_parameter('camera_topic').value
@@ -90,6 +91,7 @@ class LaneTrackingNode(Node):
         self.bev_src_bl_x = self.get_parameter('bev_src_bl_x').value
         self.bev_src_br_x = self.get_parameter('bev_src_br_x').value
         self.bev_draw_trapezoid = self.get_parameter('bev_draw_trapezoid').value
+        rate_hz = self.get_parameter('rate_hz').value
 
         # QoS: 이미지는 Best Effort, 큐 1
         image_qos = QoSProfile(
@@ -105,7 +107,11 @@ class LaneTrackingNode(Node):
 
         self.offset_buffer: Deque[float] = deque(maxlen=self.avg_window)
 
-        # 이미지 타입에 맞는 콜백 등록
+        # 최신 프레임 저장 (타이머 기반 처리)
+        self.latest_frame = None
+        self.latest_header = None
+
+        # 이미지 타입에 맞는 콜백 등록 (프레임 저장만)
         if self.use_compressed:
             self.sub = self.create_subscription(
                 CompressedImage, self.camera_topic,
@@ -114,6 +120,10 @@ class LaneTrackingNode(Node):
             self.sub = self.create_subscription(
                 Image, self.camera_topic,
                 self.image_cb, image_qos)
+
+        # 처리 타이머 (rate 제한)
+        period = 1.0 / max(rate_hz, 1.0)
+        self.create_timer(period, self._process_cb)
 
         bev_str = (f', BEV=ON src=[TL={self.bev_src_tl_x}, TR={self.bev_src_tr_x}, '
                    f'BL={self.bev_src_bl_x}, BR={self.bev_src_br_x}]'
@@ -129,22 +139,30 @@ class LaneTrackingNode(Node):
         self.debug = self.get_parameter('debug').value
 
     def compressed_cb(self, msg: CompressedImage) -> None:
-        """압축 이미지 콜백."""
+        """압축 이미지 콜백 (프레임 저장만)."""
         np_arr = np.frombuffer(msg.data, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         if frame is None:
             self.get_logger().warn('JPEG 디코드 실패')
             return
-        self.handle_frame(frame, msg.header)
+        self.latest_frame = frame
+        self.latest_header = msg.header
 
     def image_cb(self, msg: Image) -> None:
-        """RAW 이미지 콜백."""
+        """RAW 이미지 콜백 (프레임 저장만)."""
         try:
             frame = imgmsg_to_cv2(msg)
         except Exception as exc:
             self.get_logger().warn(f'이미지 변환 실패: {exc}')
             return
-        self.handle_frame(frame, msg.header)
+        self.latest_frame = frame
+        self.latest_header = msg.header
+
+    def _process_cb(self) -> None:
+        """타이머 콜백: rate 제한된 프레임 처리."""
+        if self.latest_frame is None:
+            return
+        self.handle_frame(self.latest_frame, self.latest_header)
 
     def handle_frame(self, frame: np.ndarray, header) -> None:
         """공통 프레임 처리 로직."""

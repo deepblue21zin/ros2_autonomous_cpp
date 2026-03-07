@@ -19,6 +19,7 @@ import numpy as np
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from sensor_msgs.msg import Image
 from std_msgs.msg import String, Bool, Float32MultiArray
 from cv_bridge import CvBridge
@@ -102,6 +103,12 @@ class Yolov8nSegNode(Node):
         self.bridge = CvBridge()
 
         # ── 퍼블리셔 ──
+        image_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
+
         self.tl_state_pub = self.create_publisher(
             String, "/perception/traffic_light_state", 1)
         self.tl_flag_pub = self.create_publisher(
@@ -111,21 +118,21 @@ class Yolov8nSegNode(Node):
 
         if self.publish_overlay:
             self.overlay_pub = self.create_publisher(
-                Image, "/yolo/overlay", 1)
+                Image, "/yolo/overlay", image_qos)
         else:
             self.overlay_pub = None
 
         if self.publish_drivable:
             self.drivable_pub = self.create_publisher(
-                Image, "/perception/drivable_mask", 1)
+                Image, "/perception/drivable_mask", image_qos)
         else:
             self.drivable_pub = None
 
         if self.publish_lanes:
             self.lane_left_pub = self.create_publisher(
-                Image, "/perception/lane_left_mask", 1)
+                Image, "/perception/lane_left_mask", image_qos)
             self.lane_right_pub = self.create_publisher(
-                Image, "/perception/lane_right_mask", 1)
+                Image, "/perception/lane_right_mask", image_qos)
         else:
             self.lane_left_pub = None
             self.lane_right_pub = None
@@ -139,7 +146,7 @@ class Yolov8nSegNode(Node):
         # ── 서브스크라이버 ──
         self.latest_frame: Optional[np.ndarray] = None
         self.create_subscription(
-            Image, camera_topic, self._image_cb, 1)
+            Image, camera_topic, self._image_cb, image_qos)
 
         # ── 추론 타이머 (프레임 레이트 제한) ──
         period = 1.0 / max(rate_hz, 1.0)
@@ -336,8 +343,12 @@ class Yolov8nSegNode(Node):
             if mask.shape != (h, w):
                 mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST)
 
-            # uint8로 변환 (0 or 255)
-            mask_uint8 = (mask * 255).astype(np.uint8)
+            # 작은 gap 보강: binary + closing
+            mask_uint8 = (mask > 0.5).astype(np.uint8) * 255
+            kernel = np.ones((3, 3), np.uint8)
+            mask_uint8 = cv2.morphologyEx(
+                mask_uint8, cv2.MORPH_CLOSE, kernel, iterations=1
+            )
 
             # 클래스 이름에 따라 좌/우 분류
             if 'left' in class_name.lower() or cls_id == 0:  # 좌차선

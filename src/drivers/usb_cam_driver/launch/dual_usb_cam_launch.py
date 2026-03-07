@@ -52,9 +52,21 @@ def generate_launch_description():
             }
         ],
         remappings=[
-            ('image_raw', '/camera/front/image'),
+            ('image_raw', '/camera/front/image_raw'),
             ('camera_info', '/camera/front/camera_info'),
         ]
+    )
+
+    front_mjpeg_decoder_node = Node(
+        package='usb_cam_driver',
+        executable='mjpeg_decoder_node.py',
+        name='front_mjpeg_decoder',
+        output='screen',
+        parameters=[{
+            'input_topic': '/camera/front/image_raw',
+            'output_topic': '/camera/front/image',
+            'output_frame_id': 'camera_front',
+        }]
     )
 
     # Rear USB camera node
@@ -80,5 +92,6 @@ def generate_launch_description():
         front_video_device_arg,
         rear_video_device_arg,
         front_usb_cam_node,
+        front_mjpeg_decoder_node,
         rear_usb_cam_node,
     ])

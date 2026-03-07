@@ -17,9 +17,28 @@ HSV + YOLO 결합 주행 launch file (듀얼 카메라).
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
+import os
+import glob
+
+
+def _resolve_stable_device(default_device: str) -> str:
+    """Resolve /dev/videoX to a stable /dev/v4l/by-* symlink when available."""
+    if not os.path.exists(default_device):
+        return default_device
+
+    real_device = os.path.realpath(default_device)
+    for base_dir in ('/dev/v4l/by-id', '/dev/v4l/by-path'):
+        if not os.path.isdir(base_dir):
+            continue
+        for link_path in sorted(glob.glob(os.path.join(base_dir, '*'))):
+            if os.path.islink(link_path) and os.path.realpath(link_path) == real_device:
+                return link_path
+
+    return default_device
 
 
 def generate_launch_description():
@@ -32,39 +51,54 @@ def generate_launch_description():
         description='Front camera topic (lane tracking)'
     )
 
+    front_raw_camera_topic_arg = DeclareLaunchArgument(
+        'front_raw_camera_topic',
+        default_value='/camera/front/image_raw',
+        description='Front raw image topic before decode relay'
+    )
+
     upper_camera_topic_arg = DeclareLaunchArgument(
         'upper_camera_topic',
         default_value='/camera/upper/image',
         description='Upper camera topic (YOLO obstacle/traffic light)'
     )
 
+    upper_raw_camera_topic_arg = DeclareLaunchArgument(
+        'upper_raw_camera_topic',
+        default_value='/camera/upper/image_raw',
+        description='Upper raw image topic before decode relay'
+    )
+
+    front_default_device = _resolve_stable_device('/dev/video4')
+    upper_default_device = _resolve_stable_device('/dev/video6')
+
     front_video_device_arg = DeclareLaunchArgument(
         'front_video_device',
-        default_value='/dev/video4',
+        default_value=front_default_device,
         description='Front camera device path'
     )
 
     upper_video_device_arg = DeclareLaunchArgument(
         'upper_video_device',
-        default_value='/dev/video6',
+        default_value=upper_default_device,
         description='Upper camera device path'
     )
 
     cruise_speed_arg = DeclareLaunchArgument(
         'cruise_speed',
-        default_value='0.3',
+        default_value='2.0',
         description='Cruise speed in m/s'
     )
 
     slow_speed_arg = DeclareLaunchArgument(
         'slow_speed',
-        default_value='0.2',
+        default_value='0.6',
         description='Slow speed in m/s (during obstacle avoidance)'
     )
 
     max_steer_arg = DeclareLaunchArgument(
         'max_steer',
-        default_value='0.45',
+        default_value='0.6',
         description='Maximum steering angle in radians'
     )
 
@@ -86,7 +120,19 @@ def generate_launch_description():
         description='Enable traffic light detection'
     )
 
-    # 1. Front USB Camera (차선 인식용 - 아래쪽 시선)
+    yolo_publish_overlay_arg = DeclareLaunchArgument(
+        'yolo_publish_overlay',
+        default_value='true',
+        description='Publish YOLO overlay image for RViz'
+    )
+
+    use_rviz_arg = DeclareLaunchArgument(
+        'use_rviz',
+        default_value='true',
+        description='Enable RViz2 visualization'
+    )
+
+    # 1. Front USB Camera (차선 인식용 - 아래쪽 시선, yuyv)
     front_cam_node = Node(
         package='usb_cam',
         executable='usb_cam_node_exe',
@@ -105,11 +151,23 @@ def generate_launch_description():
             }
         ],
         remappings=[
-            ('image_raw', LaunchConfiguration('front_camera_topic')),
+            ('image_raw', LaunchConfiguration('front_raw_camera_topic')),
         ]
     )
 
-    # 2. Upper USB Camera (장애물/신호등 인식용 - 위쪽 시선)
+    front_mjpeg_decoder_node = Node(
+        package='usb_cam_driver',
+        executable='mjpeg_decoder_node.py',
+        name='front_mjpeg_decoder',
+        output='screen',
+        parameters=[{
+            'input_topic': LaunchConfiguration('front_raw_camera_topic'),
+            'output_topic': LaunchConfiguration('front_camera_topic'),
+            'output_frame_id': 'camera_front',
+        }]
+    )
+
+    # 2. Upper USB Camera (장애물/신호등 인식용 - 위쪽 시선, yuyv)
     upper_cam_node = Node(
         package='usb_cam',
         executable='usb_cam_node_exe',
@@ -128,26 +186,39 @@ def generate_launch_description():
             }
         ],
         remappings=[
-            ('image_raw', LaunchConfiguration('upper_camera_topic')),
+            ('image_raw', LaunchConfiguration('upper_raw_camera_topic')),
         ]
     )
 
+    upper_mjpeg_decoder_node = Node(
+        package='usb_cam_driver',
+        executable='mjpeg_decoder_node.py',
+        name='upper_mjpeg_decoder',
+        output='screen',
+        parameters=[{
+            'input_topic': LaunchConfiguration('upper_raw_camera_topic'),
+            'output_topic': LaunchConfiguration('upper_camera_topic'),
+            'output_frame_id': 'camera_upper',
+        }]
+    )
+
     # 3. HSV Lane Tracking Node → Front Camera
+    lane_params_file = PathJoinSubstitution([
+        FindPackageShare('perception_pkg'),
+        'config',
+        'lane_params.yaml'
+    ])
+
     lane_tracking_node = Node(
         package='perception_pkg',
-        executable='lane_tracking_node.py',
+        executable='lane_tracking_node',
         name='lane_tracking',
         output='screen',
         parameters=[
+            lane_params_file,
             {
                 'camera_topic': LaunchConfiguration('front_camera_topic'),
-                'kp': 0.7,
-                'debug': True,
-                'roi_y_ratio': 0.55,
-                'canny_low': 25,
-                'canny_high': 80,
-                'gaussian_kernel': 5,
-                'avg_window': 2,
+                # 하이브리드에서도 track 모드와 동일한 lane_params.yaml을 사용
             }
         ]
     )
@@ -161,14 +232,14 @@ def generate_launch_description():
         parameters=[
             {
                 'camera_topic': LaunchConfiguration('upper_camera_topic'),
-                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_main.pt',
+                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_line.pt',
                 'conf_threshold': 0.4,
                 'iou_threshold': 0.45,
-                'imgsz': 640,
-                'publish_overlay': True,
+                'imgsz': 512,
+                'publish_overlay': LaunchConfiguration('yolo_publish_overlay'),
                 'publish_drivable_mask': True,
                 'detect_obstacles': True,
-                'rate_hz': 10.0,
+                'rate_hz': 7.0,
             }
         ]
     )
@@ -234,18 +305,21 @@ def generate_launch_description():
         package='rviz2',
         executable='rviz2',
         name='rviz2',
-        output='screen',
+        condition=IfCondition(LaunchConfiguration('use_rviz')),
         arguments=['-d', PathJoinSubstitution([
             FindPackageShare('bringup'),
             'config',
             'adas_default.rviz'
-        ])]
+        ])],
+        output='screen'
     )
 
     return LaunchDescription([
         # Launch arguments
         front_camera_topic_arg,
+        front_raw_camera_topic_arg,
         upper_camera_topic_arg,
+        upper_raw_camera_topic_arg,
         front_video_device_arg,
         upper_video_device_arg,
         cruise_speed_arg,
@@ -254,9 +328,13 @@ def generate_launch_description():
         kp_arg,
         kd_arg,
         use_traffic_light_arg,
+        yolo_publish_overlay_arg,
+        use_rviz_arg,
         # Nodes
         front_cam_node,
+        front_mjpeg_decoder_node,
         upper_cam_node,
+        upper_mjpeg_decoder_node,
         lane_tracking_node,
         yolo_node,
         hybrid_drive_node,

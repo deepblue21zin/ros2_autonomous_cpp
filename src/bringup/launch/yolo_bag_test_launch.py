@@ -7,6 +7,7 @@ rosbag 파일을 재생하여 YOLO 세그멘테이션을 테스트하는 모드.
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
@@ -18,7 +19,7 @@ def generate_launch_description():
     # Launch arguments
     bag_path_arg = DeclareLaunchArgument(
         'bag_path',
-        default_value='/root/ros2_ws/rosbag2_2026_01_30-03_08_19',
+        default_value='/root/ros2_ws/rosbag2_2026_02_08-04_45_24',
         description='Path to rosbag2 directory'
     )
 
@@ -40,8 +41,33 @@ def generate_launch_description():
         description='Rosbag playback rate'
     )
 
+    yolo_imgsz_arg = DeclareLaunchArgument(
+        'yolo_imgsz',
+        default_value='512',
+        description='YOLO input size (smaller = faster, lower detail)'
+    )
+
+    yolo_rate_hz_arg = DeclareLaunchArgument(
+        'yolo_rate_hz',
+        default_value='7.0',
+        description='YOLO inference timer rate (Hz)'
+    )
+
+    yolo_publish_overlay_arg = DeclareLaunchArgument(
+        'yolo_publish_overlay',
+        default_value='true',
+        description='Publish YOLO overlay image'
+    )
+
+    yolo_publish_drivable_mask_arg = DeclareLaunchArgument(
+        'yolo_publish_drivable_mask',
+        default_value='true',
+        description='Publish drivable mask image'
+    )
+
     # 1. Rosbag play (카메라 토픽만 재생)
-    rosbag_play = ExecuteProcess(
+    # loop 인자를 실제로 반영하기 위해 loop/non-loop 프로세스를 분리
+    rosbag_play_loop = ExecuteProcess(
         cmd=[
             'ros2', 'bag', 'play',
             LaunchConfiguration('bag_path'),
@@ -49,6 +75,18 @@ def generate_launch_description():
             '--rate', LaunchConfiguration('rate'),
             '--topics', '/camera/front/image',
         ],
+        condition=IfCondition(LaunchConfiguration('loop')),
+        output='screen'
+    )
+
+    rosbag_play_once = ExecuteProcess(
+        cmd=[
+            'ros2', 'bag', 'play',
+            LaunchConfiguration('bag_path'),
+            '--rate', LaunchConfiguration('rate'),
+            '--topics', '/camera/front/image',
+        ],
+        condition=UnlessCondition(LaunchConfiguration('loop')),
         output='screen'
     )
 
@@ -61,14 +99,14 @@ def generate_launch_description():
         parameters=[
             {
                 'camera_topic': LaunchConfiguration('camera_topic'),
-                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_main.pt',
+                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_line.pt',
                 'conf_threshold': 0.4,
                 'iou_threshold': 0.45,
-                'imgsz': 640,
-                'publish_overlay': True,
-                'publish_drivable_mask': True,
+                'imgsz': LaunchConfiguration('yolo_imgsz'),
+                'publish_overlay': LaunchConfiguration('yolo_publish_overlay'),
+                'publish_drivable_mask': LaunchConfiguration('yolo_publish_drivable_mask'),
                 'detect_obstacles': True,
-                'rate_hz': 10.0,
+                'rate_hz': LaunchConfiguration('yolo_rate_hz'),
             }
         ]
     )
@@ -101,7 +139,12 @@ def generate_launch_description():
         camera_topic_arg,
         loop_arg,
         rate_arg,
-        rosbag_play,
+        yolo_imgsz_arg,
+        yolo_rate_hz_arg,
+        yolo_publish_overlay_arg,
+        yolo_publish_drivable_mask_arg,
+        rosbag_play_loop,
+        rosbag_play_once,
         yolo_node,
         static_tf_camera,
         rviz2,

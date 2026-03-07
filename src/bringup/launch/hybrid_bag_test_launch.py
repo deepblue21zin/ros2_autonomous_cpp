@@ -8,6 +8,7 @@ rosbag 파일을 재생하여 hybrid lane drive (HSV+YOLO)를 테스트하는 �
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
@@ -49,19 +50,19 @@ def generate_launch_description():
 
     cruise_speed_arg = DeclareLaunchArgument(
         'cruise_speed',
-        default_value='0.3',
+        default_value='2.0',
         description='Cruise speed in m/s'
     )
 
     slow_speed_arg = DeclareLaunchArgument(
         'slow_speed',
-        default_value='0.2',
+        default_value='0.6',
         description='Slow speed in m/s (during obstacle avoidance)'
     )
 
     max_steer_arg = DeclareLaunchArgument(
         'max_steer',
-        default_value='0.45',
+        default_value='0.6',
         description='Maximum steering angle in radians'
     )
 
@@ -77,39 +78,65 @@ def generate_launch_description():
         description='Derivative gain for steering control'
     )
 
-    # 1. Rosbag play
-    rosbag_play = ExecuteProcess(
+    use_traffic_light_arg = DeclareLaunchArgument(
+        'use_traffic_light',
+        default_value='true',
+        description='Enable traffic light stop/go in hybrid drive'
+    )
+
+    use_motor_arg = DeclareLaunchArgument(
+        'use_motor',
+        default_value='false',
+        description='Enable Arduino motor output'
+    )
+
+    use_rviz_arg = DeclareLaunchArgument(
+        'use_rviz',
+        default_value='true',
+        description='Enable RViz2 visualization'
+    )
+
+    # 1. Rosbag play (카메라 토픽만 재생, 제어 토픽 제외)
+    rosbag_play_loop = ExecuteProcess(
         cmd=[
             'ros2', 'bag', 'play',
             LaunchConfiguration('bag_path'),
             '--loop',
             '--rate', LaunchConfiguration('rate'),
+            '--topics', '/camera/front/image', '/camera/upper/image',
         ],
+        condition=IfCondition(LaunchConfiguration('loop')),
+        output='screen'
+    )
+
+    rosbag_play_once = ExecuteProcess(
+        cmd=[
+            'ros2', 'bag', 'play',
+            LaunchConfiguration('bag_path'),
+            '--rate', LaunchConfiguration('rate'),
+            '--topics', '/camera/front/image', '/camera/upper/image',
+        ],
+        condition=UnlessCondition(LaunchConfiguration('loop')),
         output='screen'
     )
 
     # 2. HSV Lane Tracking Node → Front Camera
+    lane_params_file = PathJoinSubstitution([
+        FindPackageShare('perception_pkg'),
+        'config',
+        'lane_params.yaml'
+    ])
+
     lane_tracking_node = Node(
         package='perception_pkg',
-        executable='lane_tracking_node.py',
+        executable='lane_tracking_node',
         name='lane_tracking',
         output='screen',
         parameters=[
+            lane_params_file,
             {
                 'camera_topic': LaunchConfiguration('front_camera_topic'),
-                'kp': 0.7,
-                'debug': True,
-                'roi_y_ratio': 0.55,
-                'canny_low': 25,
-                'canny_high': 80,
-                'gaussian_kernel': 5,
-                'avg_window': 2,
-                'use_bev': True,
-                'bev_src_tl_x': 0.30,
-                'bev_src_tr_x': 0.70,
-                'bev_src_bl_x': 0.0,
-                'bev_src_br_x': 1.0,
-                'bev_draw_trapezoid': True,
+                # 하이브리드에서도 track 모드와 동일한 lane_params.yaml을 사용
             }
         ]
     )
@@ -123,14 +150,14 @@ def generate_launch_description():
         parameters=[
             {
                 'camera_topic': LaunchConfiguration('upper_camera_topic'),
-                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_0209',
+                'model_path': '/root/ros2_ws/src/perception_pkg/models/yolo26n_line.pt',
                 'conf_threshold': 0.4,
                 'iou_threshold': 0.45,
-                'imgsz': 640,
+                'imgsz': 512,
                 'publish_overlay': True,
                 'publish_drivable_mask': True,
                 'detect_obstacles': True,
-                'rate_hz': 10.0,
+                'rate_hz': 7.0,
             }
         ]
     )
@@ -153,7 +180,7 @@ def generate_launch_description():
                 'max_steer_rad': LaunchConfiguration('max_steer'),
                 'kp': LaunchConfiguration('kp'),
                 'kd': LaunchConfiguration('kd'),
-                'use_traffic_light': False,
+                'use_traffic_light': LaunchConfiguration('use_traffic_light'),
             }
         ],
         remappings=[
@@ -167,6 +194,7 @@ def generate_launch_description():
         executable='arduino_bridge_node.py',
         name='arduino_bridge',
         output='screen',
+        condition=IfCondition(LaunchConfiguration('use_motor')),
         parameters=[
             PathJoinSubstitution([
                 FindPackageShare('arduino_driver'),
@@ -191,11 +219,12 @@ def generate_launch_description():
         arguments=['0.15', '0', '0.18', '0', '0', '0', 'base_link', 'camera_upper']
     )
 
-    # 7. RViz2
+    # 7. RViz2 (모터 모드와 독립적으로 on/off)
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
+        condition=IfCondition(LaunchConfiguration('use_rviz')),
         arguments=['-d', PathJoinSubstitution([
             FindPackageShare('bringup'),
             'config',
@@ -215,7 +244,11 @@ def generate_launch_description():
         max_steer_arg,
         kp_arg,
         kd_arg,
-        rosbag_play,
+        use_traffic_light_arg,
+        use_motor_arg,
+        use_rviz_arg,
+        rosbag_play_loop,
+        rosbag_play_once,
         lane_tracking_node,
         yolo_node,
         hybrid_drive_node,

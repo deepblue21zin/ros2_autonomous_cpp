@@ -59,4 +59,4 @@
     # RViz2 시각화
     # 컨테이너 내부에서 실행 시 false (호스트에서 ./rviz.sh 별도 실행)
     # 로컬 GUI 환경에서 실행 시 true
-    use_rviz: false
+    use_rviz: true
