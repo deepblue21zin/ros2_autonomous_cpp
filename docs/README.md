@@ -1,5 +1,7 @@
 # ROS1 Noetic → ROS2 Humble 변환 문서
 
+이 문서는 당시 마이그레이션 작업의 요약본입니다. 현재 활성 운영 문서는 `docs/`에 남겨두고, 상세 변경 이력과 트러블슈팅 기록은 `archive/docs_archive/`로 이동했습니다.
+
 ## 프로젝트 개요
 
 이 문서는 자율주행 차량 시스템을 ROS1 Noetic에서 ROS2 Humble로 변환한 전체 과정을 기록합니다.
@@ -128,11 +130,11 @@ timer_ = this->create_wall_timer(
 
 - [INSTALLATION.md](INSTALLATION.md) - 설치한 ROS2 패키지 목록
 - [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) - C++ 노드 상세 변환 가이드
-- [PYTHON_MIGRATION.md](PYTHON_MIGRATION.md) - **NEW!** Python 노드 변환 가이드
-- [API_CHANGES.md](API_CHANGES.md) - ROS1 → ROS2 API 변경사항
+- [../archive/docs_archive/PYTHON_MIGRATION.md](../archive/docs_archive/PYTHON_MIGRATION.md) - Python 노드 변환 가이드
+- [../archive/docs_archive/API_CHANGES.md](../archive/docs_archive/API_CHANGES.md) - ROS1 → ROS2 API 변경사항
 - [PERFORMANCE.md](PERFORMANCE.md) - 성능 최적화 세부사항
-- [BUILD_SYSTEM.md](BUILD_SYSTEM.md) - 빌드 시스템 변경사항
-- [CHANGELOG.md](CHANGELOG.md) - 상세 변경 이력
+- [../archive/docs_archive/BUILD_SYSTEM.md](../archive/docs_archive/BUILD_SYSTEM.md) - 빌드 시스템 변경사항
+- [../archive/docs_archive/CHANGELOG.md](../archive/docs_archive/CHANGELOG.md) - 상세 변경 이력
 
 ## 빠른 시작
 

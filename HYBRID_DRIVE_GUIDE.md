@@ -283,8 +283,8 @@ docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix ...
 ## 📚 추가 자료
 
 - **튜닝 가이드**: [TUNING_GUIDE.md](TUNING_GUIDE.md)
-- **에러 로그**: [docs/error.md](docs/error.md)
-- **변경 이력**: [docs/change_code.md](docs/change_code.md)
+- **에러 로그**: [archive/docs_archive/error.md](archive/docs_archive/error.md)
+- **변경 이력**: [archive/docs_archive/change_code.md](archive/docs_archive/change_code.md)
 
 ---
 
