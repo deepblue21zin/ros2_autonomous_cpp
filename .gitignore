@@ -19,8 +19,12 @@ __pycache__/
 
 # ROS bag recordings
 rosbag2_*/
-*.tar.*
+*.tar.* 
 
 # Temporary files
 *.log
 *~
+*.swp
+*.swo
+*.save
+*.bak_*

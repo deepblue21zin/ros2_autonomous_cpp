@@ -187,6 +187,23 @@ ros2 launch bringup parking_launch.py
 ros2 launch bringup hybrid_drive_launch.py
 ```
 
+## Docker Environment
+
+The repository also includes a reproducible development container in `adas_env/`.
+
+```bash
+cd adas_env
+docker compose build
+docker compose up -d
+docker exec -it adas_container bash
+```
+
+Notes:
+
+- `adas_env/compose.yaml` mounts the repository root into `/root/ros2_ws`
+- `adas_env/start.sh` provides shortcuts for build, launch, test, and hybrid-drive workflows
+- The image published to Docker Hub is intended as a development environment image, not a fully self-contained runtime artifact with project code baked in
+
 ## Useful Entry Points
 
 - `src/perception_pkg/src/lane_tracking_node.cpp`
