@@ -187,22 +187,108 @@ ros2 launch bringup parking_launch.py
 ros2 launch bringup hybrid_drive_launch.py
 ```
 
-## Docker Environment
+## Reproducibility
 
-The repository also includes a reproducible development container in `adas_env/`.
+This repository is reproducible at the development-environment level even without the original competition vehicle. Reproduction is based on three assets:
+
+- Source code and documentation in this Git repository
+- Container environment files in `adas_env/`
+- Published Docker image tags for the ROS2 development environment
+
+What can be reproduced reliably:
+
+- ROS2 workspace layout and package structure
+- Build environment based on ROS2 Humble desktop
+- Python and ROS package dependencies used during development
+- Launch structure, parameter files, and node wiring
+- Development workflows through `adas_env/start.sh`
+
+What cannot be fully reproduced without hardware:
+
+- Real sensor input from the original cameras, LiDAR, Arduino, and ultrasonic setup
+- Exact vehicle behavior on the submitted platform
+- Fresh benchmark numbers on the original physical vehicle
+
+### Reproduction Assets
+
+- Git repository: current source tree
+- Docker environment files:
+  - `adas_env/Dockerfile`
+  - `adas_env/compose.yaml`
+  - `adas_env/start.sh`
+- Docker Hub image:
+  - `deepblue2121/ros2_autonomous_cpp:latest`
+  - `deepblue2121/ros2_autonomous_cpp:humble`
+  - `deepblue2121/ros2_autonomous_cpp:2026-03`
+
+### Rebuild From Git
+
+This is the most reliable path because it rebuilds the environment from versioned files in the repository.
 
 ```bash
-cd adas_env
+git clone <repo-url>
+cd ros2_autonomous_cpp/adas_env
 docker compose build
 docker compose up -d
 docker exec -it adas_container bash
+cd /root/ros2_ws
+colcon build --symlink-install
+source install/setup.bash
 ```
 
-Notes:
+### Reuse Published Docker Image
 
-- `adas_env/compose.yaml` mounts the repository root into `/root/ros2_ws`
-- `adas_env/start.sh` provides shortcuts for build, launch, test, and hybrid-drive workflows
-- The image published to Docker Hub is intended as a development environment image, not a fully self-contained runtime artifact with project code baked in
+If the published image already matches the intended environment, it can be used as a faster starting point.
+
+```bash
+docker pull deepblue2121/ros2_autonomous_cpp:2026-03
+git clone <repo-url>
+cd ros2_autonomous_cpp/adas_env
+docker compose up -d
+docker exec -it adas_container bash
+cd /root/ros2_ws
+colcon build --symlink-install
+source install/setup.bash
+```
+
+Note:
+
+- `adas_env/compose.yaml` mounts the repository root into `/root/ros2_ws` using a relative path
+- The published image is a development environment image, not a fully self-contained runtime image with project code baked in
+- The repository source still needs to be present on the host because the compose file bind-mounts it into the container
+
+### Workflow Shortcuts
+
+`adas_env/start.sh` wraps common workflows used during development:
+
+- `./start.sh build`: build image and start container
+- `./start.sh ros-build`: build the ROS2 workspace inside the container
+- `./start.sh run`: launch `track_launch.py`
+- `./start.sh test`: run test mode
+- `./start.sh hybrid-motor`: run the hybrid lane and obstacle workflow
+- `./start.sh restart`: restart the container with device remounting
+
+### Hardware Dependencies
+
+The compose configuration assumes access to the original development-style device mapping:
+
+- `/dev/ttyACM0` for Arduino
+- `/dev/ttyUSB0` for LiDAR
+- `/dev/video0` to `/dev/video7` for camera devices
+- X11 socket mount for GUI tools such as RViz
+
+Without those devices, the software stack can still be built and partially exercised, but hardware-coupled nodes will not behave as they did on the original vehicle.
+
+### Practical Recovery Checklist
+
+If the local machine is wiped, the minimum recovery path is:
+
+1. Clone this repository
+2. Verify that `adas_env/` is present
+3. Either build from `adas_env/Dockerfile` or pull the published Docker Hub image
+4. Start the container with `docker compose up -d`
+5. Build the workspace with `colcon build --symlink-install`
+6. Run the desired launch file or `start.sh` shortcut
 
 ## Useful Entry Points
 
