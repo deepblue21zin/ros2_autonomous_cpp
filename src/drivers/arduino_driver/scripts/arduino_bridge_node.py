@@ -96,6 +96,21 @@ class ArduinoBridgeNode(Node):
             f"[arduino_bridge] port={self.port} baud={self.baudrate} mode=continuous"
         )
 
+    def cleanup(self) -> None:
+        """Send stop command to Arduino on shutdown."""
+        try:
+            if self.serial and self.serial.is_open:
+                self.get_logger().info("[arduino_bridge] Sending stop command...")
+                stop_cmd = "V:0,S:90\n"
+                with self.serial_lock:
+                    self.serial.write(stop_cmd.encode("utf-8"))
+                    self.serial.flush()
+                import time
+                time.sleep(0.1)  # 명령 전송 대기
+                self.get_logger().info("[arduino_bridge] Motor stopped")
+        except Exception as e:
+            self.get_logger().error(f"[arduino_bridge] Cleanup error: {e}")
+
     def cmd_cb(self, msg: AckermannDrive) -> None:
         pwm = self._speed_to_pwm(msg.speed)
         servo = self._steer_to_servo(msg.steering_angle)
@@ -104,10 +119,29 @@ class ArduinoBridgeNode(Node):
             self.serial.write(payload.encode("utf-8"))
 
     def _speed_to_pwm(self, speed: float) -> int:
-        # Firmware expects 0~255 PWM (forward only)
-        speed = clamp(speed, 0.0, self.max_speed_mps)
-        ratio = speed / max(self.max_speed_mps, 1e-3)
-        return int(round(clamp(ratio * 255.0, 0.0, 255.0)))
+        """Convert speed (m/s) to PWM value.
+
+        Firmware protocol: 0=stop, 1-127=reverse, 128=stop, 129-255=forward
+        Maps speed range to appropriate PWM:
+          speed == 0 → PWM 0 (stop)
+          speed < 0  → PWM 1-127 (reverse, for future parking branch)
+          speed > 0  → PWM 129-255 (forward)
+        """
+        if abs(speed) < 1e-3:
+            return 0  # Stop
+
+        abs_speed = abs(speed)
+        clamped = clamp(abs_speed, 0.0, self.max_speed_mps)
+        ratio = clamped / max(self.max_speed_mps, 1e-3)
+
+        if speed < 0:
+            # Reverse: 0.0~max_speed_mps → 1~127
+            pwm = int(round(ratio * 127.0))
+            return max(1, min(pwm, 127))
+        else:
+            # Forward: 0.0~max_speed_mps → 129~255
+            pwm = int(round(ratio * 127.0)) + 128
+            return max(129, min(pwm, 255))
 
     def _steer_to_servo(self, steering_angle: float) -> int:
         steer_deg = math.degrees(steering_angle)
@@ -157,6 +191,9 @@ def main(args=None) -> None:
         pass
     finally:
         try:
+            # 모터 정지 명령 전송 (CRITICAL!)
+            node.cleanup()
+            # 시리얼 포트 닫기
             if node.serial and node.serial.is_open:
                 node.serial.close()
         except Exception:

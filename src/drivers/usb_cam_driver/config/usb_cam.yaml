@@ -1,10 +1,13 @@
 /**:
   ros__parameters:
     # USB Front Camera Configuration (차선 인식용)
-    video_device: "/dev/video6"
+    # 참고: camera_test/hybrid launch에서 /dev/videoX를 /dev/v4l/by-* 경로로 자동 치환 가능
+    video_device: "/dev/video4"
     image_width: 640
-    image_height: 480
+    image_height: 360
     pixel_format: "yuyv"
     framerate: 30.0
+    exposure_auto: 1       # Manual mode
+    exposure_absolute: 100 # 10ms (빠른 셔터 스피드)
     frame_id: "camera_front"
     camera_topic: "/camera/front/image"

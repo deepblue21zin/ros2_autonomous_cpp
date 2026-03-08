@@ -1,1 +1,0 @@
-/root/ros2_ws/src/common/scripts/ultrasonic_monitor.py

@@ -21,6 +21,7 @@ import cv2
 import rclpy
 from rclpy.node import Node
 from rclpy.time import Time
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from sensor_msgs.msg import Image
 from std_msgs.msg import String, Float32
 from ackermann_msgs.msg import AckermannDrive
@@ -79,8 +80,13 @@ class YoloLaneDriveNode(Node):
             AckermannDrive, '/decision/cmd', 1)
 
         # ── 서브스크라이버 ──
+        image_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
         self.create_subscription(
-            Image, '/perception/drivable_mask', self._mask_cb, 1)
+            Image, '/perception/drivable_mask', self._mask_cb, image_qos)
         self.create_subscription(
             String, '/perception/traffic_light_state', self._traffic_light_cb, 1)
         self.create_subscription(

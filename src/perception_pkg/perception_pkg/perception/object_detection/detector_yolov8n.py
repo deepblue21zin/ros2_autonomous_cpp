@@ -5,12 +5,7 @@
   2. 장애물 감지: obstacle 클래스
   3. 차선 인식 보조: 세그멘테이션 마스크로 주행 가능 영역 추출
 
-모델: best.pt (커스텀 4 classes, segmentation)
-클래스:
-  - green_light (0): 초록 신호등
-  - obstacle (1): 장애물
-  - red_light (2): 빨간 신호등
-  - road_objects2 (3): 도로 객체
+모델 클래스는 모델 파일에서 자동으로 읽어서 매핑합니다.
 """
 
 from __future__ import annotations
@@ -33,23 +28,18 @@ except ImportError as exc:
     ) from exc
 
 
-# -- 커스텀 클래스 ID (best.pt) --
-GREEN_LIGHT_ID = 0
-OBSTACLE_ID = 1
-RED_LIGHT_ID = 2
-ROAD_OBJECTS_ID = 3
-
-# 신호등 클래스
-TRAFFIC_LIGHT_IDS = {GREEN_LIGHT_ID, RED_LIGHT_ID}
-
-# 장애물로 취급할 클래스
-OBSTACLE_IDS = {OBSTACLE_ID}
-
-# 클래스 ID -> 신호등 상태 매핑
-LIGHT_STATE_MAP = {
-    GREEN_LIGHT_ID: "green",
-    RED_LIGHT_ID: "red",
+# -- 클래스 이름 기반 매핑 (모델에서 자동 검색) --
+# 신호등 클래스 이름 → 상태
+_TRAFFIC_LIGHT_NAMES = {
+    "green_light": "green",
+    "red_light": "red",
 }
+
+# 장애물 클래스 이름
+_OBSTACLE_NAMES = {"obstacle"}
+
+# 차선 클래스 이름 (주행 영역으로 사용)
+_LANE_NAMES = {"lane", "road", "drivable", "road_objects2"}
 
 
 @dataclass(frozen=True)
@@ -77,6 +67,8 @@ class Yolov8nSegConfig:
     iou_threshold: float = 0.45
     imgsz: int = 640
     device: Optional[str] = None
+    # 신호등 최소 면적 비율 (현재 미사용: API 호환용)
+    traffic_light_min_ratio: float = 0.0
     # 세그멘테이션 마스크 사용 여부
     use_seg_mask: bool = True
     # 장애물 감지 사용 여부
@@ -111,7 +103,7 @@ class Yolov8nSegDetector:
                 Yolov8nSegDetector._model_cache[config.model_path] = model
             self.model = Yolov8nSegDetector._model_cache[config.model_path]
 
-        # 모델 클래스 이름
+        # 모델 클래스 이름 (자동 읽기)
         names = getattr(self.model, "names", {})
         if isinstance(names, dict):
             self.names = {int(k): str(v) for k, v in names.items()}
@@ -119,6 +111,20 @@ class Yolov8nSegDetector:
             self.names = {i: str(n) for i, n in enumerate(names)}
         else:
             self.names = {}
+
+        # 이름 기반으로 클래스 역할 동적 매핑
+        self.traffic_light_ids: Dict[int, str] = {}  # cls_id -> "green"/"red"
+        self.obstacle_ids: set = set()
+        self.lane_ids: set = set()
+
+        for cls_id, name in self.names.items():
+            name_lower = name.lower()
+            if name_lower in _TRAFFIC_LIGHT_NAMES:
+                self.traffic_light_ids[cls_id] = _TRAFFIC_LIGHT_NAMES[name_lower]
+            elif name_lower in _OBSTACLE_NAMES:
+                self.obstacle_ids.add(cls_id)
+            elif name_lower in _LANE_NAMES:
+                self.lane_ids.add(cls_id)
 
     # -- 메인 추론 --
 
@@ -157,13 +163,13 @@ class Yolov8nSegDetector:
 
             for i, box in enumerate(boxes):
                 cls_id = int(box.cls.item())
-                if cls_id not in TRAFFIC_LIGHT_IDS:
+                if cls_id not in self.traffic_light_ids:
                     continue
 
                 score = float(box.conf.item())
                 x1, y1, x2, y2 = [int(v) for v in box.xyxy[0].tolist()]
 
-                state = LIGHT_STATE_MAP.get(cls_id, "unknown")
+                state = self.traffic_light_ids.get(cls_id, "unknown")
 
                 tl = TrafficLightState(
                     state=state,
@@ -203,7 +209,7 @@ class Yolov8nSegDetector:
 
             for i, box in enumerate(boxes):
                 cls_id = int(box.cls.item())
-                if cls_id not in OBSTACLE_IDS:
+                if cls_id not in self.obstacle_ids:
                     continue
 
                 score = float(box.conf.item())
@@ -263,7 +269,7 @@ class Yolov8nSegDetector:
             for i, box in enumerate(boxes):
                 cls_id = int(box.cls.item())
                 # 장애물 클래스만 마스킹
-                if cls_id not in OBSTACLE_IDS:
+                if cls_id not in self.obstacle_ids:
                     continue
                 if i >= len(mask_data):
                     continue
@@ -272,8 +278,14 @@ class Yolov8nSegDetector:
                 m_resized = cv2.resize(
                     m, (w, h), interpolation=cv2.INTER_NEAREST
                 )
+                # 끊긴 세그멘테이션 경계를 메우기 위해 작은 closing 적용
+                mask_bin = (m_resized > 0.5).astype(np.uint8) * 255
+                kernel = np.ones((3, 3), np.uint8)
+                mask_bin = cv2.morphologyEx(
+                    mask_bin, cv2.MORPH_CLOSE, kernel, iterations=1
+                )
                 # 장애물 영역을 0으로
-                drivable[m_resized > 0.5] = 0
+                drivable[mask_bin > 0] = 0
 
         return drivable
 
@@ -332,19 +344,21 @@ class Yolov8nSegDetector:
                 x1, y1, x2, y2 = [int(v) for v in box.xyxy[0].tolist()]
                 label = self.names.get(cls_id, str(cls_id))
 
-                # 색상 결정
-                if cls_id == GREEN_LIGHT_ID:
-                    box_color = (0, 255, 0)  # 초록
-                    label = f"GREEN ({score:.0%})"
-                elif cls_id == RED_LIGHT_ID:
-                    box_color = (0, 0, 255)  # 빨강
-                    label = f"RED ({score:.0%})"
-                elif cls_id == OBSTACLE_ID:
-                    box_color = (0, 165, 255)  # 주황
+                # 색상 결정 (이름 기반)
+                if cls_id in self.traffic_light_ids:
+                    tl_state = self.traffic_light_ids[cls_id]
+                    if tl_state == "green":
+                        box_color = (0, 255, 0)
+                        label = f"GREEN ({score:.0%})"
+                    else:
+                        box_color = (0, 0, 255)
+                        label = f"RED ({score:.0%})"
+                elif cls_id in self.obstacle_ids:
+                    box_color = (0, 165, 255)
                     label = f"obstacle ({score:.0%})"
-                elif cls_id == ROAD_OBJECTS_ID:
-                    box_color = (255, 200, 0)  # 파랑-노랑
-                    label = f"road_obj ({score:.0%})"
+                elif cls_id in self.lane_ids:
+                    box_color = (255, 200, 0)
+                    label = f"lane ({score:.0%})"
                 else:
                     box_color = (200, 200, 200)
 

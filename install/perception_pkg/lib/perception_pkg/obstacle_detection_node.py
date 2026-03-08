@@ -1,1 +1,0 @@
-/root/ros2_ws/src/perception_pkg/scripts/obstacle_detection_node.py

@@ -103,7 +103,7 @@ def launch_setup(context, *args, **kwargs):
     nodes_to_launch.append(lidar_obstacle_node)
 
     # Decision node based on mode
-    if decision_mode == '2026':
+    if decision_mode == 'cpp':
         if use_cpp:
             decision_node = Node(
                 package='decision',
@@ -157,7 +157,7 @@ def launch_setup(context, *args, **kwargs):
             ]
         )
     else:
-        # Default to 2026 C++ node
+        # Default to C++ node
         decision_node = Node(
             package='decision',
             executable='decision_node',
@@ -219,20 +219,14 @@ def generate_launch_description():
     # Declare launch arguments
     decision_mode_arg = DeclareLaunchArgument(
         'decision_mode',
-        default_value='2026',
-        description='Decision mode: 2026 or ai'
+        default_value='cpp',
+        description='Decision mode: cpp, unified, or ai'
     )
 
     camera_topic_arg = DeclareLaunchArgument(
         'camera_topic',
         default_value='/camera/front/image',
         description='Camera topic name'
-    )
-
-    use_compressed_arg = DeclareLaunchArgument(
-        'use_compressed',
-        default_value='false',
-        description='Use compressed image transport'
     )
 
     use_cpp_arg = DeclareLaunchArgument(
@@ -265,7 +259,6 @@ def generate_launch_description():
         parameters=[
             {
                 'camera_topic': '/camera/rear/image',
-                'use_compressed': False,
                 'debug': True,
             }
         ]
@@ -282,7 +275,6 @@ def generate_launch_description():
         ]),
         launch_arguments={
             'camera_topic': LaunchConfiguration('camera_topic'),
-            'use_compressed': LaunchConfiguration('use_compressed'),
             'lane_marking_enabled': 'true',
             'allowed_stop_states': "red",
             'speed_sign_enabled': 'false',
@@ -306,7 +298,6 @@ def generate_launch_description():
     return LaunchDescription([
         decision_mode_arg,
         camera_topic_arg,
-        use_compressed_arg,
         use_cpp_arg,
         dual_usb_cam_launch,  # 전방+후방 카메라
         parking_line_node,     # 후방 카메라 주차 라인 감지

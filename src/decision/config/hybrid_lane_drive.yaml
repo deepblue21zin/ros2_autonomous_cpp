@@ -1,0 +1,46 @@
+/**:
+  ros__parameters:
+    # 속도 제어 (track 모드 기준)
+    cruise_speed_mps: 2.0      # 정상 주행 속도 (m/s) — track과 동일
+    slow_speed_mps: 0.6        # 장애물 감속/차선 변경 시 속도 (m/s)
+
+    # 조향 제어 (track 모드 기준)
+    max_steer_rad: 0.6              # 최대 조향각 (rad, 약 34도) — track과 동일
+    use_lane_steering_input: true   # /lane/steering_angle 직접 사용 (track 모드 유사)
+    lane_timeout_sec: 0.5           # 차선 입력 타임아웃
+    steer_rate_limit_rad_per_sec: 4.0  # 조향 변화율 제한 — track과 동일
+    # 아래 kp/kd는 center_offset fallback 모드에서만 사용
+    kp: 1.8
+    kd: 0.2
+
+    # 장애물 검출 (유아용 전동차 — 큰 장애물)
+    obstacle_detect_threshold: 0.25  # 0.22→0.25: 큰 장애물이라 일찍 감지
+    obstacle_on_frames: 2            # 3→2: 뚜렷한 장애물이라 빠르게 확정 (~0.29초)
+    obstacle_off_frames: 5           # 연속 해제 프레임 (히스테리시스)
+
+    # 차선 변경 파라미터 (여유롭게)
+    enable_lane_change: true       # 장애물 감지 시 점선 방향으로 차선 변경
+    lane_change_steer_rad: 0.4     # 차선 변경 시 고정 조향각 (rad)
+    lane_change_duration_sec: 2.0  # 1.5→2.0: 충분히 차선 넘기
+    stabilize_duration_sec: 0.8    # 0.5→0.8: HSV 재잠금 여유
+
+    # 신호등
+    use_traffic_light: true    # 신호등 사용 여부
+
+    # 제어 주기
+    control_hz: 20.0           # 제어 루프 주기 (Hz)
+
+# ============================================
+# 튜닝 가이드
+# ============================================
+#
+# 1. 조향이 떨리면:
+#    steer_rate_limit_rad_per_sec: 4.0 → 3.0
+#
+# 2. 장애물 감속이 너무 자주 걸리면:
+#    obstacle_detect_threshold: 0.22 → 0.18
+#    obstacle_on_frames: 3 → 4
+#
+# 3. 속도 조정:
+#    cruise_speed_mps: 2.0 → 1.5 (안전하게)
+#    slow_speed_mps: 0.6 → 0.8 (차선 변경 빠르게)

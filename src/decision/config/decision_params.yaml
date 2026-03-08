@@ -1,0 +1,43 @@
+/**:
+  ros__parameters:
+    # === 조향 제어 ===
+    max_steer_rad: 0.6              # 최대 조향각 (rad)
+    soft_steer_rad: 0.4             # 소프트 조향 임계값 (rad)
+    soft_steer_threshold: 0.15      # 소프트 조향 적용 비율
+    steer_rate_limit_rad_per_sec: 4.0  # 조향 변화 속도 제한 (rad/s)
+
+    # === 속도 제어 ===
+    cruise_speed_mps: 2.0           # 순항 속도 (m/s)
+    min_speed_mps: 1.2              # 최소 속도 (m/s)
+    curve_factor: 0.5               # 커브 감속 계수 (클수록 감속 강함)
+    accel_rate_mps2: 1.5            # 가속률 (m/s²)
+    decel_rate_mps2: 2.0            # 감속률 (m/s²)
+
+    # === 장애물 회피 ===
+    use_obstacle_avoidance: true
+    obstacle_d_stop_m: 0.5          # 정지 거리 (m)
+    obstacle_d_slow_m: 1.5          # 감속 시작 거리 (m)
+    obstacle_k: 0.8                 # 감속 계수
+    obstacle_max_speed_mps: 0.6     # 장애물 근처 최대 속도 (m/s)
+    obstacle_bias_weight: 0.3       # 장애물 회피 조향 가중치
+
+    # === 차선 소실 처리 ===
+    lane_lost_hold_frames: 45       # 소실 시 이전 조향 유지 프레임
+    lost_lane_speed_mps: 1.0        # 소실 시 감속 속도 (m/s)
+    lane_timeout_sec: 0.5           # 차선 데이터 타임아웃 (sec)
+
+    # === 초음파/신호등/정지선 ===
+    ultra_safe_distance_m: 0.0      # 초음파 안전 거리 (0=비활성화)
+    use_traffic_light: false
+    stop_on_yellow: true
+    stop_line_stop_distance_m: 0.5  # 정지선 정지 거리 (m)
+
+    # === 센서 타임아웃 ===
+    obstacle_timeout_sec: 0.5
+    obstacle_bias_timeout_sec: 0.5
+    ultra_timeout_sec: 1.0
+    traffic_timeout_sec: 2.0
+    stop_line_timeout_sec: 1.0
+
+    # === 모드 ===
+    test_mode: false

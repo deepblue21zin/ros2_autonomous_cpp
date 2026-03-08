@@ -1,0 +1,64 @@
+!pip install -U ultralytics roboflow
+
+!pip install roboflow
+
+from roboflow import Roboflow
+rf = Roboflow(api_key="9noKngv8ytcJ6EQbJlvr")
+project = rf.workspace("autonomousdriving-ih21b").project("autonomous_driving-c5kfi")
+version = project.version(6)
+dataset = version.download("yolo26")
+
+
+from ultralytics import YOLO
+
+# 1. YOLO26 Nano 모델 정의 (새 가중치 다운로드)
+model = YOLO('yolo26n.pt')
+
+# 2. 학습 실행
+results = model.train(
+    data=f"/content/autonomous_driving-6/data.yaml",
+    epochs=100,         # Nano 모델은 가벼우니 100회 정도 추천합니다
+    imgsz=640,          # 기본 이미지 사이즈
+    batch=16,           # GPU 메모리가 부족하면 8로 줄이세요
+    device=0,           # GPU 사용
+    optimizer='auto',   # 자동으로 최적의 옵티마이저 선택
+    project='my_yolo26_project',
+    name='yolo26n_init'
+)
+
+
+import os
+import random
+import cv2
+from ultralytics import YOLO
+from google.colab.patches import cv2_imshow
+
+# 1. 학습된 최신 모델 로드
+# 경로가 다르다면 학습 완료 후 출력된 경로로 수정하세요 (예: 'runs/detect/train/weights/best.pt')
+model = YOLO('/content/runs/detect/my_yolo26_project/yolo26n_init2/weights/best.pt')
+
+# 2. 테스트 이미지 경로 설정 (Roboflow 데이터셋 기준)
+test_images_path = f"/content/autonomous_driving-2/train/images"
+all_test_images = [f for f in os.listdir(test_images_path) if f.endswith(('.jpg', '.jpeg', '.png'))]
+
+# 3. 13개 랜덤 추출 (전체 이미지 수가 13개보다 적을 경우를 대비해 처리)
+sample_size = min(13, len(all_test_images))
+random_samples = random.sample(all_test_images, sample_size)
+
+print(f"총 {len(all_test_images)}개의 이미지 중 {sample_size}개를 랜덤으로 테스트합니다.\n")
+
+# 4. 루프를 돌며 예측 및 출력
+for i, img_name in enumerate(random_samples):
+    img_path = os.path.join(test_images_path, img_name)
+
+    # 예측 수행
+    results = model.predict(source=img_path, conf=0.25, verbose=False)
+
+    print(f"[{i+1}/13] 테스트 이미지: {img_name}")
+
+    # 결과 시각화
+    for r in results:
+        im_array = r.plot()  # 박스가 그려진 이미지 생성
+        cv2_imshow(im_array)  # 이미지 출력
+
+    print("-" * 50)

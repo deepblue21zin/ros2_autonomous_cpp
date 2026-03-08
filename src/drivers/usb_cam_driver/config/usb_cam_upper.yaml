@@ -1,0 +1,11 @@
+/**:
+  ros__parameters:
+    # USB Upper Camera Configuration (장애물/신호등 감지용 - YOLO)
+    # 참고: camera_test/hybrid launch에서 /dev/videoX를 /dev/v4l/by-* 경로로 자동 치환 가능
+    video_device: "/dev/video6"
+    image_width: 640
+    image_height: 360
+    pixel_format: "yuyv"
+    framerate: 30.0
+    frame_id: "camera_upper"
+    camera_topic: "/camera/upper/image"

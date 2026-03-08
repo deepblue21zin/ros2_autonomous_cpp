@@ -1,1 +1,0 @@
-/root/ros2_ws/build/ultrasonic_driver/ament_cmake_core/ultrasonic_driverConfig-version.cmake

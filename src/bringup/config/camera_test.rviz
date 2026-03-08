@@ -1,0 +1,84 @@
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 0
+    Name: Displays
+    Property Tree Widget:
+      Expanded: ~
+      Splitter Ratio: 0.5
+    Tree Height: 300
+  - Class: rviz_common/Views
+    Name: Views
+    collapsed: true
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Image
+      Name: "Camera Raw"
+      Enabled: true
+      Topic:
+        Value: /camera/front/image
+        Depth: 1
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Normalize Range: true
+
+    - Class: rviz_default_plugins/Image
+      Name: "Lane Overlay"
+      Enabled: true
+      Topic:
+        Value: /lane_overlay
+        Depth: 1
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Normalize Range: false
+
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: false
+
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: base_link
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 1
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.01
+      Pitch: 0.5
+      Target Frame: <Fixed Frame>
+      Value: Orbit (rviz)
+      Yaw: 0
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 1000
+  Width: 1400
+  X: 50
+  Y: 50
+  "Camera Raw":
+    collapsed: false
+  "Lane Overlay":
+    collapsed: false
+  QMainWindow State: 000000ff00000000fd00000004000000000000015e000002b4fc0200000001fb000000100044006900730070006c006100790073010000003d000002b4000000c700fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007300000001e10000009b0000000000000000000000010000010f000002b4fc0200000002fb0000001400430061006d00650072006100200052006100770100000014000001580000002800fffffffb00000018004c0061006e00650020004f007600650072006c00610079010000017200015c0000002800ffffff000000020000073800000039fc0100000001fb0000000a00560069006500770073000000000000000738000000a400ffffff000000030000073800000039fc0100000000000004b0000000000000000000000003000007380000003dfc0100000002fb0000000800540069006d006500000000000000073800000000000000000000000000000000

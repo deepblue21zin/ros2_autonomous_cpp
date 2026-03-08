@@ -1,1 +1,0 @@
-/root/ros2_ws/src/perception_pkg/include/perception_pkg/obstacle_detection_node.hpp

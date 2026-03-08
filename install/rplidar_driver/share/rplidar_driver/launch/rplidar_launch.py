@@ -1,1 +1,0 @@
-/root/ros2_ws/src/drivers/rplidar_driver/launch/rplidar_launch.py

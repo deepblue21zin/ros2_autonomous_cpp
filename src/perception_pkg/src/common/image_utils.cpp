@@ -11,22 +11,17 @@ cv::Mat thresholdWhite(const cv::Mat& hsv) {
 
 cv::Mat thresholdWhiteTracking(const cv::Mat& hsv) {
     cv::Mat mask;
-    // lane_tracking_node: lower=[0, 0, 200], upper=[180, 40, 255]
-    cv::inRange(hsv, cv::Scalar(0, 0, 200), cv::Scalar(180, 40, 255), mask);
-    return mask;
-}
-
-cv::Mat thresholdYellow(const cv::Mat& hsv) {
-    cv::Mat mask;
-    // lane_marking_node: lower=[15, 80, 80], upper=[40, 255, 255]
-    cv::inRange(hsv, cv::Scalar(15, 80, 80), cv::Scalar(40, 255, 255), mask);
-    return mask;
-}
-
-cv::Mat thresholdYellowTracking(const cv::Mat& hsv) {
-    cv::Mat mask;
-    // lane_tracking_node: lower=[15, 80, 80], upper=[35, 255, 255]
-    cv::inRange(hsv, cv::Scalar(15, 80, 80), cv::Scalar(35, 255, 255), mask);
+    // 흰색 차선 검출 - HSV 파라미터 가이드:
+    // cv::Scalar(H, S, V):
+    //   H (Hue/색상):        0-180 범위
+    //   S (Saturation/채도): 0-255 (0=무채색, 255=순수 색상)
+    //   V (Value/밝기):      0-255 (0=검정, 255=흰색)
+    //
+    // 조명이 어두울 때: S와 V 범위를 넓게 설정
+    cv::inRange(hsv,
+                cv::Scalar(0, 0, 120),    // lower: H=0,   S=0,  V=120 (어두운 회색도 포함)
+                cv::Scalar(180, 60, 255), // upper: H=180, S=60, V=255 (약간 채도 있어도 허용)
+                mask);
     return mask;
 }
 
@@ -51,13 +46,8 @@ cv::Mat preprocessForLaneDetection(const cv::Mat& roi_color,
     cv::Mat hsv;
     cv::cvtColor(roi_color, hsv, cv::COLOR_BGR2HSV);
 
-    // Threshold white and yellow
-    cv::Mat mask_white = thresholdWhiteTracking(hsv);
-    cv::Mat mask_yellow = thresholdYellowTracking(hsv);
-
-    // Combine masks
-    cv::Mat mask;
-    cv::bitwise_or(mask_white, mask_yellow, mask);
+    // Threshold white only
+    cv::Mat mask = thresholdWhiteTracking(hsv);
 
     // Apply mask to image
     cv::Mat masked;
@@ -79,6 +69,76 @@ cv::Mat preprocessForLaneDetection(const cv::Mat& roi_color,
     cv::Canny(blur, edges, canny_low, canny_high);
 
     return edges;
+}
+
+int computeAdaptiveVLower(const cv::Mat& roi_color) {
+    cv::Mat hsv;
+    cv::cvtColor(roi_color, hsv, cv::COLOR_BGR2HSV);
+
+    // V 채널 히스토그램: split 없이 직접 3ch 접근
+    int total = hsv.rows * hsv.cols;
+    int v_hist[256] = {};
+    for (int r = 0; r < hsv.rows; r++) {
+        const uchar* row_ptr = hsv.ptr<uchar>(r);
+        for (int c = 0; c < hsv.cols; c++) {
+            v_hist[row_ptr[c * 3 + 2]]++;  // V = HSV offset 2
+        }
+    }
+    int target = static_cast<int>(total * 0.80);
+    int cumulative = 0;
+    int v_p80 = 200;
+    for (int i = 0; i < 256; i++) {
+        cumulative += v_hist[i];
+        if (cumulative >= target) {
+            v_p80 = i;
+            break;
+        }
+    }
+    return std::max(180, std::min(200, v_p80 - 30));
+}
+
+cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel, int v_lower) {
+    cv::Mat hsv;
+    cv::cvtColor(roi_color, hsv, cv::COLOR_BGR2HSV);
+
+    cv::Mat mask;
+    cv::inRange(hsv,
+                cv::Scalar(0, 10, v_lower),
+                cv::Scalar(180, 60, 255),
+                mask);
+
+    // 노이즈 제거: 가우시안 블러 → 모폴로지 닫기 (점선 gap 연결)
+    cv::GaussianBlur(mask, mask, cv::Size(gaussian_kernel, gaussian_kernel), 0);
+    mask = morphClose(mask, 5, 2);
+
+    return mask;
+}
+
+cv::Mat preprocessForSlidingWindow(const cv::Mat& roi_color, int gaussian_kernel) {
+    int v_lower = computeAdaptiveVLower(roi_color);
+    return preprocessForSlidingWindow(roi_color, gaussian_kernel, v_lower);
+}
+
+cv::Mat preprocessForSlidingWindowGrayscale(const cv::Mat& roi_color, int gaussian_kernel, int threshold) {
+    // Grayscale 변환
+    cv::Mat gray;
+    cv::cvtColor(roi_color, gray, cv::COLOR_BGR2GRAY);
+
+    // Otsu 자동 임계값 (햇빛/그림자 대응)
+    // threshold 파라미터는 Otsu 하한으로만 사용 (너무 낮은 임계값 방지)
+    cv::Mat binary;
+    double otsu_val = cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
+    // Otsu 결과가 너무 낮으면 고정 threshold 사용 (최소 보장)
+    if (otsu_val < static_cast<double>(threshold)) {
+        cv::threshold(gray, binary, threshold, 255, cv::THRESH_BINARY);
+    }
+
+    // 노이즈 제거: 가우시안 블러 → 모폴로지 닫기 (점선 gap 연결)
+    cv::GaussianBlur(binary, binary, cv::Size(gaussian_kernel, gaussian_kernel), 0);
+    cv::Mat mask = morphClose(binary, 5, 2);
+
+    return mask;
 }
 
 cv::Mat morphClose(const cv::Mat& mask, int kernel_size, int iterations) {

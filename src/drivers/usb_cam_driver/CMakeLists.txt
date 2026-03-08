@@ -18,6 +18,14 @@ install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}/
 )
 
+# Install Python helper nodes
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts)
+  install(PROGRAMS
+    scripts/mjpeg_decoder_node.py
+    DESTINATION lib/${PROJECT_NAME}
+  )
+endif()
+
 # Install config files (if any)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/config)
   install(DIRECTORY config

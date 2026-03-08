@@ -1,1 +1,0 @@
-/root/ros2_ws/src/drivers/ultrasonic_driver/include/ultrasonic_driver/ultrasonic_processor_node.hpp

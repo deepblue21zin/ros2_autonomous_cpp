@@ -1,1 +1,0 @@
-/root/ros2_ws/build/common/ament_cmake_core/commonConfig.cmake
